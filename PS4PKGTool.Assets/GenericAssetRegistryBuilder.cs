@@ -24,6 +24,8 @@ public static class GenericAssetRegistryBuilder
         handlers.Register(new RasterImageHandler(RasterImageHandler.BmpFormat), RasterImageHandler.BmpFormat);
         handlers.Register(new RasterImageHandler(RasterImageHandler.GifFormat), RasterImageHandler.GifFormat);
         handlers.Register(new DdsHandler(), DdsHandler.FormatId);
+        handlers.Register(new GnfHandler(), GnfHandler.FormatId);
+        handlers.Register(new Atrac9Handler(), Atrac9Handler.FormatId);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.WavFormat), AudioMetadataHandler.WavFormat);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.OggFormat), AudioMetadataHandler.OggFormat);
         handlers.Register(new TextFileHandler(), TextFileHandler.FormatId);

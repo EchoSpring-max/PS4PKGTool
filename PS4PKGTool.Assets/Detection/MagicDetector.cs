@@ -18,6 +18,8 @@ public sealed class MagicDetector : IAssetDetector
         (new byte[] { 0x44, 0x44, 0x53, 0x20 }, "dds", null),           // "DDS "
         (new byte[] { 0x52, 0x49, 0x46, 0x46 }, "riff-container", null),// RIFF — disambiguated below
         (new byte[] { 0x4F, 0x67, 0x67, 0x53 }, "ogg", null),           // "OggS"
+        (new byte[] { 0x47, 0x4E, 0x46, 0x00 }, "gnf", null),           // "GNF\0" — PS4 texture
+        (new byte[] { 0x41, 0x54, 0x39 }, "atrac9", null),              // "AT9" — ATRAC9 audio
     };
 
     public int Order => 0;

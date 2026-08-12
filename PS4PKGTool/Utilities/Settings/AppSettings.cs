@@ -42,9 +42,12 @@ namespace PS4PKGTool.Utilities.Settings
         public bool pkgDirectoryColumn { get; set; }
         public bool pkgBackportColumn { get; set; }
         public bool AutoFetchUpdate { get; set; } = false;
+        public bool Shadps4Check { get; set; } = false;
 
 
         #endregion columnVisibility
+
+        public int ThemeIndex { get; set; } = 0;
 
         public AppSettings()
         {

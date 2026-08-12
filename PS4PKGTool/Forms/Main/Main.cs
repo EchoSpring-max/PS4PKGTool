@@ -68,6 +68,24 @@ namespace PS4PKGTool
         private bool _filtering;
         private TreeNode _currentNode;
         private readonly Dictionary<string, long> _fileSizes = new();   // PKG path → file size
+
+        /// <summary>
+        /// Clears the file-browser tree, list view, and all filter state.
+        /// MUST be used instead of bare Nodes.Clear() — the filter state
+        /// (rootNodes/_currentNode/_allItems) references nodes that throw
+        /// InvalidOperationException on FullPath once detached from the tree.
+        /// </summary>
+        private void ClearFileBrowser()
+        {
+            PKGTreeView.Nodes.Clear();
+            listView1.Items.Clear();
+            rootNodes = null;
+            _currentNode = null;
+            _allItems.Clear();
+            _upItem = null;
+            _populating = false;
+            _filtering = false;
+        }
         private int _trophyLoadVersion;
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _pkgDirectories = new();   // paths that are directories (from orbis D lines)
@@ -118,7 +136,8 @@ namespace PS4PKGTool
 
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; CheckForIllegalCrossThreadCalls = false;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; 
+            CheckForIllegalCrossThreadCalls = false;
             PKGGridView.ScrollBars = ScrollBars.Vertical;
             darkDataGridView2.ScrollBars = ScrollBars.Vertical;
             TrophyGridView.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
@@ -167,9 +186,8 @@ namespace PS4PKGTool
                 column.Width = listView1.Width / listView1.Columns.Count;
             }
 
-            // Filter textbox for tree/list view
-            tbFilterTreeView.TextChanged += (_, _) => ApplyFilter();
-            btnClearFilter.Click += (_, _) => { tbFilterTreeView.Text = ""; };
+            // Filter textbox for tree/list view (built-in clear ✕ button)
+            tbFilterTreeView.SearchTextChanged += (_, _) => ApplyFilter();
 
             // Load treeview file-type icons from embedded resources
             try
@@ -551,8 +569,7 @@ namespace PS4PKGTool
                 LoadPKGEntries(ps4Pkg);
                 LoadPubToolInfo(ps4Pkg);
 
-                listView1.Items.Clear();
-                PKGTreeView.Nodes.Clear();
+                ClearFileBrowser();
 
                 if (appSettings_.PlayBgm) PlayBGM(pkgPath);
                 toolStripStatusLabel2.Text = "...";
@@ -1570,8 +1587,7 @@ namespace PS4PKGTool
             PKG.unlockerAddon = 0;
             _fileSizes.Clear();
             _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            PKGTreeView.Nodes.Clear();
-            listView1.Items.Clear();
+            ClearFileBrowser();
             groupedListView?.Clear();
             ManifestHelper.DeleteManifest();                    // without this the library would resurrect on restart
             InitializeEmptyGrid();
@@ -2076,6 +2092,7 @@ namespace PS4PKGTool
                     dt.Columns.Add("Directory");
                     dt.Columns.Add("Backported");
                     dt.Columns.Add("Latest Update");
+                    dt.Columns.Add("ShadPS4");
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
                 // Detach DataTable from DGV while adding rows on background thread to prevent STA exceptions
@@ -2187,6 +2204,7 @@ namespace PS4PKGTool
                         Logger.LogError($"Failed to process dropped PKG {pkgFile}: {ex.Message}");
                     }
                 }
+                ApplyShadps4Status(scanDt);
 
                 int finalAdded = added;
                 this.Invoke((MethodInvoker)delegate
@@ -2311,6 +2329,7 @@ namespace PS4PKGTool
                             PKG.official = validEntries.Count(e => e.PkgType == "Official");
                             PKG.fake = validEntries.Count(e => e.PkgType == "Fake");
 
+                            ApplyShadps4Status(dt);
                             this.Invoke((MethodInvoker)delegate
                             {
                                 PKGGridView.DataSource = dt;
@@ -2386,6 +2405,7 @@ namespace PS4PKGTool
                 dttemp.Columns.Add("Directory");
                 dttemp.Columns.Add("Backported");
                 dttemp.Columns.Add("Latest Update");
+                dttemp.Columns.Add("ShadPS4");
 
                 // verify scanned ps4 pkg and count it
                 foreach (var item in PkgFileList)
@@ -2548,6 +2568,7 @@ namespace PS4PKGTool
                     }
                 }
                 dttemp.EndLoadData();
+                ApplyShadps4Status(dttemp);
 
                 // Set DataSource ONCE after loop — NOT inside every iteration
                 darkStatusStrip1.Invoke((MethodInvoker)delegate
@@ -2638,6 +2659,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) cols.Add(("Directory", 0));
             if (appSettings_.pkgBackportColumn) cols.Add(("Backported", 0));
             if (appSettings_.AutoFetchUpdate) cols.Add(("Latest Update", 0));
+            if (appSettings_.Shadps4Check) cols.Add(("ShadPS4", 0));
             return cols;
         }
 
@@ -2657,6 +2679,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) data.Add(Cell("Directory"));
             if (appSettings_.pkgBackportColumn) data.Add(Cell("Backported"));
             if (appSettings_.AutoFetchUpdate) data.Add(Cell("Latest Update"));
+            if (appSettings_.Shadps4Check) data.Add(Cell("ShadPS4"));
             return data.ToArray();
         }
 
@@ -3022,6 +3045,29 @@ namespace PS4PKGTool
             bg.RunWorkerAsync();
         }
 
+        /// <summary>
+        /// Fills the "ShadPS4" column from the local compatibility cache
+        /// (by Title ID, column-name based — index-safe). No-op when the
+        /// check is disabled or the cache is missing.
+        /// </summary>
+        private static void ApplyShadps4Status(DataTable dt)
+        {
+            try
+            {
+                if (!appSettings_.Shadps4Check) return;
+                if (dt == null || !dt.Columns.Contains("ShadPS4") || !dt.Columns.Contains("Title ID")) return;
+                foreach (DataRow row in dt.Rows)
+                {
+                    string tid = row["Title ID"]?.ToString() ?? "";
+                    if (string.IsNullOrEmpty(tid)) continue;
+                    string status = Shadps4Compat.Lookup(tid);
+                    if (!string.IsNullOrEmpty(status))
+                        row["ShadPS4"] = status;
+                }
+            }
+            catch (Exception ex) { Logger.LogWarning("Failed to apply shadPS4 status: " + ex.Message); }
+        }
+
         private void PostPkgLoad()
         {
             if (PKG.VerifiedPs4PkgList.Count == 0)
@@ -3110,10 +3156,8 @@ namespace PS4PKGTool
                 if (cbGroupBy != null) cbGroupBy.Enabled = enabled;
                 // TreeView filter controls
                 if (tbFilterTreeView != null) tbFilterTreeView.Enabled = enabled;
-                if (btnClearFilter != null) btnClearFilter.Enabled = enabled;
                 // Table tab filter controls
                 if (tbSearchGame != null) tbSearchGame.Enabled = enabled;
-                if (darkButton3 != null) darkButton3.Enabled = enabled;
                 // Group tab expand/collapse button
                 if (btnGroupExpand != null) btnGroupExpand.Enabled = enabled;
             });
@@ -3215,6 +3259,8 @@ namespace PS4PKGTool
                 PKGGridView.Columns[13].Visible = appSettings_.pkgDirectoryColumn;
                 PKGGridView.Columns[14].Visible = appSettings_.pkgBackportColumn;
                 PKGGridView.Columns[15].Visible = appSettings_.AutoFetchUpdate;
+                if (PKGGridView.Columns.Count > 16)
+                    PKGGridView.Columns[16].Visible = appSettings_.Shadps4Check;
             }
             catch (Exception ex) { Logger.LogWarning("Error updating column visibility: " + ex.Message); }
         }
@@ -4286,6 +4332,9 @@ namespace PS4PKGTool
                 UpdateDataGridViewColumnVisibility();
                 SetBackgroundMusicVolume();
                 PopulateGroupedView(); // reflect column-visibility changes in the grouped view
+                // Fill shadPS4 statuses immediately after a download/toggle
+                if (appSettings_.Shadps4Check && PKGGridView.DataSource is DataTable shadDt)
+                    ApplyShadps4Status(shadDt);
                 #endregion checkGridHideUnhide
             }
         }
@@ -4710,45 +4759,6 @@ namespace PS4PKGTool
         private void dgvHeader_SelectionChanged(object sender, EventArgs e)
         {
             this.dgvHeader.ClearSelection();
-        }
-
-        /// <summary>
-        /// Returns a writable directory on the same drive for the orbis temp rename.
-        /// If the PKG's own directory is already ASCII, it's used (in-place rename).
-        /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
-        /// short temp dir there — the drive root is NOT used (not writable without
-        /// admin on C:).
-        /// </summary>
-        private static string GetOrbisTempDirFor(string pkgPath)
-        {
-            string dir = Path.GetDirectoryName(pkgPath);
-            if (!string.IsNullOrEmpty(dir) && dir.All(c => c < 128))
-                return dir;
-
-            while (!string.IsNullOrEmpty(dir) && !dir.All(c => c < 128))
-                dir = Path.GetDirectoryName(dir);
-
-            if (string.IsNullOrEmpty(dir))
-                dir = Path.GetTempPath(); // fallback — rare, all-ancestors-Unicode
-
-            string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
-            Directory.CreateDirectory(temp);
-            return temp;
-        }
-
-        /// <summary>
-        /// Deletes the temp dir created by GetOrbisTempDirFor (only the "p4t_v_" ones).
-        /// No-op when the file was renamed in place (its parent is a real directory).
-        /// </summary>
-        private static void DeleteOrbisTempDir(string tempFilePath)
-        {
-            try
-            {
-                string d = Path.GetDirectoryName(tempFilePath);
-                if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_v_"))
-                    Directory.Delete(d, true);
-            }
-            catch { }
         }
 
         private void PopulatePKGDataToTreeView()
@@ -5661,14 +5671,101 @@ namespace PS4PKGTool
             PKG.Passcode = DefaultOrbisPasscode;
 
             Logger.LogInformation($"View PKG files: {Path.GetFileName(PKG.SelectedPKGFilename)}");
-            // Clear the nodes of the PKGTreeView control
-            PKGTreeView.Nodes.Clear();
-            listView1.Items.Clear();
+            // Clear the nodes of the PKGTreeView control + filter state
+            ClearFileBrowser();
             toolStripStatusLabel2.Text = "Listing PKG files...";
             toolStripProgressBar1.Visible = true;
             toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             // Populate PKG data to the tree view
             PopulatePKGDataToTreeView();
+        }
+
+        /// <summary>
+        /// Returns a writable directory on the same drive for the orbis temp rename.
+        /// If the PKG's own directory is already ASCII, it's used (in-place rename).
+        /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
+        /// short temp dir there — the drive root is NOT used (not writable without
+        /// admin on C:).
+        /// </summary>
+        private static string GetOrbisTempDirFor(string pkgPath)
+        {
+            string dir = Path.GetDirectoryName(pkgPath);
+            if (!string.IsNullOrEmpty(dir) && dir.All(c => c < 128))
+                return dir;
+
+            while (!string.IsNullOrEmpty(dir) && !dir.All(c => c < 128))
+                dir = Path.GetDirectoryName(dir);
+
+            if (string.IsNullOrEmpty(dir))
+                dir = Path.GetTempPath(); // fallback — rare, all-ancestors-Unicode
+
+            string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            Directory.CreateDirectory(temp);
+            return temp;
+        }
+
+        /// <summary>
+        /// Deletes the temp dir created by GetOrbisTempDirFor (only the "p4t_v_" ones).
+        /// No-op when the file was renamed in place (its parent is a real directory).
+        /// </summary>
+        private static void DeleteOrbisTempDir(string tempFilePath)
+        {
+            try
+            {
+                string d = Path.GetDirectoryName(tempFilePath);
+                if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_v_"))
+                    Directory.Delete(d, true);
+            }
+            catch { }
+        }
+
+        private void btnExportTreeView_Click(object sender, EventArgs e)
+        {
+            if (PKGTreeView.Nodes.Count == 0) { ShowError("No data to export.", false); return; }
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+                DefaultExt = "txt",
+                FileName = Path.GetFileNameWithoutExtension(PKG.SelectedPKGFilename ?? "export") + "_file_list.txt"
+            };
+            if (sfd.ShowDialog() != DialogResult.OK) return;
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                // Root level: just the folder names, then their content
+                foreach (TreeNode root in PKGTreeView.Nodes)
+                {
+                    sb.AppendLine(root.Text + "/");
+                    WriteTree(sb, root, "", true);
+                }
+                File.WriteAllText(sfd.FileName, sb.ToString());
+                ShowInformation("Tree exported.", true);
+            }
+            catch (Exception ex) { ShowError("Export failed: " + ex.Message, false); }
+        }
+
+        /// <summary>
+        /// Writes a folder's children using box-drawing tree characters.
+        /// Directories get a trailing "/"; files are plain. Example:
+        /// ├── sce_sys/
+        /// │   └── param.sfo
+        /// └── eboot.bin
+        /// </summary>
+        private static void WriteTree(System.Text.StringBuilder sb, TreeNode folder, string indent, bool isLast)
+        {
+            var children = folder.Nodes.Cast<TreeNode>()
+                .OrderBy(n => n.Nodes.Count > 0 ? 0 : 1)   // dirs first
+                .ThenBy(n => n.Text, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                var child = children[i];
+                bool last = i == children.Count - 1;
+                sb.Append(indent).Append(last ? "└── " : "├── ")
+                  .Append(child.Text).Append(child.Nodes.Count > 0 ? "/" : "").AppendLine();
+                WriteTree(sb, child, indent + (last ? "    " : "│   "), last);
+            }
         }
 
         private void listView1_SizeChanged(object sender, EventArgs e)
@@ -5683,25 +5780,6 @@ namespace PS4PKGTool
         {
             e.Cancel = true;
             e.NewWidth = listView1.Columns[e.ColumnIndex].Width;
-        }
-
-        private void darkButton3_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (tbSearchGame.Text == string.Empty)
-                    return;
-                var dt = PKGGridView.DataSource as DataTable;
-                if (dt != null)
-                    dt.DefaultView.RowFilter = string.Empty;
-                tbSearchGame.Text = string.Empty;
-                PopulateGroupedView(); // GLV returns to the full library with the filter
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error clearing filter: {ex.Message}");
-                ShowError($"Error clearing filter: {ex.Message}", true);
-            }
         }
 
         private void toolStripMenuItem32_Click(object sender, EventArgs e)
@@ -6480,6 +6558,18 @@ namespace PS4PKGTool
             if (e.ColumnIndex != 0)
                 e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
+            // shadPS4 column: colored dot + status text (column-name based, index-safe)
+            if (e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count
+                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4"
+                && e.Value != null && e.Value.ToString() != "")
+            {
+                string status = e.Value.ToString();
+                e.Value = "● " + status;
+                e.CellStyle.ForeColor = Shadps4Compat.StatusColor(status);
+                e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
+                return;
+            }
+
             // Apply color label to this specific row only (not the entire grid)
             if (appSettings_.PkgColorLabel && e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count)
             {
@@ -6834,7 +6924,7 @@ namespace PS4PKGTool
             {
                 var dt = PKGGridView.DataSource as DataTable;
                 if (dt == null) return;
-                string text = tbSearchGame.Text.Replace("'", "''"); // escape single quotes for LIKE
+                string text = tbSearchGame.SearchText.Replace("'", "''"); // escape single quotes for LIKE
                 dt.DefaultView.RowFilter = string.IsNullOrEmpty(text)
                     ? string.Empty
                     : $"[Filename] LIKE '%{text}%' OR [Title] LIKE '%{text}%' OR [Title ID] LIKE '%{text}%' OR [Content ID] LIKE '%{text}%'";
@@ -7032,7 +7122,7 @@ namespace PS4PKGTool
 
         void ApplyFilter()
         {
-            string q = tbFilterTreeView.Text.Trim();
+            string q = tbFilterTreeView.SearchText.Trim();
             bool all = string.IsNullOrEmpty(q);
             listView1.BeginUpdate();
             listView1.Items.Clear();
@@ -7043,10 +7133,21 @@ namespace PS4PKGTool
             }
             else
             {
-                if (_currentNode != null)
-                    CollectMatches(_currentNode, q);
-                else if (rootNodes != null)
-                    foreach (TreeNode root in rootNodes) CollectMatches(root, q);
+                // Nodes detached from the tree (e.g. another PKG was selected)
+                // throw on FullPath — nothing to filter against in that state.
+                bool treeAttached = PKGTreeView.Nodes.Count > 0
+                    || (rootNodes != null && rootNodes.Count > 0
+                        && rootNodes[0].TreeView != null);
+                if (treeAttached)
+                {
+                    // Search the WHOLE PKG (all root folders: Image0, Sc0, ...),
+                    // not just the current folder — otherwise e.g. Sc0/param.sfo
+                    // is unreachable while the list is focused on Image0.
+                    if (rootNodes != null && rootNodes.Count > 0)
+                        foreach (TreeNode root in rootNodes) CollectMatches(root, q);
+                    else if (_currentNode != null)
+                        CollectMatches(_currentNode, q);
+                }
             }
             listView1.EndUpdate();
         }

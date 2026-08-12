@@ -54,6 +54,8 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_location_column={settings.pkgDirectoryColumn}");
                     writer.WriteLine($"pkg_backport_column={settings.pkgBackportColumn}");
                     writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
+                    writer.WriteLine($"theme_index={settings.ThemeIndex}");
+                    writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
 
                 }
             }
@@ -239,6 +241,16 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 bool.TryParse(line.Substring("auto_fetch_update=".Length), out bool auto_fetch_update);
                                 appSettings_.AutoFetchUpdate = auto_fetch_update;
+                            }
+                            else if (line.StartsWith("theme_index="))
+                            {
+                                int.TryParse(line.Substring("theme_index=".Length), out int theme_index);
+                                appSettings_.ThemeIndex = theme_index;
+                            }
+                            else if (line.StartsWith("shadps4_check="))
+                            {
+                                bool.TryParse(line.Substring("shadps4_check=".Length), out bool shadps4_check);
+                                appSettings_.Shadps4Check = shadps4_check;
                             }
                         }
                     }

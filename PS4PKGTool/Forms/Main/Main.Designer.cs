@@ -266,11 +266,9 @@ namespace PS4PKGTool
             subTabControl = new DarkUI.Controls.DarkTabControl();
             tabPageTable = new TabPage();
             PKGGridView = new DarkUI.Controls.DarkDataGridView();
-            tbSearchGame = new DarkUI.Controls.DarkTextBox();
-            darkButton3 = new DarkUI.Controls.DarkButton();
+            tbSearchGame = new DarkUI.Controls.DarkSearchBox();
             darkLabel2 = new DarkUI.Controls.DarkLabel();
             tabPageGroup = new TabPage();
-            // darkLabel7 removed — GLV filter merged into tbSearchGame
             groupedListView = new DarkUI.Controls.DarkGroupedListView();
             btnGroupExpand = new DarkUI.Controls.DarkButton();
             cbGroupBy = new DarkUI.Controls.DarkComboBox();
@@ -309,8 +307,7 @@ namespace PS4PKGTool
             splitContainer1 = new SplitContainer();
             PKGTreeView = new DarkUI.Controls.DarkTreeView();
             listView1 = new DarkUI.Controls.DarkListView();
-            tbFilterTreeView = new DarkUI.Controls.DarkTextBox();
-            btnClearFilter = new DarkUI.Controls.DarkButton();
+            tbFilterTreeView = new DarkUI.Controls.DarkSearchBox();
             btnSearchFileInTreeView = new DarkUI.Controls.DarkButton();
             tbSearchTreeView = new DarkUI.Controls.DarkTextBox();
             darkLabel6 = new DarkUI.Controls.DarkLabel();
@@ -360,6 +357,7 @@ namespace PS4PKGTool
             labelUpdateVersion = new DarkUI.Controls.DarkLabel();
             labelTotalSize = new DarkUI.Controls.DarkLabel();
             labelTotalFile = new DarkUI.Controls.DarkLabel();
+            btnExportTreeView = new DarkUI.Controls.DarkButton();
             contextMenuPKGGridView.SuspendLayout();
             darkMenuStrip1.SuspendLayout();
             darkStatusStrip1.SuspendLayout();
@@ -529,14 +527,14 @@ namespace PS4PKGTool
             contextMenuPKGGridView.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21 });
             contextMenuPKGGridView.Name = "DarkContextMenuStrip1";
-            contextMenuPKGGridView.Size = new System.Drawing.Size(248, 480);
+            contextMenuPKGGridView.Size = new System.Drawing.Size(248, 458);
             // 
             // toolStripMenuItem94
             // 
             toolStripMenuItem94.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripMenuItem94.Enabled = false;
             toolStripMenuItem94.Font = new System.Drawing.Font("Segoe UI", 9F);
-            toolStripMenuItem94.ForeColor = System.Drawing.Color.FromArgb(153, 153, 153);
+            toolStripMenuItem94.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItem94.ImageScaling = ToolStripItemImageScaling.None;
             toolStripMenuItem94.Name = "toolStripMenuItem94";
             toolStripMenuItem94.ShowShortcutKeys = false;
@@ -798,7 +796,7 @@ namespace PS4PKGTool
             GroupActionTitleStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             GroupActionTitleStripMenuItem.Enabled = false;
             GroupActionTitleStripMenuItem.Font = new System.Drawing.Font("Segoe UI", 9F);
-            GroupActionTitleStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(153, 153, 153);
+            GroupActionTitleStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             GroupActionTitleStripMenuItem.ImageScaling = ToolStripItemImageScaling.None;
             GroupActionTitleStripMenuItem.Name = "GroupActionTitleStripMenuItem";
             GroupActionTitleStripMenuItem.ShowShortcutKeys = false;
@@ -1117,7 +1115,7 @@ namespace PS4PKGTool
             // 
             downloadOfficialUpdateToolStripMenuItem2.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             downloadOfficialUpdateToolStripMenuItem2.Enabled = false;
-            downloadOfficialUpdateToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(153, 153, 153);
+            downloadOfficialUpdateToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             downloadOfficialUpdateToolStripMenuItem2.ImageScaling = ToolStripItemImageScaling.None;
             downloadOfficialUpdateToolStripMenuItem2.Name = "downloadOfficialUpdateToolStripMenuItem2";
             downloadOfficialUpdateToolStripMenuItem2.ShowShortcutKeys = false;
@@ -1138,7 +1136,7 @@ namespace PS4PKGTool
             toolStripMenuItem18.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripMenuItem18.Enabled = false;
             toolStripMenuItem18.Font = new System.Drawing.Font("Segoe UI", 9F);
-            toolStripMenuItem18.ForeColor = System.Drawing.Color.FromArgb(153, 153, 153);
+            toolStripMenuItem18.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItem18.ImageScaling = ToolStripItemImageScaling.None;
             toolStripMenuItem18.Name = "toolStripMenuItem18";
             toolStripMenuItem18.ShowShortcutKeys = false;
@@ -1222,9 +1220,9 @@ namespace PS4PKGTool
             openAppDataDirectoryToolStripMenuItem2.Size = new System.Drawing.Size(249, 22);
             openAppDataDirectoryToolStripMenuItem2.Text = "Open App Data Folder";
             openAppDataDirectoryToolStripMenuItem2.Click += OpenAppDataDirectory_Click;
-            //
+            // 
             // toolStripMenuItem34
-            //
+            // 
             toolStripMenuItem34.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripMenuItem34.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItem34.ImageScaling = ToolStripItemImageScaling.None;
@@ -1319,46 +1317,44 @@ namespace PS4PKGTool
             settingstoolStripMenuItem.Text = "Settings";
             settingstoolStripMenuItem.Click += settingstoolStripMenuItem_Click;
             // 
-            // (removed: reloadContentToolStripMenuItem — "Refresh PKG list" from the File menu)
-            //
             // loadFromDirectoryToolStripMenuItem
-            //
+            // 
             loadFromDirectoryToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             loadFromDirectoryToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             loadFromDirectoryToolStripMenuItem.Name = "loadFromDirectoryToolStripMenuItem";
             loadFromDirectoryToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
             loadFromDirectoryToolStripMenuItem.Text = "Load from saved directory";
             loadFromDirectoryToolStripMenuItem.Click += loadFromDirectoryToolStripMenuItem_Click;
-            //
+            // 
             // loadFromManifestToolStripMenuItem
-            //
+            // 
             loadFromManifestToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             loadFromManifestToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             loadFromManifestToolStripMenuItem.Name = "loadFromManifestToolStripMenuItem";
             loadFromManifestToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
             loadFromManifestToolStripMenuItem.Text = "Load from manifest";
             loadFromManifestToolStripMenuItem.Click += loadFromManifestToolStripMenuItem_Click;
-            //
+            // 
             // saveManifestToolStripMenuItem
-            //
+            // 
             saveManifestToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             saveManifestToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             saveManifestToolStripMenuItem.Name = "saveManifestToolStripMenuItem";
             saveManifestToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
             saveManifestToolStripMenuItem.Text = "Save manifest";
             saveManifestToolStripMenuItem.Click += saveManifestToolStripMenuItem_Click;
-            //
+            // 
             // emptyListToolStripMenuItem
-            //
+            // 
             emptyListToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             emptyListToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             emptyListToolStripMenuItem.Name = "emptyListToolStripMenuItem";
             emptyListToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
             emptyListToolStripMenuItem.Text = "Empty list";
             emptyListToolStripMenuItem.Click += emptyListToolStripMenuItem_Click;
-            //
+            // 
             // toolStripSeparator11
-            //
+            // 
             toolStripSeparator11.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripSeparator11.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripSeparator11.Margin = new Padding(0, 0, 0, 1);
@@ -2472,7 +2468,6 @@ namespace PS4PKGTool
             tabPageTable.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabPageTable.Controls.Add(PKGGridView);
             tabPageTable.Controls.Add(tbSearchGame);
-            tabPageTable.Controls.Add(darkButton3);
             tabPageTable.Controls.Add(darkLabel2);
             tabPageTable.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageTable.Location = new System.Drawing.Point(4, 32);
@@ -2506,26 +2501,15 @@ namespace PS4PKGTool
             // 
             // tbSearchGame
             // 
+            tbSearchGame.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbSearchGame.Font = new System.Drawing.Font("Segoe UI", 9F);
             tbSearchGame.Location = new System.Drawing.Point(48, 3);
             tbSearchGame.Margin = new Padding(3, 2, 3, 2);
             tbSearchGame.Name = "tbSearchGame";
-            tbSearchGame.PlaceholderText = "[Filename]/[Title]/[Title ID]/[Content ID]";
-            tbSearchGame.Size = new System.Drawing.Size(350, 23);
+            tbSearchGame.Placeholder = "[Filename]/[Title]/[Title ID]/[Content ID]";
+            tbSearchGame.Size = new System.Drawing.Size(350, 26);
             tbSearchGame.TabIndex = 86;
-            tbSearchGame.TextAlign = HorizontalAlignment.Center;
-            tbSearchGame.TextChanged += TbSearchGame_TextChanged;
-            // 
-            // darkButton3
-            // 
-            darkButton3.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkButton3.Location = new System.Drawing.Point(401, 3);
-            darkButton3.Margin = new Padding(3, 2, 3, 2);
-            darkButton3.Name = "darkButton3";
-            darkButton3.Size = new System.Drawing.Size(24, 23);
-            darkButton3.TabIndex = 93;
-            darkButton3.Text = "✕";
-            darkButton3.Click += darkButton3_Click;
+            tbSearchGame.SearchTextChanged += TbSearchGame_TextChanged;
             // 
             // darkLabel2
             // 
@@ -2551,7 +2535,7 @@ namespace PS4PKGTool
             tabPageGroup.Size = new System.Drawing.Size(668, 514);
             tabPageGroup.TabIndex = 1;
             tabPageGroup.Text = "Grouped";
-            //
+            // 
             // groupedListView
             // 
             groupedListView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -2562,7 +2546,7 @@ namespace PS4PKGTool
             groupedListView.Name = "groupedListView";
             groupedListView.Size = new System.Drawing.Size(668, 484);
             groupedListView.TabIndex = 0;
-            //
+            // 
             // btnGroupExpand
             // 
             btnGroupExpand.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -2915,6 +2899,7 @@ namespace PS4PKGTool
             // 
             // panel6
             // 
+            panel6.Controls.Add(btnExportTreeView);
             panel6.Controls.Add(btnExtractFullPKG);
             panel6.Controls.Add(darkLabel5);
             panel6.Controls.Add(tbPasscode);
@@ -2930,7 +2915,7 @@ namespace PS4PKGTool
             // btnExtractFullPKG
             // 
             btnExtractFullPKG.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExtractFullPKG.Location = new System.Drawing.Point(400, 2);
+            btnExtractFullPKG.Location = new System.Drawing.Point(514, 2);
             btnExtractFullPKG.Margin = new Padding(3, 2, 3, 2);
             btnExtractFullPKG.Name = "btnExtractFullPKG";
             btnExtractFullPKG.Size = new System.Drawing.Size(108, 23);
@@ -3000,7 +2985,6 @@ namespace PS4PKGTool
             // 
             splitContainer1.Panel2.Controls.Add(listView1);
             splitContainer1.Panel2.Controls.Add(tbFilterTreeView);
-            splitContainer1.Panel2.Controls.Add(btnClearFilter);
             splitContainer1.Panel2.Controls.Add(btnSearchFileInTreeView);
             splitContainer1.Panel2.Controls.Add(tbSearchTreeView);
             splitContainer1.Panel2.Controls.Add(darkLabel6);
@@ -3017,6 +3001,7 @@ namespace PS4PKGTool
             PKGTreeView.HotTracking = false;
             PKGTreeView.ImageList = null;
             PKGTreeView.Indent = 19;
+            PKGTreeView.ItemHeight = 24;
             PKGTreeView.LabelEdit = false;
             PKGTreeView.Location = new System.Drawing.Point(0, 0);
             PKGTreeView.Margin = new Padding(3, 4, 3, 4);
@@ -3065,23 +3050,13 @@ namespace PS4PKGTool
             // tbFilterTreeView
             // 
             tbFilterTreeView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            tbFilterTreeView.Location = new System.Drawing.Point(1, 2);
-            tbFilterTreeView.Margin = new Padding(3, 2, 24, 2);
+            tbFilterTreeView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tbFilterTreeView.Location = new System.Drawing.Point(1, -1);
+            tbFilterTreeView.Margin = new Padding(3, 2, 3, 2);
             tbFilterTreeView.Name = "tbFilterTreeView";
-            tbFilterTreeView.PlaceholderText = "Filter filename here";
-            tbFilterTreeView.Size = new System.Drawing.Size(473, 23);
+            tbFilterTreeView.Placeholder = "Filter filename here";
+            tbFilterTreeView.Size = new System.Drawing.Size(518, 29);
             tbFilterTreeView.TabIndex = 100;
-            // 
-            // btnClearFilter
-            // 
-            btnClearFilter.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnClearFilter.Font = new System.Drawing.Font("Segoe UI", 8F);
-            btnClearFilter.Location = new System.Drawing.Point(476, 2);
-            btnClearFilter.Margin = new Padding(0, 2, 3, 2);
-            btnClearFilter.Name = "btnClearFilter";
-            btnClearFilter.Size = new System.Drawing.Size(39, 23);
-            btnClearFilter.TabIndex = 101;
-            btnClearFilter.Text = "✕";
             // 
             // btnSearchFileInTreeView
             // 
@@ -3166,18 +3141,18 @@ namespace PS4PKGTool
             contextMenuGLV.Items.AddRange(new ToolStripItem[] { glvTitleStripMenuItem, glvRenamePriMenuItem });
             contextMenuGLV.Name = "contextMenuGLV";
             contextMenuGLV.Size = new System.Drawing.Size(209, 48);
-            //
+            // 
             // glvTitleStripMenuItem
-            //
+            // 
             glvTitleStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             glvTitleStripMenuItem.Enabled = false;
             glvTitleStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             glvTitleStripMenuItem.Name = "glvTitleStripMenuItem";
             glvTitleStripMenuItem.Size = new System.Drawing.Size(208, 22);
             glvTitleStripMenuItem.Text = "PKG";
-            //
+            // 
             // glvRenamePriMenuItem
-            //
+            // 
             glvRenamePriMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             glvRenamePriMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             glvRenamePriMenuItem.Name = "glvRenamePriMenuItem";
@@ -3551,6 +3526,17 @@ namespace PS4PKGTool
             labelTotalFile.TabIndex = 101;
             labelTotalFile.Text = "...";
             // 
+            // btnExportTreeView
+            // 
+            btnExportTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExportTreeView.Location = new System.Drawing.Point(400, 2);
+            btnExportTreeView.Margin = new Padding(3, 2, 3, 2);
+            btnExportTreeView.Name = "btnExportTreeView";
+            btnExportTreeView.Size = new System.Drawing.Size(108, 23);
+            btnExportTreeView.TabIndex = 101;
+            btnExportTreeView.Text = "Export Tree View";
+            btnExportTreeView.Click += btnExportTreeView_Click;
+            //
             // Main
             // 
             AllowDrop = true;
@@ -3591,10 +3577,8 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)darkDataGridView2).EndInit();
             subTabControl.ResumeLayout(false);
             tabPageTable.ResumeLayout(false);
-            tabPageTable.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)PKGGridView).EndInit();
             tabPageGroup.ResumeLayout(false);
-            tabPageGroup.PerformLayout();
             darkSectionPanel9.ResumeLayout(false);
             panel1.ResumeLayout(false);
             darkSectionPanel8.ResumeLayout(false);
@@ -3731,12 +3715,11 @@ namespace PS4PKGTool
         public ToolStripStatusLabel toolStripStatusLabel2;
         private ToolStripStatusLabel toolStripStatusLabel3;
         private ToolStripStatusLabel toolStripStatusLabel4;
-        private DarkUI.Controls.DarkTextBox tbSearchGame;
+        private DarkUI.Controls.DarkSearchBox tbSearchGame;
         private ToolStripMenuItem globalExtractImagesAndIconToolStripMenuItem1;
         private ToolStripMenuItem globalExtractImageOnlyToolStripMenuItem1;
         private ToolStripMenuItem globalExtractIconOnlyToolStripMenuItem1;
         private DarkUI.Controls.DarkLabel darkLabel1;
-        private ToolStripProgressBar toolStripProgressBar1;
         private DarkUI.Controls.DarkLabel darkLabel2;
         private ToolStripMenuItem toolStripMenuItem3;
         private ToolStripMenuItem globalExtractImagesAndIconToolStripMenuItem2;
@@ -3767,6 +3750,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem2;
         private ToolStripMenuItem renameSelectedPkg10ToolStripMenuItem2;
         private ToolStripMenuItem renameSelectedPkg10ToolStripMenuItem1;
+        private ToolStripProgressBar toolStripProgressBar1;
         private DarkUI.Controls.DarkDataGridView darkDataGridView2;
         private ToolStripMenuItem RpiUninstallThemePKGToolStripMenuItem2;
         private DarkUI.Controls.DarkTabControl flatTabControl1;
@@ -3845,7 +3829,6 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel lblVersion, lblSysVer, lblUpdType, lblMand, lblRemaster, lblFiles, lblSize;
         private DarkUI.Controls.DarkDataGridView dgvUpdate;
         private Panel panel6;
-        private DarkUI.Controls.DarkButton darkButton3;
         private DarkUI.Controls.DarkDataGridView PKGGridView;
         private DarkUI.Controls.DarkTabControl subTabControl;
         private System.Windows.Forms.TabPage tabPageTable;
@@ -3877,8 +3860,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem viewPkgChangeInfotoolStripMenuItem1;
         private DarkUI.Controls.DarkLabel darkLabel5;
         private DarkUI.Controls.DarkTextBox tbSearchTreeView;
-        private DarkUI.Controls.DarkTextBox tbFilterTreeView;
-        private DarkUI.Controls.DarkButton btnClearFilter;
+        private DarkUI.Controls.DarkSearchBox tbFilterTreeView;
         private DarkUI.Controls.DarkLabel darkLabel6;
         private ToolStripMenuItem expandAllToolStripMenuItem;
         private DarkUI.Controls.DarkButton btnSearchFileInTreeView;
@@ -3964,6 +3946,7 @@ namespace PS4PKGTool
         // (removed: darkLabel7)
         private Panel panel2;
         private ToolStripMenuItem moveByPkgTitleIdToolStripMenuItem;
+        private DarkUI.Controls.DarkButton btnExportTreeView;
     }
 }
 

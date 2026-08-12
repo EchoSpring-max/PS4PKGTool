@@ -1,4 +1,5 @@
-﻿using PS4PKGTool.Utilities.PS4PKGToolHelper;
+﻿using DarkUI.Config;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,11 @@ namespace PS4PKGTool
             EnsureSettingsFileExists();
 
             appSettings_ = LoadSettings(SettingFilePath);
+
+            // Apply saved theme before showing any form (avoids flash of default)
+            int themeIdx = appSettings_.ThemeIndex;
+            if (themeIdx >= 0 && themeIdx < ThemeManager.Presets.Count)
+                ThemeManager.Apply(ThemeManager.Presets[themeIdx]);
 
             ChooseStartupForm();
         }
@@ -77,7 +83,9 @@ pkg_category_column=True
 pkg_size_column=True
 pkg_location_column=True
 pkg_backport_column=True
-auto_fetch_update=False";
+auto_fetch_update=False
+theme_index=0
+shadps4_check=False";
             File.WriteAllText(SettingFilePath, defaultSettings);
         }
 

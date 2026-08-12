@@ -15,6 +15,8 @@ using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System.Globalization;
 using System.Threading;
 using PS4PKGTool.Utilities.TrophyMetadata;
+using DarkUI.Config;
+using DarkUI.Controls;
 
 namespace PS4PKGTool
 {
@@ -61,6 +63,12 @@ namespace PS4PKGTool
                 }
             }
 
+            cmbTheme.Items.AddRange(ThemeManager.Presets.Select(p => p.Name).ToArray());
+            cmbTheme.SelectedIndexChanged += (_, _) =>
+            {
+                ThemeManager.Apply(ThemeManager.Presets[cmbTheme.SelectedIndex]);
+            };
+
             #region LoadSetting
             // directory settings
             darkCheckBoxRecursive.Checked = appSettings_.ScanRecursive;
@@ -86,6 +94,8 @@ namespace PS4PKGTool
                 : appSettings_.Ps5BcJsonLastDownloadDate.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
 
             cbPs5BcCheck.Checked = appSettings_.psvr_neo_ps5bc_check;
+            cbShadps4Check.Checked = appSettings_.Shadps4Check;
+            labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;
             Size.Checked = appSettings_.pkgsizeColumn;
             Category.Checked = appSettings_.pkgcategoryColumn;
@@ -98,6 +108,8 @@ namespace PS4PKGTool
             cbBackported.Checked = appSettings_.pkgBackportColumn;
             cbAutoFetchUpdate.Checked = appSettings_.AutoFetchUpdate;
             BGM.Checked = appSettings_.PlayBgm;
+            cmbTheme.SelectedIndex = appSettings_.ThemeIndex >= 0 && appSettings_.ThemeIndex < ThemeManager.Presets.Count
+                ? appSettings_.ThemeIndex : 0;
             #endregion LoadSetting
 
             #region nodejs&serve
@@ -178,6 +190,8 @@ namespace PS4PKGTool
             appSettings_.pkgBackportColumn = cbBackported.Checked;
             appSettings_.AutoFetchUpdate = cbAutoFetchUpdate.Checked;
             appSettings_.psvr_neo_ps5bc_check = cbPs5BcCheck.Checked;
+            appSettings_.Shadps4Check = cbShadps4Check.Checked;
+            appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
             appSettings_.Ps4Ip = tbPS4IP.Text;
@@ -356,6 +370,41 @@ namespace PS4PKGTool
             catch (Exception ex)
             {
                 ShowError("Failed to download PS5 Backward Compatibility Status file : " + ex.Message, true);
+            }
+        }
+
+        private async void btnDownloadShadps4Json_Click(object sender, EventArgs e)
+        {
+            Logger.LogInformation("Downloading shadPS4 compatibility data from GitHub..");
+
+            if (!Tool.CheckForInternetConnection("github.com"))
+            {
+                ShowError("Problem occured when try connecting to Github", true);
+                return;
+            }
+
+            btnDownloadShadps4Json.Enabled = false;
+            btnDownloadShadps4Json.Text = "Downloading...";
+            try
+            {
+                var progress = new Progress<string>(s => Logger.LogInformation("shadPS4 compat: " + s));
+                var (count, error) = await Shadps4Compat.DownloadAsync(progress);
+                if (error != null)
+                {
+                    ShowError("Failed to download shadPS4 compatibility data: " + error, true);
+                    return;
+                }
+                ShowInformation($"shadPS4 compatibility data downloaded ({count} games).", true);
+                labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "..";
+            }
+            catch (Exception ex)
+            {
+                ShowError("Failed to download shadPS4 compatibility data: " + ex.Message, true);
+            }
+            finally
+            {
+                btnDownloadShadps4Json.Enabled = true;
+                btnDownloadShadps4Json.Text = "Download compat data";
             }
         }
 

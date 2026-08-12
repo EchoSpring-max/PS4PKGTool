@@ -169,4 +169,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PS4PKGTool.Assets\PS4PKGTool.Assets.csproj" />
+  </ItemGroup>
 </Project>

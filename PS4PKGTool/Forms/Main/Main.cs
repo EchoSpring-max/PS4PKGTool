@@ -7113,10 +7113,13 @@ namespace PS4PKGTool
         /// </summary>
         private BackgroundWorker _previewWorker;
         private int _previewVersion;
-        private string _previewText;    // prepared on the worker thread
-        private Image _previewImage;    // prepared on the worker thread
-        private string _previewHex;     // prepared on the worker thread
-        private string _previewSizeStr; // "123.45 MB" for the info bar
+        private static readonly Assets.AssetInspectionService _assetService = Assets.GenericAssetRegistryBuilder.Build();
+
+        private Assets.Models.TextureData _previewTexture; // prepared on the worker thread
+        private string _previewText;         // prepared on the worker thread
+        private string _previewHex;          // prepared on the worker thread
+        private string _previewInfo;         // info-bar text
+        private string _previewSizeStr;      // "123.45 MB" for the info bar
 
         private void PreviewEntry(string entryPath)
         {
@@ -7145,19 +7148,12 @@ namespace PS4PKGTool
                     return;
                 }
 
-                string ext = Path.GetExtension(entryPath).ToLowerInvariant();
-                // .sfo/.mft/.sig are binary formats (PSF magic, manifest, signature) - hex
-                bool isText = ext is ".xml" or ".json" or ".txt" or ".ini" or ".cfg" or ".log" or ".conf"
-                    or ".css" or ".html" or ".htm" or ".md" or ".lst" or ".map" or ".yml";
-                bool isImage = ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif";
-                // everything else (binaries, DDS, audio, unknown) - hex view
-
                 string fname = Path.GetFileName(entryPath);
                 _previewSizeStr = Helper.RoundBytes(entrySize);
+                _previewTexture = null;
                 _previewText = null;
-                _previewImage?.Dispose();
-                _previewImage = null;
                 _previewHex = null;
+                _previewInfo = null;
 
                 lblFileViewerInfo.Text = $"Previewing {fname}...";
                 toolStripStatusLabel2.Text = $"Previewing {fname}...";
@@ -7172,21 +7168,47 @@ namespace PS4PKGTool
                     try
                     {
                         // Re-check: an extraction may have started while we queued.
-                        if (Helper.IsOperationRunning)
-                        {
-                            _previewText = null; _previewImage = null; _previewHex = null;
-                            return;
-                        }
+                        if (Helper.IsOperationRunning) return;
+
                         string tempDir = CreateOrbisTempDir("p");
                         string extracted = ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, entryPath, tempDir);
                         if (string.IsNullOrEmpty(extracted)) return;
-                        // All heavy decoding happens OFF the UI thread.
-                        if (isText) _previewText = File.ReadAllText(extracted);
-                        else if (isImage) { using var img = Image.FromFile(extracted); _previewImage = new Bitmap(img); }
-                        else _previewHex = BuildHexDump(extracted, 1 << 20);
+
+                        // Asset framework: detect -> inspect -> preview/hex. All heavy
+                        // decoding happens OFF the UI thread.
+                        var source = new Assets.IO.FileAssetSource(extracted, "PKG entry");
+                        var detection = _assetService.Detect(source);
+                        if (detection != null)
+                        {
+                            var descriptor = _assetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+                            _previewInfo = BuildPreviewInfo(fname, descriptor);
+
+                            if (descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview))
+                            {
+                                var preview = _assetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult();
+                                if (preview?.Texture != null) _previewTexture = preview.Texture;
+                                else if (preview?.Text != null) _previewText = preview.Text;
+                                else _previewHex = BuildHexDump(extracted, 1 << 20);
+                            }
+                            else
+                            {
+                                _previewHex = BuildHexDump(extracted, 1 << 20);
+                            }
+                        }
+                        else
+                        {
+                            _previewHex = BuildHexDump(extracted, 1 << 20);
+                        }
+
                         // Clean up the temp file/dir here (worker thread).
                         try { if (File.Exists(extracted)) File.Delete(extracted); } catch { }
                         try { string d = Path.GetDirectoryName(extracted); if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_p_")) Directory.Delete(d, true); } catch { }
+                    }
+                    catch (Assets.Errors.UnsupportedAssetException uex)
+                    {
+                        // e.g. BC7 DDS: metadata + hex fallback, not a hard failure.
+                        _previewError = null;
+                        _previewInfo = $"{fname} ({_previewSizeStr}) - {uex.Message}";
                     }
                     catch (Exception ex)
                     {
@@ -7208,22 +7230,22 @@ namespace PS4PKGTool
                     }
                     try
                     {
-                        if (_previewText != null)
-                        {
-                            txtPreview.Visible = true;
-                            picPreview.Visible = false;
-                            txtHexPreview.Visible = false;
-                            txtPreview.Text = _previewText;
-                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr})";
-                        }
-                        else if (_previewImage != null)
+                        if (_previewTexture != null)
                         {
                             picPreview.Visible = true;
                             txtPreview.Visible = false;
                             txtHexPreview.Visible = false;
                             picPreview.Image?.Dispose();
-                            picPreview.Image = _previewImage;
-                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr})";
+                            picPreview.Image = TextureToBitmap(_previewTexture);
+                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr})";
+                        }
+                        else if (_previewText != null)
+                        {
+                            txtPreview.Visible = true;
+                            picPreview.Visible = false;
+                            txtHexPreview.Visible = false;
+                            txtPreview.Text = _previewText;
+                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr})";
                         }
                         else if (_previewHex != null)
                         {
@@ -7231,7 +7253,7 @@ namespace PS4PKGTool
                             txtPreview.Visible = false;
                             picPreview.Visible = false;
                             txtHexPreview.Text = _previewHex;
-                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
+                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
                         }
                         else
                         {
@@ -7249,6 +7271,49 @@ namespace PS4PKGTool
             {
                 Logger.LogError("Preview error: " + ex.Message);
             }
+        }
+
+        /// <summary>Converts the neutral RGBA8 texture to a WinForms Bitmap (RGBA -> BGRA swap).</summary>
+        private static Bitmap TextureToBitmap(Assets.Models.TextureData tex)
+        {
+            var bmp = new Bitmap(tex.Width, tex.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            var rect = new Rectangle(0, 0, tex.Width, tex.Height);
+            var bits = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            try
+            {
+                byte[] rgba = tex.Rgba8;
+                byte[] bgra = new byte[rgba.Length];
+                for (int i = 0; i + 3 < rgba.Length; i += 4)
+                {
+                    bgra[i] = rgba[i + 2];     // B
+                    bgra[i + 1] = rgba[i + 1]; // G
+                    bgra[i + 2] = rgba[i];     // R
+                    bgra[i + 3] = rgba[i + 3]; // A
+                }
+                System.Runtime.InteropServices.Marshal.Copy(bgra, 0, bits.Scan0, bgra.Length);
+            }
+            finally
+            {
+                bmp.UnlockBits(bits);
+            }
+            return bmp;
+        }
+
+        /// <summary>Info-bar text from the descriptor: name (size) + format + key metadata.</summary>
+        private static string BuildPreviewInfo(string fname, Assets.Models.AssetDescriptor d)
+        {
+            var sb = new System.Text.StringBuilder($"{fname} ({Helper.RoundBytes(d.Size)}) - {d.Format.ToUpperInvariant()}");
+            int shown = 0;
+            foreach (var kv in d.Metadata)
+            {
+                if (kv.Key is "Width" or "Height" or "Sample Rate" or "Channels" or "Bit Depth" or "Pixel Format")
+                {
+                    sb.Append(shown == 0 ? " [" : ", ").Append($"{kv.Key}={kv.Value}");
+                    shown++;
+                }
+            }
+            if (shown > 0) sb.Append(']');
+            return sb.ToString();
         }
 
         private string ExtractSingleEntryForPreview(string pkgPath, string entryPath, string tempDir)

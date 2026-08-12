@@ -26,6 +26,10 @@ public sealed class AssetInspectionService
 
     public int MaxDepth { get; }
 
+    /// <summary>Runs detection only. Null when nothing recognizes the source.</summary>
+    public AssetDetectionResult? Detect(IAssetSource source, CancellationToken ct = default)
+        => _detectors.Detect(source, ct);
+
     /// <summary>Detect and inspect. Returns null when no detector recognizes the source.</summary>
     public async Task<AssetDescriptor?> InspectAsync(IAssetSource source, CancellationToken ct = default)
     {
@@ -70,5 +74,18 @@ public sealed class AssetInspectionService
         if (handler == null || !handler.IsContainer(detection))
             return Array.Empty<IAssetSource>();
         return await handler.GetChildrenAsync(source, detection, depth, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Asks the handler for a preview. Returns null when the format has no
+    /// preview provider; unsupported sub-formats surface as
+    /// UnsupportedAssetException (callers fall back to metadata + raw export).
+    /// </summary>
+    public Task<AssetPreview?> TryPreviewAsync(IAssetSource source, AssetDetectionResult detection, CancellationToken ct = default)
+    {
+        var handler = _handlers.Get(detection.Format);
+        if (handler is IAssetPreviewProvider provider)
+            return provider.PreviewAsync(source, detection, ct);
+        return Task.FromResult<AssetPreview?>(null);
     }
 }

@@ -11,6 +11,14 @@ public sealed class AssetHandlerRegistry
 
     public void Register(IAssetHandler handler) => _handlers[handler.Format] = handler;
 
+    /// <summary>Registers one handler under multiple format ids (e.g. one raster
+    /// handler for png/jpeg/bmp/gif).</summary>
+    public void Register(IAssetHandler handler, params string[] formats)
+    {
+        if (formats.Length == 0) { Register(handler); return; }
+        foreach (var f in formats) _handlers[f] = handler;
+    }
+
     public IAssetHandler? Get(string format) => _handlers.TryGetValue(format, out var h) ? h : null;
 
     public bool TryGet(string format, out IAssetHandler? handler) => _handlers.TryGetValue(format, out handler);

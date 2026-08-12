@@ -299,18 +299,27 @@ namespace PS4PKGTool
             dgvHeader = new DarkUI.Controls.DarkDataGridView();
             tabPage7 = new TabPage();
             panel6 = new Panel();
+            btnExportTreeView = new DarkUI.Controls.DarkButton();
             btnExtractFullPKG = new DarkUI.Controls.DarkButton();
             darkLabel5 = new DarkUI.Controls.DarkLabel();
             tbPasscode = new DarkUI.Controls.DarkTextBox();
             btnViewPKGData = new DarkUI.Controls.DarkButton();
             darkSectionPanel4 = new DarkUI.Controls.DarkSectionPanel();
-            splitContainer1 = new SplitContainer();
+            splitContainer1 = new DarkUI.Controls.DarkSplitContainer();
             PKGTreeView = new DarkUI.Controls.DarkTreeView();
+            splitContainer2 = new DarkUI.Controls.DarkSplitContainer();
+            panelListHost = new Panel();
             listView1 = new DarkUI.Controls.DarkListView();
             tbFilterTreeView = new DarkUI.Controls.DarkSearchBox();
             btnSearchFileInTreeView = new DarkUI.Controls.DarkButton();
             tbSearchTreeView = new DarkUI.Controls.DarkTextBox();
             darkLabel6 = new DarkUI.Controls.DarkLabel();
+            sectionFileViewer = new DarkUI.Controls.DarkSectionPanel();
+            fileViewerBody = new Panel();
+            picPreview = new PictureBox();
+            txtPreview = new DarkUI.Controls.DarkRichTextBox();
+            txtHexPreview = new DarkUI.Controls.DarkRichTextBox();
+            lblFileViewerInfo = new DarkUI.Controls.DarkLabel();
             _tabLog = new TabPage();
             _tbLogBox = new DarkUI.Controls.DarkTextBox();
             columnHeader7 = new ColumnHeader();
@@ -357,7 +366,6 @@ namespace PS4PKGTool
             labelUpdateVersion = new DarkUI.Controls.DarkLabel();
             labelTotalSize = new DarkUI.Controls.DarkLabel();
             labelTotalFile = new DarkUI.Controls.DarkLabel();
-            btnExportTreeView = new DarkUI.Controls.DarkButton();
             contextMenuPKGGridView.SuspendLayout();
             darkMenuStrip1.SuspendLayout();
             darkStatusStrip1.SuspendLayout();
@@ -400,10 +408,12 @@ namespace PS4PKGTool
             tabPage7.SuspendLayout();
             panel6.SuspendLayout();
             darkSectionPanel4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
-            splitContainer1.Panel1.SuspendLayout();
-            splitContainer1.Panel2.SuspendLayout();
             splitContainer1.SuspendLayout();
+            splitContainer2.SuspendLayout();
+            panelListHost.SuspendLayout();
+            sectionFileViewer.SuspendLayout();
+            fileViewerBody.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)picPreview).BeginInit();
             _tabLog.SuspendLayout();
             contextMenuGLV.SuspendLayout();
             tabPage5.SuspendLayout();
@@ -2912,6 +2922,17 @@ namespace PS4PKGTool
             panel6.Size = new System.Drawing.Size(945, 552);
             panel6.TabIndex = 97;
             // 
+            // btnExportTreeView
+            // 
+            btnExportTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExportTreeView.Location = new System.Drawing.Point(400, 2);
+            btnExportTreeView.Margin = new Padding(3, 2, 3, 2);
+            btnExportTreeView.Name = "btnExportTreeView";
+            btnExportTreeView.Size = new System.Drawing.Size(108, 23);
+            btnExportTreeView.TabIndex = 101;
+            btnExportTreeView.Text = "Export Tree View";
+            btnExportTreeView.Click += btnExportTreeView_Click;
+            // 
             // btnExtractFullPKG
             // 
             btnExtractFullPKG.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -2971,32 +2992,20 @@ namespace PS4PKGTool
             // 
             // splitContainer1
             // 
-            splitContainer1.BorderStyle = BorderStyle.FixedSingle;
+            splitContainer1.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
+            splitContainer1.Controls.Add(PKGTreeView);
+            splitContainer1.Controls.Add(splitContainer2);
             splitContainer1.Dock = DockStyle.Fill;
             splitContainer1.Location = new System.Drawing.Point(1, 25);
             splitContainer1.Margin = new Padding(3, 4, 3, 4);
             splitContainer1.Name = "splitContainer1";
-            // 
-            // splitContainer1.Panel1
-            // 
-            splitContainer1.Panel1.Controls.Add(PKGTreeView);
-            // 
-            // splitContainer1.Panel2
-            // 
-            splitContainer1.Panel2.Controls.Add(listView1);
-            splitContainer1.Panel2.Controls.Add(tbFilterTreeView);
-            splitContainer1.Panel2.Controls.Add(btnSearchFileInTreeView);
-            splitContainer1.Panel2.Controls.Add(tbSearchTreeView);
-            splitContainer1.Panel2.Controls.Add(darkLabel6);
             splitContainer1.Size = new System.Drawing.Size(943, 498);
-            splitContainer1.SplitterDistance = 420;
             splitContainer1.TabIndex = 0;
             // 
             // PKGTreeView
             // 
             PKGTreeView.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
             PKGTreeView.CheckBoxes = false;
-            PKGTreeView.Dock = DockStyle.Fill;
             PKGTreeView.FullRowSelect = false;
             PKGTreeView.HotTracking = false;
             PKGTreeView.ImageList = null;
@@ -3012,7 +3021,7 @@ namespace PS4PKGTool
             PKGTreeView.ShowLines = true;
             PKGTreeView.ShowPlusMinus = true;
             PKGTreeView.ShowRootLines = true;
-            PKGTreeView.Size = new System.Drawing.Size(418, 496);
+            PKGTreeView.Size = new System.Drawing.Size(469, 498);
             PKGTreeView.Sorted = false;
             PKGTreeView.TabIndex = 0;
             PKGTreeView.TopNode = null;
@@ -3022,6 +3031,29 @@ namespace PS4PKGTool
             PKGTreeView.NodeMouseClick += PKGTreeView_NodeMouseClick;
             PKGTreeView.MouseClick += PKGTreeView_MouseClick;
             PKGTreeView.ItemDrag += PKGTreeView_ItemDrag;
+            // 
+            // splitContainer2
+            // 
+            splitContainer2.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
+            splitContainer2.Controls.Add(panelListHost);
+            splitContainer2.Controls.Add(sectionFileViewer);
+            splitContainer2.Location = new System.Drawing.Point(474, 0);
+            splitContainer2.Name = "splitContainer2";
+            splitContainer2.Size = new System.Drawing.Size(469, 498);
+            splitContainer2.TabIndex = 1;
+            // 
+            // panelListHost
+            // 
+            panelListHost.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            panelListHost.Controls.Add(listView1);
+            panelListHost.Controls.Add(tbFilterTreeView);
+            panelListHost.Controls.Add(btnSearchFileInTreeView);
+            panelListHost.Controls.Add(tbSearchTreeView);
+            panelListHost.Controls.Add(darkLabel6);
+            panelListHost.Location = new System.Drawing.Point(0, 0);
+            panelListHost.Name = "panelListHost";
+            panelListHost.Size = new System.Drawing.Size(231, 498);
+            panelListHost.TabIndex = 0;
             // 
             // listView1
             // 
@@ -3035,7 +3067,7 @@ namespace PS4PKGTool
             listView1.Margin = new Padding(3, 4, 3, 4);
             listView1.MultiSelect = true;
             listView1.Name = "listView1";
-            listView1.Size = new System.Drawing.Size(517, 468);
+            listView1.Size = new System.Drawing.Size(231, 472);
             listView1.SmallImageList = null;
             listView1.TabIndex = 0;
             listView1.UseCompatibleStateImageBehavior = false;
@@ -3051,18 +3083,18 @@ namespace PS4PKGTool
             // 
             tbFilterTreeView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             tbFilterTreeView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tbFilterTreeView.Location = new System.Drawing.Point(1, -1);
+            tbFilterTreeView.Location = new System.Drawing.Point(1, 0);
             tbFilterTreeView.Margin = new Padding(3, 2, 3, 2);
             tbFilterTreeView.Name = "tbFilterTreeView";
             tbFilterTreeView.Placeholder = "Filter filename here";
-            tbFilterTreeView.Size = new System.Drawing.Size(518, 29);
+            tbFilterTreeView.Size = new System.Drawing.Size(229, 28);
             tbFilterTreeView.TabIndex = 100;
             // 
             // btnSearchFileInTreeView
             // 
             btnSearchFileInTreeView.Anchor = AnchorStyles.Top;
             btnSearchFileInTreeView.Image = (System.Drawing.Image)resources.GetObject("btnSearchFileInTreeView.Image");
-            btnSearchFileInTreeView.Location = new System.Drawing.Point(376, 302);
+            btnSearchFileInTreeView.Location = new System.Drawing.Point(391, 302);
             btnSearchFileInTreeView.Margin = new Padding(3, 2, 3, 2);
             btnSearchFileInTreeView.Name = "btnSearchFileInTreeView";
             btnSearchFileInTreeView.Size = new System.Drawing.Size(34, 22);
@@ -3073,7 +3105,7 @@ namespace PS4PKGTool
             // tbSearchTreeView
             // 
             tbSearchTreeView.Anchor = AnchorStyles.Top;
-            tbSearchTreeView.Location = new System.Drawing.Point(168, 302);
+            tbSearchTreeView.Location = new System.Drawing.Point(183, 302);
             tbSearchTreeView.Margin = new Padding(3, 2, 3, 2);
             tbSearchTreeView.Name = "tbSearchTreeView";
             tbSearchTreeView.Size = new System.Drawing.Size(199, 23);
@@ -3084,12 +3116,94 @@ namespace PS4PKGTool
             // 
             darkLabel6.Anchor = AnchorStyles.Top;
             darkLabel6.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel6.Location = new System.Drawing.Point(98, 306);
+            darkLabel6.Location = new System.Drawing.Point(113, 306);
             darkLabel6.Name = "darkLabel6";
             darkLabel6.Size = new System.Drawing.Size(64, 15);
             darkLabel6.TabIndex = 98;
             darkLabel6.Text = "Search file:";
             darkLabel6.Visible = false;
+            // 
+            // sectionFileViewer
+            // 
+            sectionFileViewer.Controls.Add(fileViewerBody);
+            sectionFileViewer.Controls.Add(lblFileViewerInfo);
+            sectionFileViewer.Location = new System.Drawing.Point(236, 0);
+            sectionFileViewer.Name = "sectionFileViewer";
+            sectionFileViewer.SectionHeader = "File Viewer";
+            sectionFileViewer.Size = new System.Drawing.Size(233, 498);
+            sectionFileViewer.TabIndex = 2;
+            // 
+            // fileViewerBody
+            // 
+            fileViewerBody.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            fileViewerBody.Controls.Add(picPreview);
+            fileViewerBody.Controls.Add(txtPreview);
+            fileViewerBody.Controls.Add(txtHexPreview);
+            fileViewerBody.Dock = DockStyle.Fill;
+            fileViewerBody.Location = new System.Drawing.Point(1, 59);
+            fileViewerBody.Name = "fileViewerBody";
+            fileViewerBody.Padding = new Padding(1);
+            fileViewerBody.Size = new System.Drawing.Size(231, 438);
+            fileViewerBody.TabIndex = 0;
+            // 
+            // picPreview
+            // 
+            picPreview.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            picPreview.Dock = DockStyle.Fill;
+            picPreview.Location = new System.Drawing.Point(1, 1);
+            picPreview.Name = "picPreview";
+            picPreview.Size = new System.Drawing.Size(229, 436);
+            picPreview.SizeMode = PictureBoxSizeMode.Zoom;
+            picPreview.TabIndex = 0;
+            picPreview.TabStop = false;
+            picPreview.Visible = false;
+            // 
+            // txtPreview
+            // 
+            txtPreview.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            txtPreview.BorderStyle = BorderStyle.None;
+            txtPreview.Dock = DockStyle.Fill;
+            txtPreview.Font = new System.Drawing.Font("Consolas", 9F);
+            txtPreview.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            txtPreview.HideSelection = false;
+            txtPreview.Location = new System.Drawing.Point(1, 1);
+            txtPreview.Name = "txtPreview";
+            txtPreview.ReadOnly = true;
+            txtPreview.Size = new System.Drawing.Size(229, 436);
+            txtPreview.TabIndex = 1;
+            txtPreview.Text = "";
+            txtPreview.Visible = false;
+            txtPreview.WordWrap = false;
+            // 
+            // txtHexPreview
+            // 
+            txtHexPreview.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            txtHexPreview.BorderStyle = BorderStyle.None;
+            txtHexPreview.Dock = DockStyle.Fill;
+            txtHexPreview.Font = new System.Drawing.Font("Consolas", 9F);
+            txtHexPreview.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            txtHexPreview.HideSelection = false;
+            txtHexPreview.Location = new System.Drawing.Point(1, 1);
+            txtHexPreview.Name = "txtHexPreview";
+            txtHexPreview.ReadOnly = true;
+            txtHexPreview.Size = new System.Drawing.Size(229, 436);
+            txtHexPreview.TabIndex = 2;
+            txtHexPreview.Text = "";
+            txtHexPreview.Visible = false;
+            txtHexPreview.WordWrap = false;
+            // 
+            // lblFileViewerInfo
+            // 
+            lblFileViewerInfo.AutoEllipsis = true;
+            lblFileViewerInfo.Dock = DockStyle.Top;
+            lblFileViewerInfo.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblFileViewerInfo.Location = new System.Drawing.Point(1, 25);
+            lblFileViewerInfo.Name = "lblFileViewerInfo";
+            lblFileViewerInfo.Padding = new Padding(8, 0, 8, 0);
+            lblFileViewerInfo.Size = new System.Drawing.Size(231, 34);
+            lblFileViewerInfo.TabIndex = 1;
+            lblFileViewerInfo.Text = "Select a file to preview it.";
+            lblFileViewerInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // _tabLog
             // 
@@ -3526,17 +3640,6 @@ namespace PS4PKGTool
             labelTotalFile.TabIndex = 101;
             labelTotalFile.Text = "...";
             // 
-            // btnExportTreeView
-            // 
-            btnExportTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExportTreeView.Location = new System.Drawing.Point(400, 2);
-            btnExportTreeView.Margin = new Padding(3, 2, 3, 2);
-            btnExportTreeView.Name = "btnExportTreeView";
-            btnExportTreeView.Size = new System.Drawing.Size(108, 23);
-            btnExportTreeView.TabIndex = 101;
-            btnExportTreeView.Text = "Export Tree View";
-            btnExportTreeView.Click += btnExportTreeView_Click;
-            //
             // Main
             // 
             AllowDrop = true;
@@ -3604,11 +3707,13 @@ namespace PS4PKGTool
             panel6.ResumeLayout(false);
             panel6.PerformLayout();
             darkSectionPanel4.ResumeLayout(false);
-            splitContainer1.Panel1.ResumeLayout(false);
-            splitContainer1.Panel2.ResumeLayout(false);
-            splitContainer1.Panel2.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
             splitContainer1.ResumeLayout(false);
+            splitContainer2.ResumeLayout(false);
+            panelListHost.ResumeLayout(false);
+            panelListHost.PerformLayout();
+            sectionFileViewer.ResumeLayout(false);
+            fileViewerBody.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)picPreview).EndInit();
             _tabLog.ResumeLayout(false);
             _tabLog.PerformLayout();
             contextMenuGLV.ResumeLayout(false);
@@ -3814,7 +3919,15 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkTextBox tbPasscode;
         private DarkUI.Controls.DarkButton btnViewPKGData;
         private TabPage tabPage7;
-        private SplitContainer splitContainer1;
+        private DarkUI.Controls.DarkSplitContainer splitContainer1;
+        private DarkUI.Controls.DarkSplitContainer splitContainer2;
+        private Panel panelListHost;
+        private DarkUI.Controls.DarkSectionPanel sectionFileViewer;
+        private DarkUI.Controls.DarkLabel lblFileViewerInfo;
+        private Panel fileViewerBody;
+        private DarkUI.Controls.DarkRichTextBox txtPreview;
+        private DarkUI.Controls.DarkRichTextBox txtHexPreview;
+        private PictureBox picPreview;
         private DarkUI.Controls.DarkTreeView PKGTreeView;
         private DarkUI.Controls.DarkListView listView1;
         private ColumnHeader columnHeader7;

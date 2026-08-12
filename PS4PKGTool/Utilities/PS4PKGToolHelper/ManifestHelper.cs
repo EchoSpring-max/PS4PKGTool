@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using PS4PKGTool.Util.Constants;
 using PS4PKGTool.Utilities.Settings;
 using System;
@@ -303,11 +303,11 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             if (string.IsNullOrEmpty(raw) || raw == "NA" || raw == "0")
                 return raw ?? "";
 
-            // Already formatted (e.g. "4.50", "11.00") — short string with one dot
+            // Already formatted (e.g. "4.50", "11.00") - short string with one dot
             if (raw.Length <= 5 && raw.Contains("."))
                 return raw;
 
-            // Broken format from old code (e.g. "45000.00") — remove dot, take first 3 hex chars
+            // Broken format from old code (e.g. "45000.00") - remove dot, take first 3 hex chars
             string hex;
             if (raw.Contains("."))
             {

@@ -125,7 +125,7 @@ shadps4_check=False";
                 directoriesAvailable, directoryCount))
             {
                 if (prompt.ShowDialog() != DialogResult.OK)
-                    return; // User clicked X — exit
+                    return; // User clicked X - exit
 
                 switch (prompt.Choice)
                 {

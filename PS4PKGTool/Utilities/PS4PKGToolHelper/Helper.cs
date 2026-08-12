@@ -38,7 +38,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public static bool IsOperationRunning { get; set; } = false;
 
         private static Icon _appIcon;
-        /// <summary>PackageIcon.ico extracted from the exe — used by all forms, dialogs and message boxes.</summary>
+        /// <summary>PackageIcon.ico extracted from the exe - used by all forms, dialogs and message boxes.</summary>
         public static Icon AppIcon
         {
             get

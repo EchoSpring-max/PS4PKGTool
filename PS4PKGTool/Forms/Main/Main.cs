@@ -71,7 +71,7 @@ namespace PS4PKGTool
 
         /// <summary>
         /// Clears the file-browser tree, list view, and all filter state.
-        /// MUST be used instead of bare Nodes.Clear() — the filter state
+        /// MUST be used instead of bare Nodes.Clear() - the filter state
         /// (rootNodes/_currentNode/_allItems) references nodes that throw
         /// InvalidOperationException on FullPath once detached from the tree.
         /// </summary>
@@ -85,6 +85,13 @@ namespace PS4PKGTool
             _upItem = null;
             _populating = false;
             _filtering = false;
+            // Reset the viewer pane
+            txtPreview.Visible = false;
+            txtHexPreview.Visible = false;
+            picPreview.Visible = false;
+            picPreview.Image?.Dispose();
+            picPreview.Image = null;
+            lblFileViewerInfo.Text = "Select a file to preview it.";
         }
         private int _trophyLoadVersion;
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
@@ -181,10 +188,7 @@ namespace PS4PKGTool
 
             ApplicationVersion = GetApplicationVersion();
 
-            foreach (ColumnHeader column in listView1.Columns)
-            {
-                column.Width = listView1.Width / listView1.Columns.Count;
-            }
+            BalanceListViewColumns();
 
             // Filter textbox for tree/list view (built-in clear ✕ button)
             tbFilterTreeView.SearchTextChanged += (_, _) => ApplyFilter();
@@ -228,7 +232,7 @@ namespace PS4PKGTool
                 }
             };
 
-            // GLV filter removed — the Table tab's tbSearchGame controls both views
+            // GLV filter removed - the Table tab's tbSearchGame controls both views
             // via PopulateGroupedView() which rebuilds from the DGV's filtered DefaultView.
             groupedListView.SelectedItemChanged += GroupedListView_SelectedItemChanged;
             btnGroupExpand.Click += (_, _) =>
@@ -299,7 +303,7 @@ namespace PS4PKGTool
             try { Directory.Move(src, dst); }
             catch (IOException)
             {
-                // Cross-volume move fails — fall back to copy+delete
+                // Cross-volume move fails - fall back to copy+delete
                 foreach (string f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
                 {
                     string rel = f.Substring(src.Length).TrimStart('\\', '/');
@@ -460,7 +464,7 @@ namespace PS4PKGTool
 
                     if (Helper.LaunchEmpty)
                     {
-                        Logger.LogInformation("Launch Empty — skipping PKG scan.");
+                        Logger.LogInformation("Launch Empty - skipping PKG scan.");
                         this.Invoke((MethodInvoker)(() =>
                         {
                             this.Enabled = true;
@@ -499,7 +503,7 @@ namespace PS4PKGTool
                 if (string.IsNullOrEmpty(PKG.SelectedPKGFilename)) return;
             }
 
-            // Invalidate any in-flight load — a stale completion must never clobber the UI.
+            // Invalidate any in-flight load - a stale completion must never clobber the UI.
             int loadVersion = Interlocked.Increment(ref _detailLoadVersion);
             _detailWorker?.CancelAsync();
             var worker = new BackgroundWorker { WorkerSupportsCancellation = true };
@@ -517,7 +521,7 @@ namespace PS4PKGTool
 
             worker.RunWorkerCompleted += (_, args) =>
             {
-                if (loadVersion != _detailLoadVersion) return; // stale — a newer load started
+                if (loadVersion != _detailLoadVersion) return; // stale - a newer load started
                 if (args.Cancelled || args.Error != null || args.Result == null) return;
                 var ps4Pkg = (PS4_Tools.PKG.SceneRelated.Unprotected_PKG)args.Result;
 
@@ -1551,7 +1555,7 @@ namespace PS4PKGTool
             var dt = PKGGridView.DataSource as DataTable;
             if (dt == null || dt.Rows.Count == 0)
             {
-                ShowWarning("Nothing to save — the PKG list is empty.", false);
+                ShowWarning("Nothing to save - the PKG list is empty.", false);
                 return;
             }
             Logger.LogInformation("Saving manifest manually..");
@@ -1634,7 +1638,7 @@ namespace PS4PKGTool
             catch (Exception ex)
             {
                 // GitHubUpdate throws on API errors, rate limits (60 req/hr unauthenticated),
-                // or malformed release tags — never let that crash the app.
+                // or malformed release tags - never let that crash the app.
                 Logger.LogError("Update check failed: " + ex.Message);
                 ShowWarning("Could not check for updates. Please try again later.\n\n" + ex.Message, false);
             }
@@ -1721,7 +1725,7 @@ namespace PS4PKGTool
                     }
                     finally
                     {
-                        // Always restore the form and menus — otherwise the GLV context menu
+                        // Always restore the form and menus - otherwise the GLV context menu
                         // stays disabled after this operation.
                         toolStripStatusLabel2.Text = "...";
                         toolStripProgressBar1.Value = 0;
@@ -1999,7 +2003,7 @@ namespace PS4PKGTool
 
             if (folders.Count == 0) return;
 
-            // One dialog for all folders — recursive + add-to-directories options.
+            // One dialog for all folders - recursive + add-to-directories options.
             using (var prompt = new DropFolderPrompt(folders))
             {
                 prompt.ShowDialog();
@@ -2225,7 +2229,7 @@ namespace PS4PKGTool
 
                 if (!anyPkgsFound)
                 {
-                    // No PKG files in the dropped folder — re-enable the form
+                    // No PKG files in the dropped folder - re-enable the form
                     // but don't run the success finalization (no data changed).
                     this.Invoke((MethodInvoker)delegate
                     {
@@ -2246,7 +2250,7 @@ namespace PS4PKGTool
                 });
                 // Re-attach DataTable to DGV on UI thread
                 this.Invoke((MethodInvoker)delegate { if (scanDt != null) PKGGridView.DataSource = scanDt; });
-                // Enable menus first — a failure below must never leave the GLV context menu disabled
+                // Enable menus first - a failure below must never leave the GLV context menu disabled
                 SetOperationMenusEnabled(true);
                 try
                 {
@@ -2334,7 +2338,7 @@ namespace PS4PKGTool
                             {
                                 PKGGridView.DataSource = dt;
                             });
-                            return; // Skip directory scan — PostPkgLoad runs in RunWorkerCompleted
+                            return; // Skip directory scan - PostPkgLoad runs in RunWorkerCompleted
                         }
                         else
                         {
@@ -2470,7 +2474,7 @@ namespace PS4PKGTool
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError($"Failed to read PKG, skipping: {Path.GetFileName(pkg)} — {ex.Message}");
+                        Logger.LogError($"Failed to read PKG, skipping: {Path.GetFileName(pkg)} - {ex.Message}");
                         continue;
                     }
                     Param_SFO.PARAM_SFO psfo = ps4Pkg.Param;
@@ -2570,12 +2574,12 @@ namespace PS4PKGTool
                 dttemp.EndLoadData();
                 ApplyShadps4Status(dttemp);
 
-                // Set DataSource ONCE after loop — NOT inside every iteration
+                // Set DataSource ONCE after loop - NOT inside every iteration
                 darkStatusStrip1.Invoke((MethodInvoker)delegate
                 {
                     PKGGridView.SuspendLayout();
                     PKGGridView.DataSource = dttemp;
-                    for (int i = 10; i <= 12; i++) // PSVR, PS4 Pro Enhanced, PS5 BC (col 9 is Size — keep it)
+                    for (int i = 10; i <= 12; i++) // PSVR, PS4 Pro Enhanced, PS5 BC (col 9 is Size - keep it)
                         PKGGridView.Columns[i].Visible = appSettings_.psvr_neo_ps5bc_check;
                     foreach (DataGridViewColumn column in PKGGridView.Columns)
                         column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -2613,7 +2617,7 @@ namespace PS4PKGTool
                 var dt = PKGGridView.DataSource as DataTable;
                 if (dt == null || dt.Rows.Count == 0) return;
 
-                // Respect the DGV's active RowFilter so the GLV mirrors what the table shows —
+                // Respect the DGV's active RowFilter so the GLV mirrors what the table shows -
                 // otherwise GLV selection can target rows hidden by the filter and never focus them.
                 var visibleRows = dt.DefaultView.Cast<DataRowView>().Select(v => v.Row).ToList();
 
@@ -2687,7 +2691,7 @@ namespace PS4PKGTool
         {
             var icon = row["Region"] as byte[];
             if (icon == null || icon.Length == 0) return "";
-            // Use cached lookup — region icons are static resources
+            // Use cached lookup - region icons are static resources
             if (_regionLookup == null)
             {
                 var cvt = new System.Drawing.ImageConverter();
@@ -2759,14 +2763,14 @@ namespace PS4PKGTool
 
         /// <summary>
         /// Updates the GLV context menu's disabled header label (PKG title or group count).
-        /// Reads _glvGroupHeaderIndex WITHOUT consuming it — the index must stay valid for
+        /// Reads _glvGroupHeaderIndex WITHOUT consuming it - the index must stay valid for
         /// the menu item click handlers (GetGLVTargetPaths) to act on the right group.
         /// </summary>
         private void UpdateGlvMenuLabel()
         {
             try
             {
-                // Always show the title of the HIGHLIGHTED (selected) PKG — the label must
+                // Always show the title of the HIGHLIGHTED (selected) PKG - the label must
                 // not follow which row was right-clicked. Fall back to the right-clicked row
                 // only when nothing is selected.
                 string path = null;
@@ -2899,7 +2903,7 @@ namespace PS4PKGTool
 
         private void GlvRenameByPriority()
         {
-            // Always target the whole group — right-click an item or a header,
+            // Always target the whole group - right-click an item or a header,
             // the entire group gets renamed by install priority.
             if (_glvGroupHeaderIndex < 0 && !string.IsNullOrEmpty(groupedListView?.SelectedFilePath))
                 _glvGroupHeaderIndex = groupedListView.FindGroupForPath(groupedListView.SelectedFilePath);
@@ -3047,7 +3051,7 @@ namespace PS4PKGTool
 
         /// <summary>
         /// Fills the "ShadPS4" column from the local compatibility cache
-        /// (by Title ID, column-name based — index-safe). No-op when the
+        /// (by Title ID, column-name based - index-safe). No-op when the
         /// check is disabled or the cache is missing.
         /// </summary>
         private static void ApplyShadps4Status(DataTable dt)
@@ -3470,7 +3474,7 @@ namespace PS4PKGTool
 
         private List<string> FindDuplicatePKG()
         {
-            // Key: filename + size — same name AND same size = duplicate
+            // Key: filename + size - same name AND same size = duplicate
             var map = new Dictionary<string, List<string>>();
             var dupGroups = new List<List<string>>();
 
@@ -3519,14 +3523,14 @@ namespace PS4PKGTool
                         row.Cells[0].Value = newFileName;
                     }));
                     // Update the GLV cell in-place (no full rebuild, no selection loss).
-                    // Use targetPkg — after the DGV cell update above, GlvItem.FilePath
+                    // Use targetPkg - after the DGV cell update above, GlvItem.FilePath
                     // is recomputed from the DataRow and equals the new path, not sourcePkg.
                     groupedListView?.Invoke((Action)(() =>
                         groupedListView.UpdateCellForPath(targetPkg, 0, newFileName)));
                     return;
                 }
             }
-            // Row not found — the grid may have been refreshed since this rename started.
+            // Row not found - the grid may have been refreshed since this rename started.
             // Try the File.Move anyway so the file on disk is still renamed.
             if (File.Exists(sourcePkg) && !File.Exists(targetPkg))
                 File.Move(sourcePkg, targetPkg);
@@ -4857,7 +4861,7 @@ namespace PS4PKGTool
 
                     var array = allFilePaths.ToArray();
 
-                    // Build tree on UI thread in a single batch — not per-node Invoke
+                    // Build tree on UI thread in a single batch - not per-node Invoke
                     PKGTreeView.Invoke((MethodInvoker)delegate
                     {
                         PKGTreeView.BeginUpdate();
@@ -5004,13 +5008,13 @@ namespace PS4PKGTool
         private BackgroundWorker _extractWorker;
         private BackgroundWorker _selectedExtractWorker;
         // Set on the UI thread when Stop Extract is clicked; read by the workers after orbis dies.
-        // BackgroundWorker.CancellationPending has no memory barrier, so it can read stale false —
+        // BackgroundWorker.CancellationPending has no memory barrier, so it can read stale false -
         // this volatile flag is the reliable stop signal.
         private volatile bool _extractionStopRequested;
 
         /// <summary>
         /// During extraction only the Stop Extract button (and the status strip, which hosts
-        /// the progress bar) stay enabled — everything else is disabled so no other operation
+        /// the progress bar) stay enabled - everything else is disabled so no other operation
         /// can run or disturb the progress display.
         /// </summary>
         private void SetExtractionUiEnabled(bool enabled)
@@ -5080,7 +5084,7 @@ namespace PS4PKGTool
                     Helper.IsOperationRunning = true;
                     string extractLocation = fbd.SelectedPath;
                     btnExtractFullPKG.Text = "Stop Extract";
-                    SetExtractionUiEnabled(false); // lock the app — only the stop button stays usable
+                    SetExtractionUiEnabled(false); // lock the app - only the stop button stays usable
                     listView1?.Invalidate();       // force the DLV to repaint in its disabled (grey) state
                     listView1?.Refresh();
                     _extractWorker.DoWork += (sender, e) =>
@@ -5101,7 +5105,7 @@ namespace PS4PKGTool
                         Tool.CreateDirectoryIfNotExists(extractLocation);
 
                         // Create ASCII-safe temp output dir (orbis-pub-cmd garbles non-ANSI paths)
-                        // Short temp root — the deep AppData path + long PKG paths (e.g. Ultrawings'
+                        // Short temp root - the deep AppData path + long PKG paths (e.g. Ultrawings'
                         // MSMixedReality schemas) exceed the 260-char MAX_PATH that orbis-pub-cmd allows.
                         string tempOutputDir = CreateOrbisTempDir("e");
                         Directory.CreateDirectory(tempOutputDir);
@@ -5138,7 +5142,7 @@ namespace PS4PKGTool
                             string extractOutput = extractReadTask.Result;
 
                             int exitCode = extract.ExitCode;
-                            // exit -1 = killed process (Stop button or timeout) — orbis returns 0 on
+                            // exit -1 = killed process (Stop button or timeout) - orbis returns 0 on
                             // success and 1 on errors, so -1 is the deterministic kill signal.
                             if (exitCode == -1 || _extractionStopRequested || _extractWorker.CancellationPending)
                             {
@@ -5329,7 +5333,7 @@ namespace PS4PKGTool
                     string safeIn = renameTmp;
 
                     // Create ASCII-safe temp output path (orbis-pub-cmd garbles non-ANSI paths)
-                    // Short temp root — see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
+                    // Short temp root - see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
                     string tempBase = CreateOrbisTempDir("x");
                     Directory.CreateDirectory(tempBase);
                     string tempOutPath = isDirectory
@@ -5360,10 +5364,10 @@ namespace PS4PKGTool
                     try
                     {
                         int exitCode = extract.ExitCode;
-                        // exit -1 = killed process (Stop button or timeout) — see ExtractFullPKG.
+                        // exit -1 = killed process (Stop button or timeout) - see ExtractFullPKG.
                         if (exitCode == -1 || _extractionStopRequested || bgw.CancellationPending)
                         {
-                            // User stopped — the killed process returns a non-zero exit code; not a real failure.
+                            // User stopped - the killed process returns a non-zero exit code; not a real failure.
                             // The outer loop's cancellation check will set args.Cancel and the completion shows "Extraction cancelled."
                         }
                         else if (exitCode == 0)
@@ -5553,7 +5557,7 @@ namespace PS4PKGTool
             if (node.Nodes.Count > 0) return; // directories disabled
             var nodeList = new List<string> { node.FullPath };
 
-            // Short temp root — see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
+            // Short temp root - see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
             string dragDir = CreateOrbisTempDir("d");
 
             Cursor.Current = Cursors.WaitCursor;
@@ -5591,7 +5595,7 @@ namespace PS4PKGTool
             }
             if (nodeList.Count == 0) return;
 
-            // Short temp root — see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
+            // Short temp root - see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
             string dragDir = CreateOrbisTempDir("d");
 
             Cursor.Current = Cursors.WaitCursor;
@@ -5684,7 +5688,7 @@ namespace PS4PKGTool
         /// Returns a writable directory on the same drive for the orbis temp rename.
         /// If the PKG's own directory is already ASCII, it's used (in-place rename).
         /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
-        /// short temp dir there — the drive root is NOT used (not writable without
+        /// short temp dir there - the drive root is NOT used (not writable without
         /// admin on C:).
         /// </summary>
         private static string GetOrbisTempDirFor(string pkgPath)
@@ -5697,7 +5701,7 @@ namespace PS4PKGTool
                 dir = Path.GetDirectoryName(dir);
 
             if (string.IsNullOrEmpty(dir))
-                dir = Path.GetTempPath(); // fallback — rare, all-ancestors-Unicode
+                dir = Path.GetTempPath(); // fallback - rare, all-ancestors-Unicode
 
             string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
             Directory.CreateDirectory(temp);
@@ -5770,10 +5774,22 @@ namespace PS4PKGTool
 
         private void listView1_SizeChanged(object sender, EventArgs e)
         {
-            foreach (ColumnHeader column in listView1.Columns)
-            {
-                column.Width = listView1.Width / listView1.Columns.Count;
-            }
+            BalanceListViewColumns();
+        }
+
+        /// <summary>
+        /// Splits the list view width equally across columns, leaving room for
+        /// the vertical scrollbar so the last column (Size) is never clipped.
+        /// </summary>
+        private void BalanceListViewColumns()
+        {
+            if (listView1.Columns.Count == 0 || listView1.Width <= 0) return;
+            int avail = listView1.Width - SystemInformation.VerticalScrollBarWidth;
+            int per = avail / listView1.Columns.Count;
+            for (int i = 0; i < listView1.Columns.Count; i++)
+                listView1.Columns[i].Width = per;
+            // last column absorbs the remainder
+            listView1.Columns[listView1.Columns.Count - 1].Width += avail - per * listView1.Columns.Count;
         }
 
         private void listView1_ColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
@@ -6127,7 +6143,7 @@ namespace PS4PKGTool
                     }
 
                     SaveManifestAfterScan();
-                    // GLV cells are updated in-place by UpdatePKGFilename —
+                    // GLV cells are updated in-place by UpdatePKGFilename -
                     // no full rebuild needed, selection and group state are preserved.
                 }
                 catch (Exception ex)
@@ -6428,7 +6444,7 @@ namespace PS4PKGTool
                         {
                             PKG.CountFailMove++;
                             string reason = moveBy == "region" ? $"Unknown region: {info.Region}" : $"Unknown {moveBy}";
-                            Logger.LogWarning($"Move skipped: {info.FileName} — {reason}");
+                            Logger.LogWarning($"Move skipped: {info.FileName} - {reason}");
                             PKG.ListFailMove += $"{info.FileName} : {reason}\n";
                             continue;
                         }
@@ -6444,7 +6460,7 @@ namespace PS4PKGTool
                         PKG.CountFailMove++;
                         string name = "";
                         try { name = Path.GetFileNameWithoutExtension(PKGGridView.Rows[i].Cells[0].Value?.ToString() ?? ""); } catch { }
-                        Logger.LogError($"Move failed: {name} — {ex.Message}");
+                        Logger.LogError($"Move failed: {name} - {ex.Message}");
                         PKG.ListFailMove += $"{name} : {ex.Message}\n";
                     }
                 }
@@ -6509,14 +6525,14 @@ namespace PS4PKGTool
             if (regionFolders.TryGetValue(info.Region, out string folder))
                 return Path.Combine(outputFolder, folder);
 
-            Logger.LogWarning($"Unknown region '{info.Region}' — moving to OTHER");
+            Logger.LogWarning($"Unknown region '{info.Region}' - moving to OTHER");
             return Path.Combine(outputFolder, "OTHER");
         }
 
         private string GetTitleDest(PkgMoveInfo info, string outputFolder)
         {
             // Games and patches share one main folder (grouped by title inside it);
-            // add-ons get their own main folder grouped by Title ID — their only reliable
+            // add-ons get their own main folder grouped by Title ID - their only reliable
             // attribute (titles are often repacked/unreliable).
             // Original filenames are preserved, so files never collide within a folder.
             string mainFolder;
@@ -6532,7 +6548,7 @@ namespace PS4PKGTool
                 case PKGCategory.APP:
                     mainFolder = "App";
                     break;
-                default: return null; // unknown category — skip
+                default: return null; // unknown category - skip
             }
 
             if (info.Category == PKGCategory.ADDON)
@@ -6671,8 +6687,8 @@ namespace PS4PKGTool
                     return;
                 }
 
-                // Size / System Version / Version — numerical sort
-                // Title ID — alphanumeric (CUSA00010 after CUSA00002)
+                // Size / System Version / Version - numerical sort
+                // Title ID - alphanumeric (CUSA00010 after CUSA00002)
                 if (colName == "Size" || colName == "System Version" || colName == "Version [App Version]"
                     || colName == "Title ID")
                 {
@@ -6807,14 +6823,14 @@ namespace PS4PKGTool
             {
                 KillProcess("orbis-pub-cmd");
                 Helper.IsOperationRunning = false;
-                _extractionStopRequested = true; // volatile — reliable across the worker thread
+                _extractionStopRequested = true; // volatile - reliable across the worker thread
                 _extractWorker.CancelAsync();
                 anyRunning = true;
             }
             if (_selectedExtractWorker != null && _selectedExtractWorker.IsBusy)
             {
                 KillProcess("orbis-pub-cmd");
-                _extractionStopRequested = true; // volatile — reliable across the worker thread
+                _extractionStopRequested = true; // volatile - reliable across the worker thread
                 _selectedExtractWorker.CancelAsync();
                 anyRunning = true;
             }
@@ -7044,6 +7060,234 @@ namespace PS4PKGTool
                     PKG.NodeFullPath = currentNode.FullPath;
                     PopulateListView();
                 }
+                else
+                {
+                    // Empty directories also have Nodes.Count == 0 - skip preview for them
+                    bool isDirItem = listView1.SelectedItems[0].SubItems.Count > 1
+                        && listView1.SelectedItems[0].SubItems[1].Text == "Directory";
+                    if (!isDirItem)
+                        PreviewEntry(selectedItem.Node.FullPath);
+                }
+            }
+        }
+
+        private string _previewError;
+
+        /// <summary>Builds a classic hex dump (offset + hex + ASCII) for the first maxBytes of a file.</summary>
+        private static string BuildHexDump(string path, int maxBytes)
+        {
+            var sb = new System.Text.StringBuilder();
+            byte[] data;
+            using (var fs = File.OpenRead(path))
+            {
+                int len = (int)Math.Min(fs.Length, maxBytes);
+                data = new byte[len];
+                fs.Read(data, 0, len);
+            }
+            for (int i = 0; i < data.Length; i += 16)
+            {
+                sb.Append(i.ToString("X8")).Append("  ");
+                for (int j = 0; j < 16; j++)
+                {
+                    if (i + j < data.Length)
+                        sb.Append(data[i + j].ToString("X2")).Append(' ');
+                    else
+                        sb.Append("   ");
+                    if (j == 7) sb.Append(' ');
+                }
+                sb.Append(' ');
+                for (int j = 0; j < 16 && i + j < data.Length; j++)
+                {
+                    byte b = data[i + j];
+                    sb.Append(b >= 32 && b < 127 ? (char)b : '.');
+                }
+                sb.AppendLine();
+            }
+            if (data.Length == 0) sb.AppendLine("(empty file)");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Preview a file entry in the viewer pane (text or image).
+        /// The entry is extracted to a temp dir, rendered, and cleaned up.
+        /// </summary>
+        private BackgroundWorker _previewWorker;
+        private int _previewVersion;
+        private string _previewText;    // prepared on the worker thread
+        private Image _previewImage;    // prepared on the worker thread
+        private string _previewHex;     // prepared on the worker thread
+        private string _previewSizeStr; // "123.45 MB" for the info bar
+
+        private void PreviewEntry(string entryPath)
+        {
+            try
+            {
+                if (Helper.IsOperationRunning)
+                {
+                    ShowWarning("Cannot preview while an operation is running.", false);
+                    return;
+                }
+                if (_previewWorker != null && _previewWorker.IsBusy)
+                {
+                    lblFileViewerInfo.Text = "Preview already in progress...";
+                    return;
+                }
+                if (string.IsNullOrEmpty(PKG.SelectedPKGFilename)) return;
+
+                // Size guard - don't fully extract giant entries just to preview the head.
+                const long maxPreviewBytes = 200L * 1024 * 1024; // 200 MB
+                long entrySize = _fileSizes.GetValueOrDefault(entryPath, 0);
+                if (entrySize > maxPreviewBytes)
+                {
+                    string tooLarge = $"{Path.GetFileName(entryPath)} File too large to preview ({Helper.RoundBytes(entrySize)})";
+                    lblFileViewerInfo.Text = tooLarge;
+                    ShowWarning(tooLarge, false);
+                    return;
+                }
+
+                string ext = Path.GetExtension(entryPath).ToLowerInvariant();
+                // .sfo/.mft/.sig are binary formats (PSF magic, manifest, signature) - hex
+                bool isText = ext is ".xml" or ".json" or ".txt" or ".ini" or ".cfg" or ".log" or ".conf"
+                    or ".css" or ".html" or ".htm" or ".md" or ".lst" or ".map" or ".yml";
+                bool isImage = ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif";
+                // everything else (binaries, DDS, audio, unknown) - hex view
+
+                string fname = Path.GetFileName(entryPath);
+                _previewSizeStr = Helper.RoundBytes(entrySize);
+                _previewText = null;
+                _previewImage?.Dispose();
+                _previewImage = null;
+                _previewHex = null;
+
+                lblFileViewerInfo.Text = $"Previewing {fname}...";
+                toolStripStatusLabel2.Text = $"Previewing {fname}...";
+                toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+                toolStripProgressBar1.Visible = true;
+
+                int version = Interlocked.Increment(ref _previewVersion);
+                var bg = new BackgroundWorker();
+                _previewWorker = bg;
+                bg.DoWork += (_, _) =>
+                {
+                    try
+                    {
+                        // Re-check: an extraction may have started while we queued.
+                        if (Helper.IsOperationRunning)
+                        {
+                            _previewText = null; _previewImage = null; _previewHex = null;
+                            return;
+                        }
+                        string tempDir = CreateOrbisTempDir("p");
+                        string extracted = ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, entryPath, tempDir);
+                        if (string.IsNullOrEmpty(extracted)) return;
+                        // All heavy decoding happens OFF the UI thread.
+                        if (isText) _previewText = File.ReadAllText(extracted);
+                        else if (isImage) { using var img = Image.FromFile(extracted); _previewImage = new Bitmap(img); }
+                        else _previewHex = BuildHexDump(extracted, 1 << 20);
+                        // Clean up the temp file/dir here (worker thread).
+                        try { if (File.Exists(extracted)) File.Delete(extracted); } catch { }
+                        try { string d = Path.GetDirectoryName(extracted); if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_p_")) Directory.Delete(d, true); } catch { }
+                    }
+                    catch (Exception ex)
+                    {
+                        _previewError = ex.Message;
+                    }
+                };
+                bg.RunWorkerCompleted += (_, _) =>
+                {
+                    toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                    toolStripProgressBar1.Visible = false;
+                    toolStripStatusLabel2.Text = "...";
+                    _previewWorker = null;
+                    if (version != _previewVersion) return; // a newer preview started
+                    if (_previewError != null)
+                    {
+                        ShowError("Preview failed: " + _previewError, false);
+                        _previewError = null;
+                        return;
+                    }
+                    try
+                    {
+                        if (_previewText != null)
+                        {
+                            txtPreview.Visible = true;
+                            picPreview.Visible = false;
+                            txtHexPreview.Visible = false;
+                            txtPreview.Text = _previewText;
+                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr})";
+                        }
+                        else if (_previewImage != null)
+                        {
+                            picPreview.Visible = true;
+                            txtPreview.Visible = false;
+                            txtHexPreview.Visible = false;
+                            picPreview.Image?.Dispose();
+                            picPreview.Image = _previewImage;
+                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr})";
+                        }
+                        else if (_previewHex != null)
+                        {
+                            txtHexPreview.Visible = true;
+                            txtPreview.Visible = false;
+                            picPreview.Visible = false;
+                            txtHexPreview.Text = _previewHex;
+                            lblFileViewerInfo.Text = $"{fname} ({_previewSizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
+                        }
+                        else
+                        {
+                            ShowWarning("Preview failed: entry could not be extracted.", false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowError("Preview failed: " + ex.Message, false);
+                    }
+                };
+                bg.RunWorkerAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Preview error: " + ex.Message);
+            }
+        }
+
+        private string ExtractSingleEntryForPreview(string pkgPath, string entryPath, string tempDir)
+        {
+            // Use the same orbis img_extract call pattern as ExtractFilesSync,
+            // extracting a single entry path into tempDir.
+            string dir = GetOrbisTempDirFor(pkgPath);
+            string renameTmp = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
+            File.Move(pkgPath, renameTmp);
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+                psi.ArgumentList.Add("img_extract");
+                psi.ArgumentList.Add("--passcode");
+                psi.ArgumentList.Add(DefaultOrbisPasscode);
+                psi.ArgumentList.Add(renameTmp + ":" + entryPath);
+                psi.ArgumentList.Add(tempDir);
+                using var proc = new Process { StartInfo = psi };
+                proc.Start();
+                var readTask = proc.StandardOutput.ReadToEndAsync();
+                if (!proc.WaitForExit(600000))
+                {
+                    try { proc.Kill(); proc.WaitForExit(); } catch { }
+                }
+                _ = readTask.Result;
+                string extracted = Directory.EnumerateFiles(tempDir, "*", SearchOption.AllDirectories).FirstOrDefault();
+                return extracted ?? "";
+            }
+            finally
+            {
+                try { if (File.Exists(renameTmp) && !File.Exists(pkgPath)) File.Move(renameTmp, pkgPath); }
+                catch (Exception rex) { Logger.LogError($"Preview rename-back failed: {renameTmp} -> {pkgPath}: {rex.Message}"); }
+                DeleteOrbisTempDir(renameTmp);
             }
         }
 
@@ -7126,7 +7370,9 @@ namespace PS4PKGTool
             bool all = string.IsNullOrEmpty(q);
             listView1.BeginUpdate();
             listView1.Items.Clear();
-            if (_upItem != null) listView1.Items.Add(_upItem);
+            // The "..." up-folder item is navigation context, not a search match -
+            // only show it when no filter is active.
+            if (all && _upItem != null) listView1.Items.Add(_upItem);
             if (all)
             {
                 foreach (var item in _allItems) listView1.Items.Add(item);
@@ -7134,14 +7380,14 @@ namespace PS4PKGTool
             else
             {
                 // Nodes detached from the tree (e.g. another PKG was selected)
-                // throw on FullPath — nothing to filter against in that state.
+                // throw on FullPath - nothing to filter against in that state.
                 bool treeAttached = PKGTreeView.Nodes.Count > 0
                     || (rootNodes != null && rootNodes.Count > 0
                         && rootNodes[0].TreeView != null);
                 if (treeAttached)
                 {
                     // Search the WHOLE PKG (all root folders: Image0, Sc0, ...),
-                    // not just the current folder — otherwise e.g. Sc0/param.sfo
+                    // not just the current folder - otherwise e.g. Sc0/param.sfo
                     // is unreachable while the list is focused on Image0.
                     if (rootNodes != null && rootNodes.Count > 0)
                         foreach (TreeNode root in rootNodes) CollectMatches(root, q);

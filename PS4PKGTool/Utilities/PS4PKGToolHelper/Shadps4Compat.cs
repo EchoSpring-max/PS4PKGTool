@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -11,7 +11,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 {
     /// <summary>
     /// shadPS4 compatibility lookup. The database is the official
-    /// shadps4-compatibility/shadps4-game-compatibility GitHub repo —
+    /// shadps4-compatibility/shadps4-game-compatibility GitHub repo -
     /// each game is a GitHub Issue titled "CUSAxxxxx - Title", labeled
     /// with its status (status-playable/ingame/menus/boots/nothing).
     /// This class downloads the issues once (manual fetch), caches a
@@ -71,7 +71,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
         /// <summary>
         /// Downloads the compatibility database from GitHub Issues and writes the
-        /// cache file. Returns (count, error) — error is null on success.
+        /// cache file. Returns (count, error) - error is null on success.
         /// </summary>
         public static async Task<(int count, string error)> DownloadAsync(IProgress<string> progress = null)
         {

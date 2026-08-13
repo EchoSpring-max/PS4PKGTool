@@ -211,3 +211,33 @@ Key learnings:
   mandatory, generic type-tree walking does not work.
 - PS4 Unity builds stream ALL texture image data out to .resS companions
   (verified: 199/199 textures in resources.assets, 0 inline).
+
+## Phase 4b status (2026-08-13): PARTIALLY BLOCKED
+
+The Unreal texture decode (UTexture2D from .uasset) is blocked on a
+non-standard package format:
+
+- CODE VEIN (the only accessible UE4 sample) writes BOTH .uasset and .uexp
+  with a 53-byte preamble (8 zeros + fileSize + fileSize + int32 + 20-byte
+  GUID + 5 zeros) before the package magic at offset 53.
+- The summary is UNVERSIONED (legacy version -7, all version fields 0) with
+  byte-length-prefixed strings everywhere (pak index, summary, name table)
+  and 4-byte name hashes.
+- The export-table record size and the summary's tail fields could not be
+  pinned from static analysis; CUE4Parse does not support CODE VEIN (not in
+  its game list - strong evidence the format is game-specific).
+- Verified anchors: preamble, name table format ({int32 byteLen incl null,
+  UTF-8 + null, uint32 hash}), 40-45 byte export records ending at EOF.
+
+Delivered instead (verified):
+- PAK index now handles two-section indexes (entries + UTF-16 directory
+  section): the 14.4 GB CODE VEIN base pak parses 71,118 entries (4,196
+  textures browsable/extractable via the pak reader).
+
+Options to unblock:
+1. Dedicated session to finish the CODE VEIN summary/export mapping
+   (needs the uexp export-data anchors).
+2. Extract a different game's base pak (6-22 GB) and test whether its
+   packages use the STANDARD format (magic at 0) - most likely.
+3. Defer 4b until the asset workspace (Phase 6) makes pak-entry browsing
+   user-visible anyway.

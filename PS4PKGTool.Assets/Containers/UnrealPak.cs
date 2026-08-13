@@ -153,8 +153,17 @@ public sealed class UnrealPak
 
             var entries = new List<PakEntryRef>(count);
             int skipped = 0;
-            for (int i = 0; i < count; i++)
+            int parsed = 0;
+            // The declared count can exceed the entry-section size on paks whose
+            // index continues with a UTF-16 directory section (observed on the
+            // CODE VEIN base pak: 71,118 entries + 46,301 directory paths).
+            // Parse entries while the byte-length path format holds; a negative
+            // or absurd length marks the section boundary.
+            while (parsed < count && pos + 8 < idx.Length)
             {
+                int len = BitConverter.ToInt32(idx, pos);
+                if (len <= 0 || len > 1 << 20) break; // section boundary / end
+                if (pos + 4 + len + 53 > idx.Length) break;
                 string path = mountPoint + ReadIndexString(idx, ref pos);
                 long offset = ReadI64(idx, ref pos);
                 long compressed = ReadI64(idx, ref pos);
@@ -175,6 +184,7 @@ public sealed class UnrealPak
                     _ = ReadU32(idx, ref pos);                    // compression block size
                     encrypted = (flags & 0x01) != 0;
                 }
+                parsed++;
 
                 // Deleted/duplicate records (patch paks) can carry out-of-file
                 // offsets - skip them like CUE4Parse does, they have no data here.
@@ -193,7 +203,7 @@ public sealed class UnrealPak
                     encrypted));
             }
             header.MountPoint = mountPoint;
-            header.EntryCount = count;
+            header.EntryCount = parsed;
             header.SkippedEntries = skipped;
             return entries;
         }

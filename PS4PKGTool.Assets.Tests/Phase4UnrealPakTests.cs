@@ -178,6 +178,146 @@ public class Phase4UnrealPakTests
         Assert.IsInstanceOfType<PakEntrySource>(children[0]);
     }
 
+    [TestMethod]
+    public void ProbeBasePakIndex()
+    {
+        const string basePak = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\base\pakchunk0-ps4.pak";
+        if (!File.Exists(basePak)) { Assert.Inconclusive("Base pak not present."); return; }
+        long indexOffset = 14444780512;
+        long indexSize = 16337131;
+        var source = new FileAssetSource(basePak, "PKG entry");
+
+        byte[] idx;
+        using (var s = source.OpenRead(indexOffset, indexSize))
+        {
+            idx = new byte[s.Length];
+            s.ReadExactly(idx);
+        }
+        Console.WriteLine($"preamble: {BitConverter.ToString(idx, 0, 64)}");
+
+        // Mount point: {int32 byteLen, bytes+null}, then count, then entries.
+        int pos = 0;
+        int mountLen = BitConverter.ToInt32(idx, pos); pos += 4;
+        string mount = System.Text.Encoding.UTF8.GetString(idx, pos, mountLen - 1); pos += mountLen;
+        int total = BitConverter.ToInt32(idx, pos); pos += 4;
+        Console.WriteLine($"mount='{mount}' count={total}");
+
+        int parsed = 0;
+        var methods = new Dictionary<uint, int>();
+        while (parsed < total && pos + 8 < idx.Length)
+        {
+            int len = BitConverter.ToInt32(idx, pos);
+            if (len <= 0 || len > 1 << 20 || pos + 4 + len + 53 > idx.Length)
+            {
+                Console.WriteLine($"  BREAK at #{parsed}: bad pathLen {len} at pos {pos}");
+                break;
+            }
+            string path = System.Text.Encoding.UTF8.GetString(idx, pos + 4, len - 1);
+            int rec = pos + 4 + len;
+            long offset = BitConverter.ToInt64(idx, rec);
+            long size = BitConverter.ToInt64(idx, rec + 8);
+            long uncompressed = BitConverter.ToInt64(idx, rec + 16);
+            uint method = BitConverter.ToUInt32(idx, rec + 24);
+            int recEnd = rec + 53;
+            if (method != 0)
+            {
+                int blocks = BitConverter.ToInt32(idx, rec + 49);
+                if (blocks < 0 || blocks > 1 << 20)
+                {
+                    Console.WriteLine($"  BREAK at #{parsed}: bad block count {blocks} method={method} path={path}");
+                    break;
+                }
+                recEnd = rec + 49 + 4 + blocks * 16;
+            }
+            methods.TryGetValue(method, out int c);
+            methods[method] = c + 1;
+            if (parsed < 5) Console.WriteLine($"  #{parsed}: {path} off={offset} size={size} raw={uncompressed} method={method}");
+            parsed++;
+            pos = recEnd;
+        }
+        Console.WriteLine($"parsed {parsed} entries, next pos {pos} of {idx.Length} ({(double)pos / idx.Length:P1})");
+        Console.WriteLine("methods: " + string.Join(", ", methods.Select(m => $"{m.Key}={m.Value}")));
+
+        // Dump the transition region (100 bytes around the break).
+        int probe = Math.Max(0, pos - 40);
+        Console.WriteLine($"transition@{probe}: {BitConverter.ToString(idx, probe, 100)}");
+        var sb = new System.Text.StringBuilder();
+        for (int i = probe; i < probe + 100; i++)
+            sb.Append(idx[i] >= 32 && idx[i] < 127 ? (char)idx[i] : '.');
+        Console.WriteLine($"ascii: {sb}");
+    }
+
+    [TestMethod]
+    public void ExtractTextureFromBasePak()
+    {
+        const string basePak = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\base\pakchunk0-ps4.pak";
+        if (!File.Exists(basePak)) { Assert.Inconclusive("Base pak not present."); return; }
+        var dir = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\base";
+        var source = new FileAssetSource(basePak, "PKG entry");
+        var backend = new UnrealPakBackend();
+        var entries = backend.ListEntries(source);
+        Console.WriteLine($"base pak entries: {entries.Count}");
+        // Prefer small textures: T_ prefixed .uasset with a matching .uexp.
+        var textures = entries.Where(e => e.Path.Contains(".uasset") && e.UncompressedSize > 0 && e.UncompressedSize < 200_000
+            && (Path.GetFileName(e.Path).StartsWith("T_") || e.Path.Contains("/Textures/"))).ToList();
+        Console.WriteLine($"candidate textures: {textures.Count}");
+        foreach (var e in textures.Take(5))
+            Console.WriteLine($"  {e.Path} raw={e.UncompressedSize}");
+
+        var pick = textures.FirstOrDefault();
+        if (pick == null) { Assert.Inconclusive("No small texture found."); return; }
+        var name = Path.GetFileName(pick.Path);
+        using (var s = backend.OpenEntryStream(source, pick))
+        {
+            var buf = new byte[s.Length];
+            s.ReadExactly(buf);
+            File.WriteAllBytes(Path.Combine(dir, name), buf);
+            Console.WriteLine($"extracted {name} ({buf.Length})");
+        }
+        var uexp = entries.FirstOrDefault(e => e.Path == pick.Path.Replace(".uasset", ".uexp"));
+        if (uexp != null)
+        {
+            using var s = backend.OpenEntryStream(source, uexp);
+            var buf = new byte[s.Length];
+            s.ReadExactly(buf);
+            File.WriteAllBytes(Path.Combine(dir, Path.GetFileName(uexp.Path)), buf);
+            Console.WriteLine($"extracted {Path.GetFileName(uexp.Path)} ({buf.Length})");
+        }
+    }
+
+    [TestMethod]
+    public void ExtractRealUassetPair_ForPackageParser()
+    {
+        if (!File.Exists(RealPakPath)) { Assert.Inconclusive("Real pak not present."); return; }
+        var dir = Path.GetDirectoryName(RealPakPath)!;
+        var source = new FileAssetSource(RealPakPath, "PKG entry");
+        var backend = new UnrealPakBackend();
+        var entries = backend.ListEntries(source);
+
+        foreach (var name in new[] { "DA_DLCFlags.uasset", "DA_DLCFlags.uexp", "M_FX_BloodEffect_Hit_03.uasset", "M_FX_BloodEffect_Hit_03.uexp" })
+        {
+            var entry = entries.FirstOrDefault(e => e.Path.EndsWith(name));
+            if (entry == null) continue;
+            using var s = backend.OpenEntryStream(source, entry);
+            var buf = new byte[s.Length];
+            s.ReadExactly(buf);
+            File.WriteAllBytes(Path.Combine(dir, name), buf);
+            Console.WriteLine($"extracted {name} ({buf.Length} bytes)");
+        }
+    }
+
+    [TestMethod]
+    public void ListAssetEntries_RealPak()
+    {
+        if (!File.Exists(RealPakPath)) { Assert.Inconclusive("Real pak not present."); return; }
+        var source = new FileAssetSource(RealPakPath, "PKG entry");
+        var entries = new UnrealPakBackend().ListEntries(source);
+        var assets = entries.Where(e => e.Path.Contains(".uasset") || e.Path.Contains(".uexp") || e.Path.Contains(".ubulk")).ToList();
+        Console.WriteLine($"asset-ish entries: {assets.Count} / {entries.Count}");
+        foreach (var e in assets.Take(60))
+            Console.WriteLine($"  {e.Path} stored={e.Size} raw={e.UncompressedSize}");
+    }
+
     // ── real CODE VEIN patch pak ──
 
     [TestMethod]

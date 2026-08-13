@@ -265,7 +265,7 @@ namespace PS4PKGTool
             };
 
             // Group-by ComboBox
-            cbGroupBy.Items.AddRange(new object[] { "Title", "Title ID", "System Version", "PKG Type", "Category" });
+            cbGroupBy.Items.AddRange(new object[] { "Title", "Title ID", "System Version", "PKG Type", "Category", "ShadPS4 (Windows)" });
             cbGroupBy.SelectedIndex = 1; // default: Title ID
             cbGroupBy.SelectedIndexChanged += (_, _) => PopulateGroupedView();
 

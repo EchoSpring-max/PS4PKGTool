@@ -320,8 +320,8 @@ namespace PS4PKGTool
             assetListView = new DarkUI.Controls.DarkListView();
             btnAssetBack = new DarkUI.Controls.DarkButton();
             picPreview = new PictureBox();
-            txtPreview = new DarkUI.Controls.DarkRichTextBox();
-            txtHexPreview = new DarkUI.Controls.DarkRichTextBox();
+            txtPreview = new DarkUI.Controls.DarkTextBox();
+            txtHexPreview = new DarkUI.Controls.DarkTextBox();
             lblFileViewerInfo = new DarkUI.Controls.DarkLabel();
             _tabLog = new TabPage();
             _tbLogBox = new DarkUI.Controls.DarkTextBox();
@@ -2576,8 +2576,9 @@ namespace PS4PKGTool
             cbGroupBy.Font = new System.Drawing.Font("Segoe UI", 9F);
             cbGroupBy.Location = new System.Drawing.Point(62, 3);
             cbGroupBy.Name = "cbGroupBy";
-            cbGroupBy.Size = new System.Drawing.Size(105, 24);
+            cbGroupBy.Size = new System.Drawing.Size(185, 24);
             cbGroupBy.TabIndex = 105;
+            cbGroupBy.DropDownWidth = 185;
             // 
             // darkLabelGroupBy
             // 
@@ -2593,7 +2594,7 @@ namespace PS4PKGTool
             // 
             darkLabelGroupCount.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelGroupCount.ForeColor = System.Drawing.Color.Silver;
-            darkLabelGroupCount.Location = new System.Drawing.Point(170, 7);
+            darkLabelGroupCount.Location = new System.Drawing.Point(252, 7);
             darkLabelGroupCount.Name = "darkLabelGroupCount";
             darkLabelGroupCount.Size = new System.Drawing.Size(60, 15);
             darkLabelGroupCount.TabIndex = 107;
@@ -3015,6 +3016,8 @@ namespace PS4PKGTool
             splitContainer1.Location = new System.Drawing.Point(1, 25);
             splitContainer1.Margin = new Padding(3, 4, 3, 4);
             splitContainer1.Name = "splitContainer1";
+            // tree : (list + viewer) = 1 : 2, inner 1 : 1 -> equal thirds
+            splitContainer1.PanelSizes = new int[] { 100, 200 };
             splitContainer1.Size = new System.Drawing.Size(943, 498);
             splitContainer1.TabIndex = 0;
             // 
@@ -3199,8 +3202,10 @@ namespace PS4PKGTool
             txtPreview.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             txtPreview.HideSelection = false;
             txtPreview.Location = new System.Drawing.Point(1, 1);
+            txtPreview.Multiline = true;
             txtPreview.Name = "txtPreview";
             txtPreview.ReadOnly = true;
+            txtPreview.ScrollBars = ScrollBars.Both;
             txtPreview.Size = new System.Drawing.Size(229, 436);
             txtPreview.TabIndex = 1;
             txtPreview.Text = "";
@@ -3216,8 +3221,10 @@ namespace PS4PKGTool
             txtHexPreview.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             txtHexPreview.HideSelection = false;
             txtHexPreview.Location = new System.Drawing.Point(1, 1);
+            txtHexPreview.Multiline = true;
             txtHexPreview.Name = "txtHexPreview";
             txtHexPreview.ReadOnly = true;
+            txtHexPreview.ScrollBars = ScrollBars.Both;
             txtHexPreview.Size = new System.Drawing.Size(229, 436);
             txtHexPreview.TabIndex = 2;
             txtHexPreview.Text = "";
@@ -3970,8 +3977,8 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkSectionPanel sectionFileViewer;
         private DarkUI.Controls.DarkLabel lblFileViewerInfo;
         private Panel fileViewerBody;
-        private DarkUI.Controls.DarkRichTextBox txtPreview;
-        private DarkUI.Controls.DarkRichTextBox txtHexPreview;
+        private DarkUI.Controls.DarkTextBox txtPreview;
+        private DarkUI.Controls.DarkTextBox txtHexPreview;
         private PictureBox picPreview;
         private DarkUI.Controls.DarkListView assetListView;
         private DarkUI.Controls.DarkButton btnAssetBack;

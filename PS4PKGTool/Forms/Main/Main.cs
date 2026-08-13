@@ -108,9 +108,6 @@ namespace PS4PKGTool
         [DllImport("user32.dll")]
         private static extern bool ChangeWindowMessageFilter(uint msg, uint flags);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern bool SetWindowText(IntPtr hWnd, string text);
-
         private byte[] old_byte;
 
         public static string GetApplicationVersion()
@@ -7408,19 +7405,7 @@ namespace PS4PKGTool
                 picPreview.Visible = false;
                 txtHexPreview.Visible = false;
                 txtPreview.Text = _previewText;
-                int afterSet = txtPreview.TextLength;
-                bool fbOk = false;
-                if (afterSet == 0 && _previewText.Length > 0)
-                {
-                    // The property set silently failed (handle race) - force the
-                    // text into the native EDIT control directly.
-                    if (!txtPreview.IsHandleCreated) { _ = txtPreview.Handle; }
-                    fbOk = SetWindowText(txtPreview.Handle, _previewText);
-                }
-                Logger.LogInformation($"TXT render: setLen={_previewText.Length} afterSet={afterSet} ctrlLen={txtPreview.TextLength} fbOk={fbOk} hwnd=0x{txtPreview.Handle.ToInt64():X} handle={txtPreview.IsHandleCreated} vis={txtPreview.Visible} sz={txtPreview.Width}x{txtPreview.Height} readOnly={txtPreview.ReadOnly} enabled={txtPreview.Enabled}");
-                Logger.LogInformation($"TXT render2: ctrlLen={txtPreview.TextLength} propLen={txtPreview.Text.Length}");
                 lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({sizeStr})";
-                LogPreviewRecheck();
             }
             else if (_previewHex != null)
             {
@@ -7428,27 +7413,12 @@ namespace PS4PKGTool
                 txtPreview.Visible = false;
                 picPreview.Visible = false;
                 txtHexPreview.Text = _previewHex;
-                Logger.LogInformation($"HEX render: setLen={_previewHex.Length} ctrlLen={txtHexPreview.TextLength} handle={txtHexPreview.IsHandleCreated} vis={txtHexPreview.Visible} sz={txtHexPreview.Width}x{txtHexPreview.Height}");
                 lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({sizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
-                LogPreviewRecheck();
             }
             else
             {
                 ShowWarning("Preview failed: entry could not be extracted.", false);
             }
-        }
-
-        /// <summary>Re-checks the preview textbox 2s after render - catches anything
-        /// that clears or replaces the text after RenderPreviewResult returns.</summary>
-        private void LogPreviewRecheck()
-        {
-            var t = new System.Windows.Forms.Timer { Interval = 2000 };
-            t.Tick += (_, _) =>
-            {
-                t.Stop(); t.Dispose();
-                Logger.LogInformation($"TXT recheck: ctrlLen={txtPreview.TextLength} vis={txtPreview.Visible} sz={txtPreview.Width}x{txtPreview.Height}");
-            };
-            t.Start();
         }
 
         /// <summary>Re-shows the cached asset list after a child preview (no re-extraction).</summary>
@@ -7602,7 +7572,6 @@ namespace PS4PKGTool
                 // Always offer the way back while browsing a container, even
                 // when the child preview failed (e.g. an unsupported entry).
                 btnAssetBack.Visible = _containerSource != null;
-                Logger.LogInformation($"Child preview state: name={child.Name} textLen={_previewText?.Length ?? -1} hexLen={_previewHex?.Length ?? -1} hasTex={_previewTexture != null} info={_previewInfo}");
                 if (_previewError != null)
                 {
                     ShowError("Preview failed: " + _previewError, false);

@@ -276,6 +276,245 @@ namespace PS4PKGTool.Tests
             Assert.IsNull(error);
         }
 
+        // ── zip safety ──
+
+        [TestMethod]
+        public void Zip_ContainmentIsDirectoryBoundaryAware()
+        {
+            Assert.IsTrue(SafeZipExtractor.IsWithin(@"C:\a\stage\x", @"C:\a\stage"));
+            Assert.IsFalse(SafeZipExtractor.IsWithin(@"C:\a\stage2\x", @"C:\a\stage"),
+                "stage2 must never pass for stage + separator");
+            Assert.IsFalse(SafeZipExtractor.IsWithin(@"C:\a\stage2", @"C:\a\stage"));
+        }
+
+        [TestMethod]
+        public void Zip_TraversalAndAbsoluteEntriesAreRejected()
+        {
+            var evilZip = BuildZip(
+                ("shadPS4.exe", new byte[] { 1 }),
+                ("../evil.exe", new byte[] { 2 }),
+                (@"C:\evil.exe", new byte[] { 3 }));
+
+            bool threw = false;
+            try
+            {
+                using var ms = new MemoryStream(evilZip);
+                SafeZipExtractor.Extract(ms, Path.Combine(_tempRoot, "out"));
+            }
+            catch (InvalidDataException) { threw = true; }
+            Assert.IsTrue(threw, "traversal and absolute entries must abort the extraction");
+        }
+
+        [TestMethod]
+        public void Zip_SymlinkEntriesAreRejected()
+        {
+            var evilZip = BuildZip(
+                ("shadPS4.exe", new byte[] { 1 }),
+                ("link", new byte[] { 2 }));
+
+            using var ms = new MemoryStream(evilZip);
+            using var archive = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Read);
+            var link = archive.GetEntry("link");
+            link!.ExternalAttributes = unchecked((int)(0xA000u << 16)); // S_IFLNK
+            Assert.IsTrue(SafeZipExtractor.IsSuspiciousEntry("link", link),
+                "Unix symlink entries are rejected outright");
+        }
+
+        [TestMethod]
+        public void Zip_TotalUncompressedSize_SumsFileEntries()
+        {
+            var zip = BuildZip(
+                ("a.bin", new byte[1000]),
+                ("dir/b.bin", new byte[2000]),
+                ("dir/", Array.Empty<byte>()));
+
+            using var ms = new MemoryStream(zip);
+            Assert.AreEqual(3000, SafeZipExtractor.TotalUncompressedSize(ms));
+        }
+
+        // ── downloader ──
+
+        [TestMethod]
+        public void Downloader_VerifiesSizeAndHash_ThenRenamesPart()
+        {
+            byte[] payload = new byte[1024];
+            for (int i = 0; i < payload.Length; i++) payload[i] = (byte)(i * 7);
+            string sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
+
+            var dl = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(payload)) };
+            string dest = Path.Combine(_tempRoot, "asset.zip");
+
+            string? ok = dl.DownloadAsync("https://x/a.zip", dest, payload.Length, sha, null, CancellationToken.None).Result;
+            Assert.IsNull(ok);
+            Assert.IsTrue(File.Exists(dest));
+            Assert.IsFalse(File.Exists(dest + ".part"));
+            CollectionAssert.AreEqual(payload, File.ReadAllBytes(dest));
+
+            // Wrong size and wrong hash both fail, .part is cleaned.
+            string? badSize = dl.DownloadAsync("https://x/a.zip", dest, payload.Length + 1, sha, null, CancellationToken.None).Result;
+            StringAssert.Contains(badSize, "Download incomplete");
+            string? badHash = dl.DownloadAsync("https://x/a.zip", dest, payload.Length, "deadbeef", null, CancellationToken.None).Result;
+            StringAssert.Contains(badHash, "Checksum mismatch");
+            Assert.IsFalse(File.Exists(dest + ".part"));
+        }
+
+        [TestMethod]
+        public void Downloader_Cancellation_RemovesPart()
+        {
+            var dl = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(new byte[1000])) };
+            string dest = Path.Combine(_tempRoot, "asset.zip");
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            bool cancelled = false;
+            try
+            {
+                dl.DownloadAsync("https://x/a.zip", dest, 1000, null, null, cts.Token).Wait();
+            }
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException) { cancelled = true; }
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(File.Exists(dest + ".part"), "the .part file must be removed on cancellation");
+        }
+
+        // ── setup service ──
+
+        [TestMethod]
+        public void Setup_InstallsCoreBuild_EndToEnd()
+        {
+            var zip = BuildZip(("shadPS4.exe", new byte[] { 1, 2, 3 }), ("qtplugins/x.dll", new byte[] { 4 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "shadps4-win64-sdl-abc1234.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                FreeSpaceOverride = _ => 10L * 1024 * 1024 * 1024,
+            };
+
+            var result = svc.InstallBuildAsync(release, store, ct: CancellationToken.None).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.Success, result.Status);
+            Assert.IsTrue(File.Exists(Path.Combine(store.BuildDirectory(Shadps4Component.Core, "abc1234"), "shadPS4.exe")));
+            Assert.IsTrue(File.Exists(Path.Combine(store.BuildDirectory(Shadps4Component.Core, "abc1234"), "qtplugins", "x.dll")));
+            Assert.IsTrue(File.Exists(Path.Combine(store.BuildDirectory(Shadps4Component.Core, "abc1234"), "ps4pkgtool-manifest.json")));
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", ".work")), "work dir is cleaned up");
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", "builds", ".staging-abc1234")), "staging is gone after commit");
+        }
+
+        [TestMethod]
+        public void Setup_AlreadyInstalled_DoesNotReinstall()
+        {
+            var zip = BuildZip(("shadPS4.exe", new byte[] { 1 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                FreeSpaceOverride = _ => 10L * 1024 * 1024 * 1024,
+            };
+
+            var first = svc.InstallBuildAsync(release, store).Result;
+            Assert.AreEqual(Shadps4SetupStatus.Success, first.Status);
+
+            var second = svc.InstallBuildAsync(release, store).Result;
+            Assert.AreEqual(Shadps4SetupStatus.AlreadyInstalled, second.Status, "the same build is never re-downloaded");
+        }
+
+        [TestMethod]
+        public void Setup_TruncatedArchive_FailsVerification()
+        {
+            var zip = BuildZip(("shadPS4.exe", new byte[5000]));
+            var truncated = zip.Take(zip.Length / 2).ToArray();
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", truncated.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(truncated)) },
+                FreeSpaceOverride = _ => 10L * 1024 * 1024 * 1024,
+            };
+
+            var result = svc.InstallBuildAsync(release, store).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.VerificationFailed, result.Status);
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", "builds", "core-abc1234")));
+        }
+
+        [TestMethod]
+        public void Setup_NotEnoughSpace_BeforeDownload()
+        {
+            var zip = BuildZip(("shadPS4.exe", new byte[] { 1 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                FreeSpaceOverride = _ => 1L, // 1 byte free
+            };
+
+            var result = svc.InstallBuildAsync(release, store).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.InsufficientSpace, result.Status);
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", ".work")));
+        }
+
+        [TestMethod]
+        public void Setup_NotEnoughSpace_ForExtraction()
+        {
+            var zip = BuildZip(("big.bin", new byte[20 * 1024 * 1024]), ("shadPS4.exe", new byte[] { 1 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                // Enough for the download, not enough for the 20 MB extraction + margin.
+                FreeSpaceOverride = _ => release.SizeBytes + Shadps4SetupService.SpaceMarginBytes + 1,
+            };
+
+            var result = svc.InstallBuildAsync(release, store).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.InsufficientSpace, result.Status,
+                "the uncompressed-size estimate must be checked before extraction");
+        }
+
+        [TestMethod]
+        public void Setup_Cancellation_CleansWorkAndStaging()
+        {
+            var zip = BuildZip(("shadPS4.exe", new byte[] { 1 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                FreeSpaceOverride = _ => 10L * 1024 * 1024 * 1024,
+            };
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var result = svc.InstallBuildAsync(release, store, ct: cts.Token).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.Cancelled, result.Status);
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", ".work")));
+            Assert.IsFalse(Directory.Exists(Path.Combine(_tempRoot, "managed", "builds", ".staging-abc1234")));
+        }
+
+        [TestMethod]
+        public void Setup_MissingExpectedExe_ReportsQuarantineHint()
+        {
+            var zip = BuildZip(("onlydata.txt", new byte[] { 1 }));
+            var release = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-x", "abc1234", "a.zip", zip.Length);
+            var store = new Shadps4ManagedBuilds(Path.Combine(_tempRoot, "managed"), new SystemClock());
+            var svc = new Shadps4SetupService
+            {
+                Downloader = new Shadps4Downloader { StreamFactory = _ => Task.FromResult<Stream>(new MemoryStream(zip)) },
+                FreeSpaceOverride = _ => 10L * 1024 * 1024 * 1024,
+            };
+
+            var result = svc.InstallBuildAsync(release, store).Result;
+
+            Assert.AreEqual(Shadps4SetupStatus.VerificationFailed, result.Status);
+            StringAssert.Contains(result.Message, "shadPS4.exe", "missing exe names the expected file");
+        }
+
         // ── settings ──
 
         [TestMethod]
@@ -299,6 +538,25 @@ namespace PS4PKGTool.Tests
 
         private static IReadOnlyList<Shadps4ReleaseInfo> Parse(string json, Shadps4FeedKind feed)
             => Shadps4ReleaseFeed.ParseReleases(json, feed, "repo");
+
+        private static Shadps4ReleaseInfo MakeRelease(Shadps4FeedKind feed, string tag, string commit, string asset, long size, bool prerelease = true)
+            => new(feed, "shadps4-emu/shadPS4", tag, new DateTime(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc),
+                commit, asset, "https://github.com/example/" + asset, size, null, prerelease);
+
+        private static byte[] BuildZip(params (string Name, byte[] Content)[] files)
+        {
+            using var ms = new MemoryStream();
+            using (var archive = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                foreach (var (name, content) in files)
+                {
+                    var entry = archive.CreateEntry(name);
+                    using var es = entry.Open();
+                    es.Write(content, 0, content.Length);
+                }
+            }
+            return ms.ToArray();
+        }
 
         private sealed class FakeClock : IClock
         {

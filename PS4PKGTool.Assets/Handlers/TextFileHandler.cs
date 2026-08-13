@@ -51,6 +51,13 @@ public sealed class TextFileHandler : IAssetHandler, IAssetPreviewProvider
         int start = buf.Length >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF ? 3 : 0;
         string text = System.Text.Encoding.UTF8.GetString(buf, start, buf.Length - start);
 
+        // Defense in depth: a leading NUL makes native textboxes render empty
+        // (the string is truncated at the first NUL) - strip a leading run of
+        // them so previews always show the real text.
+        int nul = 0;
+        while (nul < text.Length && text[nul] == '\0') nul++;
+        if (nul > 0) text = text.Substring(nul);
+
         string info = source.Length > PreviewHeadBytes
             ? $"Showing first {HelperFormatBytes(PreviewHeadBytes)} of {HelperFormatBytes(source.Length)}"
             : $"{HelperFormatBytes(source.Length)}";

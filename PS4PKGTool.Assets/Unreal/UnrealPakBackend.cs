@@ -48,6 +48,17 @@ public sealed class UnrealPakBackend : IUnrealAssetBackend
                 data = new byte[s.Length];
                 s.ReadExactly(data);
             }
+
+            // Some patch paks (verified: CODE VEIN update pak, UE4 v4) store
+            // uncompressed entry blobs SELF-DESCRIBING: a 53-byte copy of the
+            // index record {Offset, Size, UncompressedSize, Method, Hash,
+            // Flags, BlockSize} precedes the payload, and entry.Size includes
+            // the record. The embedded record's Size and UncompressedSize
+            // fields both equal the blob length - a real payload essentially
+            // never starts with its own length twice as little-endian int64s.
+            int recordSkip = EmbeddedRecordSize(data);
+            if (recordSkip > 0)
+                return new MemoryStream(data, recordSkip, data.Length - recordSkip, writable: false);
             return new MemoryStream(data, writable: false);
         }
 
@@ -95,5 +106,20 @@ public sealed class UnrealPakBackend : IUnrealAssetBackend
     {
         if (pak.Header.Version < 5 || pak.Entries.Count == 0) return entry.Offset;
         return pak.Entries[0].Offset + entry.Offset;
+    }
+
+    /// <summary>
+    /// Returns the size of the embedded FPakEntry record prefix (53 bytes) when
+    /// the blob is self-describing, or 0. Detection: the Size and
+    /// UncompressedSize fields (int64 LE at offsets 8 and 16) both equal the
+    /// blob length, which only holds for a record copy.
+    /// </summary>
+    private static int EmbeddedRecordSize(byte[] blob)
+    {
+        if (blob.Length < 53) return 0;
+        long size = BitConverter.ToInt64(blob, 8);
+        long uncompressed = BitConverter.ToInt64(blob, 16);
+        if (size != blob.Length || uncompressed != blob.Length) return 0;
+        return 53;
     }
 }

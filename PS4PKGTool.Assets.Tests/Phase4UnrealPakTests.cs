@@ -422,14 +422,32 @@ public class Phase4UnrealPakTests
         Console.WriteLine("mix: " + string.Join(", ", entries.GroupBy(e => e.Compression).Select(g => $"{g.Key}={g.Count()}")));
 
         // Decompress the first uncompressed entry - the data must round-trip.
+        // This patch pak stores entry blobs SELF-DESCRIBING: a 53-byte copy of
+        // the index record precedes the payload and is included in the stored
+        // size, so the payload is either the full size or 53 bytes shorter.
         var noneEntry = entries.First(e => e.Compression == "None");
         using (var s = backend.OpenEntryStream(source, noneEntry))
         {
-            Assert.AreEqual(noneEntry.UncompressedSize, s.Length);
+            Assert.IsTrue(s.Length == noneEntry.UncompressedSize || s.Length == noneEntry.UncompressedSize - 53,
+                $"Payload length {s.Length} must match the declared size {noneEntry.UncompressedSize} (or 53 less for self-describing blobs)");
             byte[] buf = new byte[s.Length];
             s.ReadExactly(buf);
             Assert.IsTrue(buf.Length > 0);
             Console.WriteLine($"first None entry '{noneEntry.Path}' round-trips ({buf.Length} bytes)");
+        }
+
+        // PS4Engine.ini's blob is verified record-prefixed on the real pak: the
+        // payload must start with the INI text, not the embedded record's
+        // leading NULs (which made previews render empty).
+        var iniEntry = entries.First(e => e.Path.EndsWith("PS4Engine.ini"));
+        using (var iniStream = backend.OpenEntryStream(source, iniEntry))
+        {
+            var head = new byte[32];
+            int got = iniStream.Read(head, 0, head.Length);
+            string text = System.Text.Encoding.ASCII.GetString(head, 0, got);
+            Console.WriteLine($"PS4Engine.ini payload head: '{text}'");
+            Assert.IsTrue(text.StartsWith(";[TextureStreaming]") || text.StartsWith("[TextureStreaming]"),
+                $"Payload must start with the INI text, got '{text}'");
         }
 
         // Zlib entries (if any) must decompress to their declared raw size.

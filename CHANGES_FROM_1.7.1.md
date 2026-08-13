@@ -39,7 +39,6 @@ All changes below are present in the Debug build; no release has been published 
 - Full environment detection: core vs QtLauncher classification, portable `user\` vs `%APPDATA%\shadPS4` config, legacy config.toml fallback, warnings, path normalization, exe validation
 - Reworked to the verified current model: single selected executable + shared config reading (JSON config.json, System.Text.Json DTOs)
 - Fixed launcher-in-subfolder layouts (core detected one level up, with version-mismatch warning)
-- Program Settings reorganized into clean tabs (General / Appearance / Columns / Library / shadPS4 / Remote PKG Installer / PKG Rename / Trophies) — Designer-only, no code-behind changes
 - Active Core / Active Launcher model: `managed:<buildId>` or `adopted:<path>`, with one-time migration from legacy settings
 - Install-directory setting, auto-filled from shadPS4's own config (never hardcoded), user-overridable
 
@@ -77,7 +76,21 @@ All changes below are present in the Debug build; no release has been published 
 
 ---
 
-## 4. General Improvements & Fixes
+## 4. Settings UI Overhaul
+
+- **Program Settings reorganized into 8 clean tabs grouped by concern** (Designer-only, no code-behind changes):
+  - **General** — directories, downloads, startup, server settings
+  - **Appearance** — theme + PKG color labeling only
+  - **Columns** — grid column visibility checkboxes
+  - **Library** — PS5 BC / PSVR / PS4 Pro checks
+  - **shadPS4** — the whole shadPS4 section gets its own full page (checkbox, OS, compat data download, executable selection, detection info with warnings)
+  - **Remote PKG Installer / PKG Rename / Trophies** — unchanged
+- All page sizes unified (632x516); the form/tab height reverted to the original compact size — shadPS4 is no longer crammed into the Appearance tab
+- Further shadPS4 tab rework: Active Core / QtLauncher rows with Browse-adopt, Manage Builds, Check for Updates, Open Config Folder, install-directory row
+
+---
+
+## 5. General Improvements & Fixes
 
 - All dialogs now use the app's dark message box (no native popups; no hyphen characters in dialog text)
 - Fixed PKG directory-list pollution when moving many PKGs (226 entries collapsed back to 1 root)
@@ -86,7 +99,7 @@ All changes below are present in the Debug build; no release has been published 
 
 ---
 
-## 5. Testing
+## 6. Testing
 
 - 121 app tests + 58 asset tests, all passing, solution builds with 0 errors
 - New test coverage: shadPS4 detection/config parsing, active-core resolution and migration, launch resolution (by ID / by path / already running), install service (staging, merge, replace, space, cancel), setup pipeline (download, ZIP safety, disk-full, quarantine), feed parsing/cache/rate-limits, managed store (commit/list/rollback/reset), settings round-trips

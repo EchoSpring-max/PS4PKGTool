@@ -123,7 +123,7 @@ PS4PKGTool/
 
 ### External Tools Required at Runtime
 
-These must be present in `PS4PKGToolTemp\`:
+These must be present in `AppData\`:
 - `orbis-pub-cmd.exe` — Orbis publishing command-line tool (for PKG extraction & file listing)
 - `curl.exe` — For HTTP requests to the PS4's Remote Package Installer API
 - Node.js + `http-server` npm module — For serving PKG files to PS4
@@ -138,7 +138,7 @@ These must be present in `PS4PKGToolTemp\`:
 Program.Main()
   ├─ Application.EnableVisualStyles()
   ├─ EnsureSettingsFileExists()
-  │   ├─ Creates PS4PKGToolTemp directory if missing
+  │   ├─ Creates AppData directory if missing
   │   └─ Creates default Settings.conf if missing
   ├─ LoadSettings(SettingFilePath) → populates static appSettings_
   └─ ChooseStartupForm()
@@ -154,7 +154,7 @@ The entire business state lives in a single static class `Helper` with nested st
 ```
 Helper
 ├── static fields: FirstLaunch, FinalizePkgProcess
-├── static paths: PS4PKGToolTempDirectory, OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
+├── static paths: AppDataDirectory, OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
 ├── RoundBytes(long) → human-readable byte count
 ├── Backport (nested class) — backport tracking via JSON file
 │   ├── BackportInfo (model)
@@ -219,7 +219,7 @@ Helper
 ```
 SettingsManager (static)
 ├── appSettings_ : AppSettings (static instance)
-├── SettingFilePath = "{exe}\PS4PKGToolTemp\Settings.conf"
+├── SettingFilePath = "{exe}\AppData\Settings.conf"
 ├── SaveSettings(AppSettings, filePath) → writes key=value flat file
 └── LoadSettings(filePath) → reads key=value flat file → returns AppSettings
 
@@ -241,7 +241,7 @@ AppSettings (POCO with 30+ properties)
 
 ### 4.4 Logging
 
-- `Logger` class writes to `PS4PKGToolTemp\PS4PKGToolLog.txt`
+- `Logger` class writes to `AppData\PS4PKGToolLog.txt`
 - Thread-safe via `lock`
 - Levels: Information → "INFO", Warning → "WARN", Error → "ERR"
 - Format: `{DateTime:G} : [{level}] {message}`
@@ -880,7 +880,7 @@ Replace `BackgroundWorker` with `async/await` + `Task`:
 | 113 | Duplicate PKG detection | `FindDuplicatePKG()` → compare columns 1-8 | Low |
 | 114 | View PKG changelog (changeinfo.xml) | `ViewUpdateChangelog()` → orbis-pub-cmd extract → XML viewer | Medium |
 | 115 | DLC/Addon store viewer | `DLC` form → `PS4_Tools.PKG.Official.Get_All_Store_Items()` | Medium |
-| 116 | Open PS4PKGToolTemp in Explorer | `OpenTempDirectory()` | Low |
+| 116 | Open AppData in Explorer | `OpenTempDirectory()` | Low |
 | 117 | First-launch directory config | `FirstLaunch` flag → `PKG_Directory_Settings` form | Low |
 | 118 | Settings persistence | `SaveSettings()` on form close | Low |
 

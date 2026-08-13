@@ -61,6 +61,30 @@ public class Phase4bPackageTests
     }
 
     [TestMethod]
+    public void ReproduceManifestLoadCrash()
+    {
+        const string manifestPath = @"C:\Users\User\source\repos\PS4PKGTool\PS4PKGTool\bin\Debug\net10.0-windows\AppData\manifest.json";
+        if (!File.Exists(manifestPath)) { Assert.Inconclusive("Manifest not present."); return; }
+
+        // Replicate the app's manifest-load sequence (ManifestHelper is in the app project,
+        // so we parse the JSON the same way and inspect the values that hit the grid).
+        var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(manifestPath));
+        var entries = json.RootElement.GetProperty("Entries");
+        Console.WriteLine($"entries: {entries.GetArrayLength()}");
+        foreach (var e in entries.EnumerateArray())
+        {
+            foreach (var prop in e.EnumerateObject())
+            {
+                var v = prop.Value;
+                string val = v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString()! : v.ToString();
+                Console.WriteLine($"  {prop.Name}: '{val}' (type {v.ValueKind})");
+            }
+            Console.WriteLine("  ---");
+        }
+        Assert.IsTrue(entries.GetArrayLength() > 0);
+    }
+
+    [TestMethod]
     public void ProbeMipBulkLocations()
     {
         const string beePak = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\bee\bebee-ps4.pak";

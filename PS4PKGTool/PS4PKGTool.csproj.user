@@ -4,6 +4,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Update="Forms\About\AboutForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\DLC\DLC.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -23,6 +26,15 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\Program Settings\Program Settings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Shadps4 Setup\Shadps4BuildManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Shadps4 Setup\Shadps4SetupWizard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Shadps4 Setup\Shadps4VersionPicker.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Utilities\PS4PKGToolHelper\AppMessageBox.cs">

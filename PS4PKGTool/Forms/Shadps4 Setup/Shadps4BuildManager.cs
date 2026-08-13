@@ -209,6 +209,28 @@ namespace PS4PKGTool
             }
         }
 
+        private void btnResetSetup_Click(object sender, EventArgs e)
+        {
+            var choice = AppMessageBox.Show("Reset shadPS4 Setup",
+                "Reset the shadPS4 setup?\n\n" +
+                "This removes:\n" +
+                "  - All managed shadPS4 builds downloaded by PS4 PKG Tool\n" +
+                "  - The shadPS4 settings in PS4 PKG Tool (active core, launcher, install directory)\n\n" +
+                "This does NOT touch:\n" +
+                "  - shadPS4's own configuration (%APPDATA%\\shadPS4)\n" +
+                "  - Your saves, games or installed libraries\n\n" +
+                "You can redo the setup afterwards with Install shadPS4 Setup...\n\n" +
+                "Reset?",
+                AppMessageType.Warning, AppMessageButtons.YesNo);
+            if (choice != DialogResult.Yes) return;
+
+            Shadps4SetupReset.Reset(_store, _settings);
+            SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
+            RefreshLists();
+            MessageBoxHelper.ShowWarning(
+                "shadPS4 setup has been reset.\n\nUse Install shadPS4 Setup... to start fresh.", false);
+        }
+
         private void btnClose_Click(object sender, EventArgs e)
         {
             Close();

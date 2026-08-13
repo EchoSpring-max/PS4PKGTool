@@ -22,6 +22,7 @@ namespace PS4PKGTool
             btnLauncherOpenFolder = new DarkUI.Controls.DarkButton();
             btnInstallShadps4 = new DarkUI.Controls.DarkButton();
             btnChooseCoreVersion = new DarkUI.Controls.DarkButton();
+            btnResetSetup = new DarkUI.Controls.DarkButton();
             btnClose = new DarkUI.Controls.DarkButton();
             lblStatus = new DarkUI.Controls.DarkLabel();
             grpCoreBuilds.SuspendLayout();
@@ -118,6 +119,15 @@ namespace PS4PKGTool
             btnChooseCoreVersion.Text = "Choose Core Version...";
             btnChooseCoreVersion.Click += btnChooseCoreVersion_Click;
             //
+            // btnResetSetup
+            //
+            btnResetSetup.Location = new System.Drawing.Point(340, 334);
+            btnResetSetup.Name = "btnResetSetup";
+            btnResetSetup.Size = new System.Drawing.Size(170, 26);
+            btnResetSetup.TabIndex = 5;
+            btnResetSetup.Text = "Reset shadPS4 Setup...";
+            btnResetSetup.Click += btnResetSetup_Click;
+            //
             // btnClose
             //
             btnClose.Location = new System.Drawing.Point(524, 334);
@@ -147,6 +157,7 @@ namespace PS4PKGTool
             this.Controls.Add(grpLauncherBuilds);
             this.Controls.Add(btnInstallShadps4);
             this.Controls.Add(btnChooseCoreVersion);
+            this.Controls.Add(btnResetSetup);
             this.Controls.Add(btnClose);
             this.Controls.Add(lblStatus);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -170,6 +181,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnLauncherOpenFolder;
         private DarkUI.Controls.DarkButton btnInstallShadps4;
         private DarkUI.Controls.DarkButton btnChooseCoreVersion;
+        private DarkUI.Controls.DarkButton btnResetSetup;
         private DarkUI.Controls.DarkButton btnClose;
         private DarkUI.Controls.DarkLabel lblStatus;
     }

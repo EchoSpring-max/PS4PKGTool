@@ -281,6 +281,57 @@ namespace PS4PKGTool.Tests
         }
 
         [TestMethod]
+        public void SetupReset_ClearsStoreArtifactsAndToolSettings()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+
+            // A committed build + a stray .work dir.
+            string staging = Path.Combine(_tempRoot, "staging");
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, "shadPS4.exe"), "x");
+            store.Commit(Parse(NightlyJson, Shadps4FeedKind.CoreNightly)[0], staging);
+            Directory.CreateDirectory(Path.Combine(root, ".work"));
+            File.WriteAllText(Path.Combine(root, ".work", "shadps4_download.zip.part"), "partial");
+
+            var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+            {
+                Shadps4ActiveCore = "managed:abc1234",
+                Shadps4ActiveLauncher = @"adopted:C:\emu\shadPS4QtLauncher.exe",
+                Shadps4ManagedRoot = root,
+                Shadps4InstallDirectory = @"C:\games",
+                Shadps4ExecutablePath = @"C:\emu\old\shadPS4.exe",
+            };
+
+            Shadps4SetupReset.Reset(store, settings);
+
+            Assert.IsFalse(Directory.Exists(Path.Combine(root, "builds")), "managed builds are removed");
+            Assert.IsFalse(Directory.Exists(Path.Combine(root, ".work")), "download artifacts are removed");
+            Assert.IsTrue(Directory.Exists(root), "a CUSTOM managed root itself survives (it may hold other things)");
+            Assert.AreEqual("", settings.Shadps4ActiveCore);
+            Assert.AreEqual("", settings.Shadps4ActiveLauncher);
+            Assert.AreEqual("", settings.Shadps4ManagedRoot);
+            Assert.AreEqual("", settings.Shadps4InstallDirectory);
+            Assert.AreEqual("", settings.Shadps4ExecutablePath, "legacy anchors are cleared so migration cannot resurrect them");
+        }
+
+        [TestMethod]
+        public void SetupReset_DoesNotTouchAdoptedOrExternalContent()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+
+            // An unrelated folder that happens to sit inside the custom root.
+            Directory.CreateDirectory(Path.Combine(root, "my own stuff"));
+            File.WriteAllText(Path.Combine(root, "my own stuff", "notes.txt"), "keep me");
+
+            Shadps4SetupReset.Reset(store, new PS4PKGTool.Utilities.Settings.AppSettings());
+
+            Assert.IsTrue(File.Exists(Path.Combine(root, "my own stuff", "notes.txt")),
+                "reset removes only PS4PKGTool artifacts, never unrelated content");
+        }
+
+        [TestMethod]
         public void Store_CommitRejectsMissingExpectedExe()
         {
             string root = Path.Combine(_tempRoot, "managed");

@@ -95,6 +95,7 @@ namespace PS4PKGTool
             if (btnExportTextures != null) btnExportTextures.Enabled = false;
             _previewEntryPath = null;
             _previewIsUnityFile = false;
+            CleanupContainerBrowse();
         }
         private int _trophyLoadVersion;
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
@@ -129,6 +130,14 @@ namespace PS4PKGTool
             this.Icon = AppIcon;
 
             listView1.Columns.AddRange(new ColumnHeader[] { columnHeader7, columnHeader8, columnHeader9, columnHeader10 });
+
+            // Asset workspace list (container children).
+            assetListView.Columns.AddRange(new ColumnHeader[]
+            {
+                new ColumnHeader { Text = "Name", Width = 110 },
+                new ColumnHeader { Text = "Type", Width = 60 },
+                new ColumnHeader { Text = "Size", Width = 55 },
+            });
 
             // Tag-bind image/icon extraction menu items for data-driven dispatch
             globalExtractImagesAndIconToolStripMenuItem1.Tag = $"{ImageIconExtractionType.ALL}|{PKGSelectionType.ALL}";
@@ -7195,6 +7204,13 @@ namespace PS4PKGTool
         private int _previewVersion;
         private string? _previewEntryPath;   // PKG entry currently previewed (for export)
         private bool _previewIsUnityFile;    // last previewed entry was a Unity serialized file
+
+        // Asset workspace: the extracted container (pak/unity) kept alive while
+        // the user browses its children in the asset list.
+        private Assets.Abstractions.IAssetSource? _containerSource;
+        private Assets.Models.AssetDetectionResult? _containerDetection;
+        private string? _containerTempDir;
+        private readonly List<Assets.Abstractions.IAssetSource> _containerChildren = new();
         private static readonly Assets.AssetInspectionService _assetService = Assets.GenericAssetRegistryBuilder.Build();
 
         private Assets.Models.TextureData _previewTexture; // prepared on the worker thread
@@ -7209,6 +7225,7 @@ namespace PS4PKGTool
             _previewEntryPath = entryPath;
             _previewIsUnityFile = false;
             if (btnExportTextures != null) btnExportTextures.Enabled = false;
+            CleanupContainerBrowse(); // a new preview releases the previous container
             try
             {
                 if (Helper.IsOperationRunning)
@@ -7305,9 +7322,19 @@ namespace PS4PKGTool
                             _previewHex = BuildHexDump(extracted, 1 << 20);
                         }
 
-                        // Clean up the temp file/dir here (worker thread).
-                        try { if (File.Exists(extracted)) File.Delete(extracted); } catch { }
-                        try { string d = Path.GetDirectoryName(extracted); if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_p_")) Directory.Delete(d, true); } catch { }
+                        // Containers (pak/unity) stay alive for the asset workspace;
+                        // everything else is cleaned up here (worker thread).
+                        if (detection != null && _assetService.IsContainer(detection))
+                        {
+                            _containerSource = source;
+                            _containerDetection = detection;
+                            _containerTempDir = tempDir;
+                        }
+                        else
+                        {
+                            try { if (File.Exists(extracted)) File.Delete(extracted); } catch { }
+                            try { string d = Path.GetDirectoryName(extracted); if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_p_")) Directory.Delete(d, true); } catch { }
+                        }
                     }
                     catch (Assets.Errors.UnsupportedAssetException uex)
                     {
@@ -7336,40 +7363,15 @@ namespace PS4PKGTool
                     }
                     try
                     {
-                        if (_previewTexture != null)
-                        {
-                            picPreview.Visible = true;
-                            txtPreview.Visible = false;
-                            txtHexPreview.Visible = false;
-                            picPreview.Image?.Dispose();
-                            picPreview.Image = TextureToBitmap(_previewTexture);
-                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr})";
-                        }
-                        else if (_previewText != null)
-                        {
-                            txtPreview.Visible = true;
-                            picPreview.Visible = false;
-                            txtHexPreview.Visible = false;
-                            txtPreview.Text = _previewText;
-                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr})";
-                        }
-                        else if (_previewHex != null)
-                        {
-                            txtHexPreview.Visible = true;
-                            txtPreview.Visible = false;
-                            picPreview.Visible = false;
-                            txtHexPreview.Text = _previewHex;
-                            lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({_previewSizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
-                        }
-                        else
-                        {
-                            ShowWarning("Preview failed: entry could not be extracted.", false);
-                        }
+                        RenderPreviewResult(fname, _previewSizeStr);
                     }
                     catch (Exception ex)
                     {
                         ShowError("Preview failed: " + ex.Message, false);
                     }
+                    // Containers expose their children in the asset workspace list.
+                    if (_containerSource != null && _containerDetection != null)
+                        PopulateAssetList();
                 };
                 bg.RunWorkerAsync();
             }
@@ -7377,6 +7379,194 @@ namespace PS4PKGTool
             {
                 Logger.LogError("Preview error: " + ex.Message);
             }
+        }
+
+        /// <summary>Shows the prepared preview (texture/text/hex) in the viewer pane.</summary>
+        private void RenderPreviewResult(string fname, string sizeStr)
+        {
+            assetListView.Visible = false;
+            if (_previewTexture != null)
+            {
+                picPreview.Visible = true;
+                txtPreview.Visible = false;
+                txtHexPreview.Visible = false;
+                picPreview.Image?.Dispose();
+                picPreview.Image = TextureToBitmap(_previewTexture);
+                lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({sizeStr})";
+            }
+            else if (_previewText != null)
+            {
+                txtPreview.Visible = true;
+                picPreview.Visible = false;
+                txtHexPreview.Visible = false;
+                txtPreview.Text = _previewText;
+                lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({sizeStr})";
+            }
+            else if (_previewHex != null)
+            {
+                txtHexPreview.Visible = true;
+                txtPreview.Visible = false;
+                picPreview.Visible = false;
+                txtHexPreview.Text = _previewHex;
+                lblFileViewerInfo.Text = _previewInfo ?? $"{fname} ({sizeStr}) - hex, showing first {Helper.RoundBytes(1L << 20)}";
+            }
+            else
+            {
+                ShowWarning("Preview failed: entry could not be extracted.", false);
+            }
+        }
+
+        /// <summary>Populates the asset workspace list with the container's children.</summary>
+        private void PopulateAssetList()
+        {
+            _containerChildren.Clear();
+            assetListView.Items.Clear();
+            if (_containerSource == null || _containerDetection == null)
+            {
+                assetListView.Visible = false;
+                return;
+            }
+            var children = _assetService.GetChildrenAsync(_containerSource, _containerDetection, 0).GetAwaiter().GetResult();
+            assetListView.BeginUpdate();
+            try
+            {
+                int shown = 0;
+                foreach (var c in children)
+                {
+                    if (shown++ >= 2000)
+                    {
+                        assetListView.Items.Add(new ListViewItem(new[] { "...", "", "" }));
+                        break;
+                    }
+                    _containerChildren.Add(c);
+                    string type = c switch
+                    {
+                        Assets.Containers.UnityObjectAssetSource u => $"class {u.Object.ClassId}",
+                        Assets.Containers.PakEntrySource p => p.Entry.Compression,
+                        _ => "file",
+                    };
+                    assetListView.Items.Add(new ListViewItem(new[] { c.Name, type, Helper.RoundBytes(c.Length) }));
+                }
+            }
+            finally { assetListView.EndUpdate(); }
+            assetListView.Visible = true;
+            picPreview.Visible = false;
+            txtPreview.Visible = false;
+            txtHexPreview.Visible = false;
+            lblFileViewerInfo.Text = $"{_containerSource.Name}: {_containerChildren.Count} entries (double-click to preview)";
+        }
+
+        /// <summary>Releases the extracted container and clears the asset list.</summary>
+        private void CleanupContainerBrowse()
+        {
+            _containerSource = null;
+            _containerDetection = null;
+            _containerChildren.Clear();
+            if (assetListView != null)
+            {
+                assetListView.Items.Clear();
+                assetListView.Visible = false;
+            }
+            if (_containerTempDir != null)
+            {
+                try { Directory.Delete(_containerTempDir, true); } catch { }
+                _containerTempDir = null;
+            }
+        }
+
+        private void assetListView_DoubleClick(object sender, EventArgs e)
+        {
+            if (assetListView.SelectedItems.Count == 0) return;
+            int idx = assetListView.SelectedItems[0].Index;
+            if (idx < 0 || idx >= _containerChildren.Count) return;
+            PreviewChildAsset(_containerChildren[idx]);
+        }
+
+        /// <summary>Previews a container child: unity objects decode via the handler,
+        /// pak entries / other children run the generic pipeline on a temp file.</summary>
+        private void PreviewChildAsset(Assets.Abstractions.IAssetSource child)
+        {
+            int version = Interlocked.Increment(ref _previewVersion);
+            var bg = new BackgroundWorker();
+            _previewWorker = bg;
+            bg.DoWork += (_, _) =>
+            {
+                try
+                {
+                    _previewTexture = null;
+                    _previewText = null;
+                    _previewHex = null;
+                    _previewError = null;
+                    _previewInfo = null;
+
+                    if (child is Assets.Containers.UnityObjectAssetSource unityChild)
+                    {
+                        var handler = new Assets.Handlers.UnitySerializedFileHandler();
+                        var preview = handler.PreviewAsync(unityChild, _containerDetection!).GetAwaiter().GetResult();
+                        if (preview?.Texture != null) _previewTexture = preview.Texture;
+                        else if (preview?.Text != null) _previewText = preview.Text;
+                        else _previewError = "No preview available for this object.";
+                        _previewInfo = preview?.Info;
+                        return;
+                    }
+
+                    string temp = Path.Combine(_containerTempDir!, "p4t_child_" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                    using (var s = child.OpenRead())
+                    using (var fs = File.Create(temp))
+                        s.CopyTo(fs);
+
+                    var source = new Assets.IO.FileAssetSource(temp, "container member");
+                    var detection = _assetService.Detect(source);
+                    if (detection == null)
+                    {
+                        _previewHex = BuildHexDump(temp, 1 << 20);
+                        return;
+                    }
+                    var descriptor = _assetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+                    _previewInfo = BuildPreviewInfo(child.Name, descriptor);
+                    if (descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview))
+                    {
+                        var preview = _assetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult();
+                        if (preview?.Texture != null) _previewTexture = preview.Texture;
+                        else if (preview?.Text != null) _previewText = preview.Text;
+                        else _previewHex = BuildHexDump(temp, 1 << 20);
+                    }
+                    else
+                    {
+                        _previewHex = BuildHexDump(temp, 1 << 20);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _previewError = ex.Message;
+                }
+            };
+            bg.RunWorkerCompleted += (_, _) =>
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Visible = false;
+                toolStripStatusLabel2.Text = "...";
+                _previewWorker = null;
+                if (version != _previewVersion) return;
+                if (_previewError != null)
+                {
+                    ShowError("Preview failed: " + _previewError, false);
+                    _previewError = null;
+                    return;
+                }
+                try
+                {
+                    RenderPreviewResult(child.Name, Helper.RoundBytes(child.Length));
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Preview failed: " + ex.Message, false);
+                }
+            };
+            toolStripStatusLabel2.Text = "Previewing asset...";
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.Visible = true;
+            bg.RunWorkerAsync();
         }
 
         /// <summary>Converts the neutral RGBA8 texture to a WinForms Bitmap (RGBA -> BGRA swap).</summary>

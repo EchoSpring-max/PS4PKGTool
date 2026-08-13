@@ -61,6 +61,13 @@ public sealed class AssetInspectionService
         return await handler.InspectAsync(source, detection, ct).ConfigureAwait(false);
     }
 
+    /// <summary>True when the detected format has a handler that exposes children.</summary>
+    public bool IsContainer(AssetDetectionResult detection)
+    {
+        var handler = _handlers.Get(detection.Format);
+        return handler != null && handler.IsContainer(detection);
+    }
+
     public async Task<IReadOnlyList<IAssetSource>> GetChildrenAsync(
         IAssetSource source,
         AssetDetectionResult detection,

@@ -317,6 +317,7 @@ namespace PS4PKGTool
             darkLabel6 = new DarkUI.Controls.DarkLabel();
             sectionFileViewer = new DarkUI.Controls.DarkSectionPanel();
             fileViewerBody = new Panel();
+            assetListView = new DarkUI.Controls.DarkListView();
             picPreview = new PictureBox();
             txtPreview = new DarkUI.Controls.DarkRichTextBox();
             txtHexPreview = new DarkUI.Controls.DarkRichTextBox();
@@ -415,6 +416,7 @@ namespace PS4PKGTool
             sectionFileViewer.SuspendLayout();
             fileViewerBody.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picPreview).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)assetListView).BeginInit();
             _tabLog.SuspendLayout();
             contextMenuGLV.SuspendLayout();
             tabPage5.SuspendLayout();
@@ -3148,8 +3150,9 @@ namespace PS4PKGTool
             sectionFileViewer.TabIndex = 2;
             // 
             // fileViewerBody
-            // 
+            //
             fileViewerBody.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            fileViewerBody.Controls.Add(assetListView);
             fileViewerBody.Controls.Add(picPreview);
             fileViewerBody.Controls.Add(txtPreview);
             fileViewerBody.Controls.Add(txtHexPreview);
@@ -3159,9 +3162,23 @@ namespace PS4PKGTool
             fileViewerBody.Padding = new Padding(1);
             fileViewerBody.Size = new System.Drawing.Size(231, 438);
             fileViewerBody.TabIndex = 0;
-            // 
+            //
+            // assetListView
+            //
+            assetListView.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+            assetListView.Dock = DockStyle.Fill;
+            assetListView.FullRowSelect = true;
+            assetListView.MultiSelect = false;
+            assetListView.Name = "assetListView";
+            assetListView.Size = new System.Drawing.Size(229, 436);
+            assetListView.TabIndex = 0;
+            assetListView.UseCompatibleStateImageBehavior = false;
+            assetListView.View = System.Windows.Forms.View.Details;
+            assetListView.Visible = false;
+            assetListView.DoubleClick += assetListView_DoubleClick;
+            //
             // picPreview
-            // 
+            //
             picPreview.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
             picPreview.Dock = DockStyle.Fill;
             picPreview.Location = new System.Drawing.Point(1, 1);
@@ -3728,6 +3745,7 @@ namespace PS4PKGTool
             sectionFileViewer.ResumeLayout(false);
             fileViewerBody.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picPreview).EndInit();
+            ((System.ComponentModel.ISupportInitialize)assetListView).EndInit();
             _tabLog.ResumeLayout(false);
             _tabLog.PerformLayout();
             contextMenuGLV.ResumeLayout(false);
@@ -3942,6 +3960,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkRichTextBox txtPreview;
         private DarkUI.Controls.DarkRichTextBox txtHexPreview;
         private PictureBox picPreview;
+        private DarkUI.Controls.DarkListView assetListView;
         private DarkUI.Controls.DarkTreeView PKGTreeView;
         private DarkUI.Controls.DarkListView listView1;
         private ColumnHeader columnHeader7;

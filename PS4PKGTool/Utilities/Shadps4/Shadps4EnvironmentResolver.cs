@@ -106,7 +106,13 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
             }
             if (core != null && !string.Equals(coreDir, selectedDir, StringComparison.OrdinalIgnoreCase))
+            {
                 warnings.Add($"shadPS4 core detected in a parent folder: {core}");
+                // Real incident: the launcher was a 9-day-newer nightly than the
+                // core it found in the parent folder, and the game crashed in
+                // the emulator. The versions may not match - say how to fix it.
+                warnings.Add("The core and the selected launcher may be from different builds. If games fail to boot, place the matching shadPS4.exe next to the launcher and select it in Settings.");
+            }
 
             var distribution = (core != null, launcher != null) switch
             {

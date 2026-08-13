@@ -710,6 +710,36 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void ActiveCore_ManagedCoreDeletedOnDisk_NeverFallsBack()
+    {
+        // The store hook returns null (build dir deleted) - the resolver must
+        // report the error, never hunt for another core on disk.
+        string? path = Shadps4ActiveCore.ResolveExecutable(
+            Shadps4ActiveCore.ForManaged("gone-build"),
+            id => null,
+            out string? error);
+
+        Assert.IsNull(path);
+        StringAssert.Contains(error, "was not found on disk");
+    }
+
+    [TestMethod]
+    public void ActiveCore_ExternalCoreNearby_IsNeverAutoSelected()
+    {
+        // Even though a real core exists at a nearby path, an empty active
+        // setting resolves to "not configured" - the resolver has no
+        // knowledge of (and never searches for) cores on disk.
+        string nearbyCore = Path.Combine(_tempRoot, "parent", "shadPS4.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(nearbyCore));
+        File.WriteAllText(nearbyCore, "fake");
+
+        string? path = Shadps4ActiveCore.ResolveExecutable("", null, out string? error);
+
+        Assert.IsNull(path, "a core sitting nearby is NEVER auto-selected");
+        StringAssert.Contains(error, "No shadPS4 core is active");
+    }
+
+    [TestMethod]
     public void Settings_ActiveCore_MigratesLegacyKeysOnce()
     {
         string file = Path.Combine(_tempRoot, "Settings.conf");

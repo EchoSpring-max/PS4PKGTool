@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 
@@ -34,6 +35,10 @@ namespace PS4PKGTool.Utilities.Shadps4
             Directory.CreateDirectory(root);
 
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            // Windows is case-insensitive: "File.dll" and "file.dll" would
+            // silently overwrite each other. Case-insensitive dedupe catches
+            // any output-path collision.
+            var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in archive.Entries)
             {
                 string entryName = entry.FullName.Replace('\\', '/');
@@ -45,6 +50,9 @@ namespace PS4PKGTool.Utilities.Shadps4
                 if (!IsWithin(target, root))
                     throw new InvalidDataException(
                         $"Archive entry escapes the extraction folder: {entry.FullName}");
+                if (!seenTargets.Add(target))
+                    throw new InvalidDataException(
+                        $"Archive contains duplicate output path: {entry.FullName}");
 
                 if (entryName.EndsWith("/") || string.IsNullOrEmpty(entry.Name))
                 {

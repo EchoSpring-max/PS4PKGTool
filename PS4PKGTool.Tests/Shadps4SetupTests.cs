@@ -135,6 +135,22 @@ namespace PS4PKGTool.Tests
         }
 
         [TestMethod]
+        public void Feed_MalformedCacheJson_FallsBackToFreshFetch()
+        {
+            var clock = new FakeClock(new DateTime(2026, 8, 14, 12, 0, 0, DateTimeKind.Utc));
+            string cachePath = Path.Combine(_tempRoot, "releases.json");
+            File.WriteAllText(cachePath, "this is { not valid json at all");
+
+            var feed = new Shadps4ReleaseFeed(cachePath, clock,
+                http: new HttpClient(new FakeHandler(200, StableJson)), cacheTtl: TimeSpan.FromHours(1));
+
+            var result = feed.GetReleasesAsync(Shadps4FeedKind.CoreStable).Result;
+
+            Assert.IsTrue(result.Succeeded, "malformed cache must never block a fresh fetch");
+            Assert.AreEqual(2, result.Releases!.Count);
+        }
+
+        [TestMethod]
         public void Feed_GitHubRefusal_IsGeneric()
         {
             var feed = new Shadps4ReleaseFeed(
@@ -342,6 +358,24 @@ namespace PS4PKGTool.Tests
             link!.ExternalAttributes = unchecked((int)(0xA000u << 16)); // S_IFLNK
             Assert.IsTrue(SafeZipExtractor.IsSuspiciousEntry("link", link),
                 "Unix symlink entries are rejected outright");
+        }
+
+        [TestMethod]
+        public void Zip_CaseInsensitiveDuplicateOutputPaths_AreRejected()
+        {
+            // Windows is case-insensitive - File.dll and file.dll collide.
+            var zip = BuildZip(
+                ("File.dll", new byte[] { 1 }),
+                ("file.dll", new byte[] { 2 }));
+
+            bool threw = false;
+            try
+            {
+                using var ms = new MemoryStream(zip);
+                SafeZipExtractor.Extract(ms, Path.Combine(_tempRoot, "out"));
+            }
+            catch (InvalidDataException) { threw = true; }
+            Assert.IsTrue(threw, "case-colliding entries must abort instead of silently overwriting");
         }
 
         [TestMethod]

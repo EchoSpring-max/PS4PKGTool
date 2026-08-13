@@ -9,20 +9,22 @@ namespace PS4PKGTool.Utilities.Shadps4
     /// shadPS4's OWN configuration - PS4PKGTool keeps no duplicate copy of
     /// these paths and never writes shadPS4's config.
     ///
-    /// Verified against shadPS4 main (current source):
-    /// - Windows user-dir resolution (src/common/path_util.cpp): portable
-    ///   "user" folder next to the executable (the emulator checks the
-    ///   process CWD; the exe directory is the practical equivalent), then
-    ///   %APPDATA%\shadPS4 (Roaming). Both locations are auto-created by the
-    ///   emulator, so folder existence alone is NOT evidence - a config file
-    ///   must be present (config.json current backend, config.toml legacy).
-    /// - Qt launcher filename: shadPS4QtLauncher.exe, shipped next to the core.
-    /// - When both layouts carry a config, the result is Ambiguous and no
-    ///   directory is selected silently.
+    /// Verified behavior:
+    /// - The SELECTED EXECUTABLE and the ACTIVE CONFIGURATION are separate
+    ///   concepts: a freshly extracted shadPS4QtLauncher.exe immediately shows
+    ///   existing games because it reads the shared config.
+    /// - Current Windows config: %APPDATA%\shadPS4\config.json (verified on
+    ///   this machine; section "General", keys install_dirs/addon_install_dir/
+    ///   home_dir/font_dir/sys_modules_dir, forward-slash paths, empty
+    ///   optional values).
+    /// - Legacy config.toml ([GUI] installDirs/installDirsEnabled/
+    ///   addonInstallDir) remains as a verified fallback for older builds.
+    /// - Portable user\ folder next to the exe (src/common/path_util.cpp).
+    /// - Qt launcher filename shadPS4QtLauncher.exe (verified from current
+    ///   distributions).
     ///
-    /// Detection is READ-ONLY: nothing is created, moved or rewritten.
-    /// There is intentionally no persistent cache - resolution is cheap and
-    /// always reflects the current filesystem/config state.
+    /// Detection is READ-ONLY: nothing is created, moved or rewritten, and
+    /// there is no persistent cache.
     /// </summary>
     public static class Shadps4EnvironmentResolver
     {
@@ -31,6 +33,9 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         /// <summary>The AppData folder name shadPS4 uses.</summary>
         public const string AppDataDirName = "shadPS4";
+
+        /// <summary>Verified emulator-core filename (Windows).</summary>
+        public const string CoreExeFileName = "shadPS4.exe";
 
         /// <summary>Verified Qt launcher filename (Windows).</summary>
         public const string QtLauncherFileName = "shadPS4QtLauncher.exe";
@@ -42,10 +47,10 @@ namespace PS4PKGTool.Utilities.Shadps4
         };
 
         /// <summary>
-        /// Validates a user-selected core executable path. Loose on purpose:
+        /// Validates the user-selected executable path. Loose on purpose:
         /// custom/nightly builds must not be rejected over metadata quirks.
         /// </summary>
-        public static (bool IsValid, string? Error) ValidateCoreExePath(string? path)
+        public static (bool IsValid, string? Error) ValidateSelectedExecutablePath(string? path)
         {
             if (string.IsNullOrWhiteSpace(path))
                 return (false, "No executable selected.");
@@ -57,227 +62,188 @@ namespace PS4PKGTool.Utilities.Shadps4
         }
 
         /// <summary>
-        /// Detects the shadPS4 environment from the configured exe paths.
-        /// appDataRoot is injectable for tests (defaults to Roaming AppData).
+        /// Detects the shadPS4 environment from the user-selected executable
+        /// (shadPS4.exe or shadPS4QtLauncher.exe). appDataRoot is injectable
+        /// for tests (defaults to Roaming AppData).
         /// </summary>
-        public static Shadps4Environment Resolve(string? coreExePath, string? launcherExePath = null, string? appDataRoot = null)
+        public static Shadps4Environment Resolve(string? selectedExecutablePath, string? appDataRoot = null)
         {
             string appData = appDataRoot ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var warnings = new List<string>();
 
-            string? exeDir = null;
-            if (!string.IsNullOrWhiteSpace(coreExePath) && File.Exists(coreExePath))
+            string? selectedDir = null;
+            if (!string.IsNullOrWhiteSpace(selectedExecutablePath))
             {
-                exeDir = Path.GetDirectoryName(coreExePath);
-            }
-            else if (!string.IsNullOrWhiteSpace(coreExePath))
-            {
-                warnings.Add($"Selected shadPS4 core executable does not exist: {coreExePath}");
-                exeDir = Path.GetDirectoryName(coreExePath);
-            }
-            else if (!string.IsNullOrWhiteSpace(launcherExePath) && File.Exists(launcherExePath))
-            {
-                exeDir = Path.GetDirectoryName(launcherExePath);
+                if (!File.Exists(selectedExecutablePath))
+                    warnings.Add($"Selected shadPS4 executable does not exist: {selectedExecutablePath}");
+                selectedDir = Path.GetDirectoryName(selectedExecutablePath);
             }
 
-            // Detect the Qt launcher next to the core (verified filename);
-            // the user-selected launcher path wins when it exists.
-            string? detectedLauncher = null;
-            if (!string.IsNullOrWhiteSpace(exeDir))
+            // Classify the distribution: verified core/launcher filenames in
+            // the selected directory. Nothing is invented.
+            string? core = null, launcher = null;
+            if (!string.IsNullOrWhiteSpace(selectedDir) && Directory.Exists(selectedDir))
             {
-                string candidate = Path.Combine(exeDir, QtLauncherFileName);
-                if (File.Exists(candidate))
-                    detectedLauncher = candidate;
-            }
-            string? launcher = !string.IsNullOrWhiteSpace(launcherExePath) && File.Exists(launcherExePath)
-                ? launcherExePath
-                : detectedLauncher;
-            if (string.IsNullOrWhiteSpace(launcher))
-            {
-                // Not an error: the launcher is optional for this integration.
+                string coreCandidate = Path.Combine(selectedDir, CoreExeFileName);
+                string launcherCandidate = Path.Combine(selectedDir, QtLauncherFileName);
+                if (File.Exists(coreCandidate)) core = coreCandidate;
+                if (File.Exists(launcherCandidate)) launcher = launcherCandidate;
             }
 
-            var candidates = new List<(string UserDir, bool IsPortable)>();
-            if (!string.IsNullOrWhiteSpace(exeDir))
-                candidates.Add((Path.Combine(exeDir, PortableDirName), true));
-            candidates.Add((Path.Combine(appData, AppDataDirName), false));
-
-            // Inspect every candidate: a config file must exist and parse.
-            // A folder without any readable config is not a valid environment.
-            string? portableConfig = null, portableUserDir = null;
-            string? appDataConfig = null, appDataUserDir = null;
-            Shadps4Config? portableValues = null, appDataValues = null;
-            bool portablePresent = false, appDataPresent = false;
-
-            foreach (var (userDir, isPortable) in candidates)
+            var distribution = (core != null, launcher != null) switch
             {
-                if (!Directory.Exists(userDir)) continue;
-                if (isPortable) portablePresent = true; else appDataPresent = true;
+                (true, true) => Shadps4DistributionType.CoreAndQtLauncher,
+                (true, false) => Shadps4DistributionType.CoreOnly,
+                (false, true) => Shadps4DistributionType.QtLauncherOnly,
+                _ => Shadps4DistributionType.Unknown,
+            };
+            if (distribution == Shadps4DistributionType.Unknown)
+                warnings.Add("Neither shadPS4.exe nor shadPS4QtLauncher.exe was found beside the selected executable.");
 
-                string? foundConfig = null;
-                Shadps4Config? foundValues = null;
-                foreach (var configFile in GetConfigCandidates(userDir))
-                {
-                    foreach (var reader in Readers)
-                    {
-                        if (!reader.Handles(configFile)) continue;
-                        var values = reader.Read(configFile);
-                        if (values == null)
-                        {
-                            warnings.Add($"Unreadable shadPS4 config ignored: {configFile}");
-                            continue;
-                        }
-                        foundConfig = configFile;
-                        foundValues = values;
-                        break;
-                    }
-                    if (foundConfig != null) break;
-                }
+            // Config candidates in precedence order: shared AppData first
+            // (the launcher and current builds read it), then the portable
+            // user folder beside the executable.
+            var appDataUserDir = Path.Combine(appData, AppDataDirName);
+            string? portableUserDir = !string.IsNullOrWhiteSpace(selectedDir)
+                ? Path.Combine(selectedDir, PortableDirName)
+                : null;
 
-                if (isPortable) { portableConfig = foundConfig; portableUserDir = userDir; portableValues = foundValues; }
-                else { appDataConfig = foundConfig; appDataUserDir = userDir; appDataValues = foundValues; }
-            }
+            // Each candidate may hold config.json (current) and/or config.toml (legacy).
+            (string Config, Shadps4Config Values, Shadps4ConfigFormat Format)? appDataFound = null;
+            (string Config, Shadps4Config Values, Shadps4ConfigFormat Format)? portableFound = null;
+            bool appDataFolderPresent = false, portableFolderPresent = false;
+
+            appDataFound = InspectCandidate(appDataUserDir, warnings, out appDataFolderPresent);
+            if (portableUserDir != null)
+                portableFound = InspectCandidate(portableUserDir, warnings, out portableFolderPresent);
 
             var candidatePaths = new List<string>();
-            if (portableConfig != null) candidatePaths.Add(portableConfig);
-            if (appDataConfig != null) candidatePaths.Add(appDataConfig);
+            if (appDataFound != null) candidatePaths.Add(appDataFound.Value.Config);
+            if (portableFound != null) candidatePaths.Add(portableFound.Value.Config);
 
-            // Ambiguous: two valid configs from different layouts. No silent pick.
-            if (portableConfig != null && appDataConfig != null)
+            // Ambiguous: valid configs in both layouts - no silent pick.
+            if (appDataFound != null && portableFound != null)
             {
                 warnings.Add("Multiple shadPS4 configurations were found:");
-                warnings.Add($"  Portable: {portableConfig}");
-                warnings.Add($"  AppData:  {appDataConfig}");
-                return new Shadps4Environment
-                {
-                    CoreExePath = coreExePath,
-                    LauncherExePath = launcher,
-                    UserDirectoryMode = Shadps4UserDirectoryMode.Ambiguous,
-                    DetectionConfidence = Shadps4DetectionConfidence.Low,
-                    CandidateConfigPaths = candidatePaths,
-                    Warnings = warnings,
-                };
+                warnings.Add($"  AppData:  {appDataFound.Value.Config}");
+                warnings.Add($"  Portable: {portableFound.Value.Config}");
+                return Build(selectedExecutablePath, core, launcher, distribution,
+                    null, null, Shadps4ConfigFormat.Unknown, Shadps4UserDirectoryMode.Ambiguous,
+                    Shadps4DetectionConfidence.Low, Array.Empty<string>(), null, null, null, null,
+                    candidatePaths, warnings);
             }
 
-            string? chosenUserDir = portableUserDir ?? appDataUserDir;
-            string? chosenConfig = portableConfig ?? appDataConfig;
-            Shadps4Config? chosenValues = portableValues ?? appDataValues;
-
-            if (chosenUserDir != null && chosenValues != null)
+            var found = appDataFound ?? portableFound;
+            if (found != null)
             {
-                var mode = portableConfig != null
-                    ? Shadps4UserDirectoryMode.Portable
-                    : Shadps4UserDirectoryMode.AppData;
-                bool hasExe = !string.IsNullOrWhiteSpace(coreExePath) && File.Exists(coreExePath);
+                bool isPortable = appDataFound == null;
+                var mode = isPortable ? Shadps4UserDirectoryMode.Portable : Shadps4UserDirectoryMode.AppData;
+                string userDir = isPortable ? portableUserDir! : appDataUserDir;
+                var values = found.Value.Values;
 
-                // A stale portable folder beside the exe while AppData is active
-                // is a real scenario - surface it rather than ignore silently.
-                if (mode == Shadps4UserDirectoryMode.AppData && portablePresent)
-                    warnings.Add($"Ignored stale portable user folder (no readable config): {Path.Combine(exeDir ?? "", PortableDirName)}");
+                if (!isPortable && portableFolderPresent)
+                    warnings.Add($"Ignored stale portable user folder (no readable config): {portableUserDir}");
 
-                return BuildEnvironment(coreExePath, launcher, chosenUserDir, chosenConfig, chosenValues,
-                    mode, hasExe ? Shadps4DetectionConfidence.High : Shadps4DetectionConfidence.Low,
-                    candidatePaths, warnings);
+                bool hasCore = core != null && File.Exists(core);
+                var dirs = ResolveInstallDirectories(values, userDir, warnings);
+                string home = ResolveDefaulted(values.HomeDir, Path.Combine(userDir, "home"), userDir, warnings);
+                string fonts = ResolveDefaulted(values.FontDir, Path.Combine(userDir, "fonts"), userDir, warnings);
+                string sysModules = ResolveDefaulted(values.SysModulesDir, Path.Combine(userDir, "sys_modules"), userDir, warnings);
+                string addon = ResolveDefaulted(values.AddonInstallDir, Path.Combine(userDir, "addcont"), userDir, warnings);
+
+                return Build(selectedExecutablePath, core, launcher, distribution,
+                    userDir, found.Value.Config, found.Value.Format, mode,
+                    hasCore ? Shadps4DetectionConfidence.High : Shadps4DetectionConfidence.Low,
+                    dirs, home, fonts, sysModules, addon, candidatePaths, warnings);
             }
 
             // A user folder exists somewhere but no readable config - layout
             // defaults only, so the environment is not fully trustworthy.
-            foreach (var (userDir, isPortable) in candidates)
+            foreach (var (dir, present) in new[] { (appDataUserDir, appDataFolderPresent), (portableUserDir, portableFolderPresent) })
             {
-                if (!Directory.Exists(userDir)) continue;
-                warnings.Add($"shadPS4 user folder found without a readable config: {userDir} (layout defaults assumed)");
-                return new Shadps4Environment
-                {
-                    CoreExePath = coreExePath,
-                    LauncherExePath = launcher,
-                    UserDirectory = userDir,
-                    UserDirectoryMode = Shadps4UserDirectoryMode.Custom,
-                    DetectionConfidence = Shadps4DetectionConfidence.Low,
-                    SaveDataDirectory = Path.Combine(userDir, "home"),
-                    AddonInstallDirectory = Path.Combine(userDir, "addcont"),
-                    CandidateConfigPaths = candidatePaths,
-                    Warnings = warnings,
-                };
+                if (dir == null || !present) continue;
+                warnings.Add($"shadPS4 user folder found without a readable config: {dir} (layout defaults assumed)");
+                return Build(selectedExecutablePath, core, launcher, distribution,
+                    dir, null, Shadps4ConfigFormat.Unknown, Shadps4UserDirectoryMode.Custom,
+                    Shadps4DetectionConfidence.Low, Array.Empty<string>(),
+                    Path.Combine(dir, "home"), Path.Combine(dir, "fonts"),
+                    Path.Combine(dir, "sys_modules"), Path.Combine(dir, "addcont"),
+                    candidatePaths, warnings);
             }
 
-            return new Shadps4Environment
-            {
-                CoreExePath = coreExePath,
-                LauncherExePath = launcher,
-                UserDirectoryMode = Shadps4UserDirectoryMode.Unknown,
-                DetectionConfidence = Shadps4DetectionConfidence.None,
-                CandidateConfigPaths = candidatePaths,
-                Warnings = warnings,
-            };
+            return Build(selectedExecutablePath, core, launcher, distribution,
+                null, null, Shadps4ConfigFormat.Unknown, Shadps4UserDirectoryMode.Unknown,
+                Shadps4DetectionConfidence.None, Array.Empty<string>(), null, null, null, null,
+                candidatePaths, warnings);
         }
 
-        private static IEnumerable<string> GetConfigCandidates(string userDir)
+        /// <summary>
+        /// Inspects one user-directory candidate. A folder only counts when it
+        /// holds a READABLE config (the emulator auto-creates the folders, so
+        /// existence alone is not evidence). config.json takes precedence over
+        /// config.toml inside the same folder.
+        /// </summary>
+        private static (string Config, Shadps4Config Values, Shadps4ConfigFormat Format)? InspectCandidate(
+            string userDir, List<string> warnings, out bool folderPresent)
         {
-            // yield inside try/catch is not allowed - collect first.
-            var result = new List<string>();
+            folderPresent = Directory.Exists(userDir);
+            if (!folderPresent) return null;
+
             try
             {
                 foreach (var name in new[] { "config.json", "config.toml" })
                 {
                     string path = Path.Combine(userDir, name);
-                    if (File.Exists(path)) result.Add(path);
+                    if (!File.Exists(path)) continue;
+                    foreach (var reader in Readers)
+                    {
+                        if (!reader.Handles(path)) continue;
+                        var values = reader.Read(path);
+                        if (values == null)
+                        {
+                            warnings.Add($"Unreadable shadPS4 config ignored: {path}");
+                            continue;
+                        }
+                        var format = name == "config.json"
+                            ? Shadps4ConfigFormat.Json
+                            : Shadps4ConfigFormat.LegacyToml;
+                        return (path, values, format);
+                    }
                 }
             }
             catch
             {
-                // inaccessible directory - no candidates
+                // inaccessible directory - treated as not present
             }
-            return result;
+            return null;
         }
 
-        private static Shadps4Environment BuildEnvironment(
-            string? coreExe, string? launcher, string userDir, string? configPath,
-            Shadps4Config values, Shadps4UserDirectoryMode mode,
-            Shadps4DetectionConfidence confidence, List<string> candidates, List<string> warnings)
+        private static IReadOnlyList<string> ResolveInstallDirectories(
+            Shadps4Config values, string userDir, List<string> warnings)
         {
             var dirs = new List<string>();
             foreach (var d in values.InstallDirs)
             {
                 if (!d.Enabled || string.IsNullOrWhiteSpace(d.Path)) continue;
                 string normalized = NormalizeConfiguredPath(d.Path, userDir, warnings);
-                if (Directory.Exists(normalized))
-                    dirs.Add(normalized);
-                else
-                {
-                    dirs.Add(normalized);
+                dirs.Add(normalized);
+                if (!Directory.Exists(normalized))
                     warnings.Add($"Configured game directory does not currently exist: {normalized}");
-                }
             }
-            if (values.InstallDirs.Count == 0)
-                warnings.Add("shadPS4 has no game libraries configured.");
-
-            string home = NormalizeConfiguredPath(
-                string.IsNullOrWhiteSpace(values.HomeDir) ? Path.Combine(userDir, "home") : values.HomeDir!,
-                userDir, warnings);
-            string addon = NormalizeConfiguredPath(
-                string.IsNullOrWhiteSpace(values.AddonInstallDir) ? Path.Combine(userDir, "addcont") : values.AddonInstallDir!,
-                userDir, warnings);
-
-            return new Shadps4Environment
-            {
-                CoreExePath = coreExe,
-                LauncherExePath = launcher,
-                UserDirectory = userDir,
-                ConfigPath = configPath,
-                UserDirectoryMode = mode,
-                DetectionConfidence = confidence,
-                InstallDirectories = dirs,
-                SaveDataDirectory = home,
-                AddonInstallDirectory = addon,
-                CandidateConfigPaths = candidates,
-                Warnings = warnings,
-            };
+            if (dirs.Count == 0)
+                warnings.Add("shadPS4 has no enabled game libraries configured.");
+            return dirs;
         }
+
+        /// <summary>Configured value or the verified default; empty values are not failures.</summary>
+        private static string ResolveDefaulted(string? configured, string fallback, string userDir, List<string> warnings)
+            => NormalizeConfiguredPath(string.IsNullOrWhiteSpace(configured) ? fallback : configured!, userDir, warnings);
 
         /// <summary>
         /// Normalizes a configured path: expands environment variables, strips
-        /// surrounding quotes, trims trailing separators, and resolves relative
-        /// paths against the user directory (with a warning). Read-only.
+        /// surrounding quotes, converts forward slashes to backslashes,
+        /// trims trailing separators, and resolves relative paths against the
+        /// user directory (with a warning). Read-only.
         /// </summary>
         private static string NormalizeConfiguredPath(string path, string userDir, List<string> warnings)
         {
@@ -289,7 +255,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                 try { p = Environment.ExpandEnvironmentVariables(p); }
                 catch { warnings.Add($"Could not expand environment variables in configured path: {path}"); }
             }
-            p = p.Trim().TrimEnd('\\', '/');
+            p = p.Trim();
+            p = p.Replace('/', '\\'); // verified: configs mix separators ("C:/games" style forward slashes)
+            p = p.TrimEnd('\\', '/');
+            if (p.Length >= 2 && p[1] == ':' && p.Length == 2)
+                p += '\\'; // bare drive letter "<drive>:" -> "<drive>:\"
             if (!Path.IsPathRooted(p))
             {
                 warnings.Add($"Relative configured path resolved against the user directory: {path}");
@@ -297,5 +267,31 @@ namespace PS4PKGTool.Utilities.Shadps4
             }
             return p;
         }
+
+        private static Shadps4Environment Build(
+            string? selected, string? core, string? launcher, Shadps4DistributionType distribution,
+            string? userDir, string? configPath, Shadps4ConfigFormat format, Shadps4UserDirectoryMode mode,
+            Shadps4DetectionConfidence confidence, IReadOnlyList<string> installDirs,
+            string? home, string? fonts, string? sysModules, string? addon,
+            IReadOnlyList<string> candidates, IReadOnlyList<string> warnings)
+            => new()
+            {
+                SelectedExecutablePath = selected,
+                CoreExePath = core,
+                LauncherExePath = launcher,
+                DistributionType = distribution,
+                UserDirectory = userDir,
+                ConfigPath = configPath,
+                ConfigFormat = format,
+                UserDirectoryMode = mode,
+                DetectionConfidence = confidence,
+                InstallDirectories = installDirs,
+                HomeDirectory = home,
+                FontDirectory = fonts,
+                SysModulesDirectory = sysModules,
+                AddonInstallDirectory = addon,
+                CandidateConfigPaths = candidates,
+                Warnings = warnings,
+            };
     }
 }

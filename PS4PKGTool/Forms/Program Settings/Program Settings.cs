@@ -102,8 +102,15 @@ namespace PS4PKGTool
                 "macos" => 2,
                 _ => 0, // windows (default)
             };
-            tbShadps4CoreExe.Text = appSettings_.Shadps4CoreExePath ?? "";
-            tbShadps4LauncherExe.Text = appSettings_.Shadps4LauncherExePath ?? "";
+            // Migration: earlier builds stored the core/launcher separately.
+            string selected = appSettings_.Shadps4ExecutablePath;
+            if (string.IsNullOrWhiteSpace(selected))
+            {
+                selected = !string.IsNullOrWhiteSpace(appSettings_.Shadps4CoreExePath)
+                    ? appSettings_.Shadps4CoreExePath
+                    : appSettings_.Shadps4LauncherExePath;
+            }
+            tbShadps4CoreExe.Text = selected ?? "";
             RefreshShadps4Detection();
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;
@@ -207,8 +214,7 @@ namespace PS4PKGTool
                 2 => "macos",
                 _ => "windows",
             };
-            appSettings_.Shadps4CoreExePath = tbShadps4CoreExe.Text.Trim();
-            appSettings_.Shadps4LauncherExePath = tbShadps4LauncherExe.Text.Trim();
+            appSettings_.Shadps4ExecutablePath = tbShadps4CoreExe.Text.Trim();
             appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
@@ -430,23 +436,11 @@ namespace PS4PKGTool
         {
             using var ofd = new OpenFileDialog
             {
-                Title = "Select the shadPS4 core executable (shadPS4.exe)",
-                Filter = "shadPS4 core (shadPS4.exe)|shadPS4.exe|Executables (*.exe)|*.exe",
+                Title = "Select the shadPS4 executable (shadPS4.exe or shadPS4QtLauncher.exe)",
+                Filter = "shadPS4 executable (shadPS4.exe;shadPS4QtLauncher.exe)|shadPS4.exe;shadPS4QtLauncher.exe|Executables (*.exe)|*.exe",
             };
             if (ofd.ShowDialog() != DialogResult.OK) return;
             tbShadps4CoreExe.Text = ofd.FileName;
-            RefreshShadps4Detection();
-        }
-
-        private void btnBrowseShadps4Launcher_Click(object sender, EventArgs e)
-        {
-            using var ofd = new OpenFileDialog
-            {
-                Title = "Select the shadPS4 Qt launcher executable",
-                Filter = "shadPS4 launcher (*.exe)|*.exe|Executables (*.exe)|*.exe",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK) return;
-            tbShadps4LauncherExe.Text = ofd.FileName;
             RefreshShadps4Detection();
         }
 
@@ -459,20 +453,21 @@ namespace PS4PKGTool
         {
             try
             {
-                var env = Shadps4EnvironmentResolver.Resolve(
-                    tbShadps4CoreExe.Text.Trim(),
-                    tbShadps4LauncherExe.Text.Trim());
+                var env = Shadps4EnvironmentResolver.Resolve(tbShadps4CoreExe.Text.Trim());
 
                 var lines = new List<string>
                 {
                     $"Status: {(env.IsValid ? "Configuration detected successfully" : "shadPS4 not configured or not found")}",
                     $"Mode: {env.UserDirectoryMode}{(env.DetectionConfidence == Shadps4DetectionConfidence.Low ? " (low confidence)" : "")}",
+                    $"Distribution: {env.DistributionType}",
                     $"Core: {Shorten(env.CoreExePath)}",
-                    $"Launcher: {Shorten(env.LauncherExePath)}",
-                    $"User dir: {Shorten(env.UserDirectory)}",
-                    $"Config: {Shorten(env.ConfigPath)}",
-                    $"Libraries: {(env.InstallDirectories.Count == 0 ? "(none configured in shadPS4)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}",
-                    $"Saves: {Shorten(env.SaveDataDirectory)}   Add-ons: {Shorten(env.AddonInstallDirectory)}",
+                    $"Qt launcher: {Shorten(env.LauncherExePath)}",
+                    $"Config: {Shorten(env.ConfigPath)} ({env.ConfigFormat})",
+                    $"Libraries: {(env.InstallDirectories.Count == 0 ? "(none enabled)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}",
+                    $"Addon/DLC: {Shorten(env.AddonInstallDirectory)}",
+                    $"Home: {Shorten(env.HomeDirectory)}",
+                    $"Fonts: {Shorten(env.FontDirectory)}",
+                    $"Sys modules: {Shorten(env.SysModulesDirectory)}",
                 };
                 foreach (var warning in env.Warnings)
                     lines.Add("⚠ " + warning);

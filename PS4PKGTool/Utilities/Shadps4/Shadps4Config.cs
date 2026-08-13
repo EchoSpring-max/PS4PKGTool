@@ -1,7 +1,8 @@
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -13,9 +14,11 @@ namespace PS4PKGTool.Utilities.Shadps4
         public IReadOnlyList<Shadps4InstallDir> InstallDirs { get; init; } = Array.Empty<Shadps4InstallDir>();
         public string? AddonInstallDir { get; init; }
         public string? HomeDir { get; init; }
+        public string? FontDir { get; init; }
+        public string? SysModulesDir { get; init; }
     }
 
-    /// <summary>One configured game library entry (shadPS4 general.install_dirs).</summary>
+    /// <summary>One configured game library entry (shadPS4 General.install_dirs).</summary>
     public sealed record Shadps4InstallDir(string Path, bool Enabled);
 
     /// <summary>
@@ -31,16 +34,62 @@ namespace PS4PKGTool.Utilities.Shadps4
         Shadps4Config? Read(string filePath);
     }
 
+    // ── JSON DTOs (System.Text.Json, explicit mappings, unknown properties ignored) ──
+
+    internal sealed class Shadps4ConfigRoot
+    {
+        [JsonPropertyName("General")]
+        public Shadps4GeneralConfig? General { get; set; }
+    }
+
+    internal sealed class Shadps4GeneralConfig
+    {
+        [JsonPropertyName("install_dirs")]
+        public List<Shadps4InstallDirectory>? InstallDirs { get; set; }
+
+        [JsonPropertyName("addon_install_dir")]
+        public string? AddonInstallDir { get; set; }
+
+        [JsonPropertyName("home_dir")]
+        public string? HomeDir { get; set; }
+
+        [JsonPropertyName("font_dir")]
+        public string? FontDir { get; set; }
+
+        [JsonPropertyName("sys_modules_dir")]
+        public string? SysModulesDir { get; set; }
+    }
+
+    internal sealed class Shadps4InstallDirectory
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; }
+
+        [JsonPropertyName("path")]
+        public string? Path { get; set; }
+    }
+
     /// <summary>
-    /// Current shadPS4 config backend (verified against shadPS4 main,
-    /// src/core/emulator_settings.h): config.json is a nested object with
-    /// flat snake_case keys per group:
-    ///   general.install_dirs    = [{ "path": "...", "enabled": true }, ...]
-    ///   general.addon_install_dir = "..."   (path string)
-    ///   general.home_dir        = "..."     (path string, defaults to &lt;user&gt;\home)
+    /// Current shadPS4 JSON config backend. Verified against the real
+    /// %APPDATA%\shadPS4\config.json on this machine and the shadPS4 source
+    /// (src/core/emulator_settings.h):
+    ///   General.install_dirs      = [{ "enabled": bool, "path": "..." }, ...]
+    ///   General.addon_install_dir = "..."   (empty = not configured)
+    ///   General.home_dir          = "..."   (empty = default &lt;user&gt;\home)
+    ///   General.font_dir          = "..."   (empty = default &lt;user&gt;\fonts)
+    ///   General.sys_modules_dir   = "..."   (empty = default &lt;user&gt;\sys_modules)
+    /// Unknown properties are ignored; missing General/install_dirs are valid
+    /// (empty) states, not parse failures. Section-name casing is matched
+    /// case-insensitively ("General" in launcher-managed configs, "general"
+    /// in core-written ones).
     /// </summary>
     public sealed class Shadps4JsonConfigReader : IShadps4ConfigReader
     {
+        private static readonly JsonSerializerOptions Options = new()
+        {
+            PropertyNameCaseInsensitive = true,
+        };
+
         public bool Handles(string filePath)
             => Path.GetFileName(filePath).Equals("config.json", StringComparison.OrdinalIgnoreCase);
 
@@ -48,36 +97,36 @@ namespace PS4PKGTool.Utilities.Shadps4
         {
             try
             {
-                var root = JObject.Parse(File.ReadAllText(filePath));
-                var general = root["general"] as JObject;
-                if (general == null) return new Shadps4Config();
+                var root = JsonSerializer.Deserialize<Shadps4ConfigRoot>(File.ReadAllText(filePath), Options);
+                if (root?.General == null) return new Shadps4Config();
 
                 var dirs = new List<Shadps4InstallDir>();
-                if (general["install_dirs"] is JArray dirArray)
+                if (root.General.InstallDirs != null)
                 {
-                    foreach (var item in dirArray)
+                    foreach (var item in root.General.InstallDirs)
                     {
-                        if (item is not JObject o) continue;
-                        string? path = o["path"]?.ToString();
-                        if (string.IsNullOrWhiteSpace(path)) continue;
-                        bool enabled = o["enabled"]?.ToObject<bool>() ?? true;
-                        dirs.Add(new Shadps4InstallDir(path, enabled));
+                        if (string.IsNullOrWhiteSpace(item.Path)) continue;
+                        dirs.Add(new Shadps4InstallDir(item.Path.Trim(), item.Enabled));
                     }
                 }
 
-                string? addonDir = general["addon_install_dir"]?.ToString();
-                if (string.IsNullOrWhiteSpace(addonDir)) addonDir = null;
-
-                string? homeDir = general["home_dir"]?.ToString();
-                if (string.IsNullOrWhiteSpace(homeDir)) homeDir = null;
-
-                return new Shadps4Config { InstallDirs = dirs, AddonInstallDir = addonDir, HomeDir = homeDir };
+                return new Shadps4Config
+                {
+                    InstallDirs = dirs,
+                    AddonInstallDir = NormalizeOptional(root.General.AddonInstallDir),
+                    HomeDir = NormalizeOptional(root.General.HomeDir),
+                    FontDir = NormalizeOptional(root.General.FontDir),
+                    SysModulesDir = NormalizeOptional(root.General.SysModulesDir),
+                };
             }
             catch
             {
                 return null; // missing / unreadable / malformed
             }
         }
+
+        private static string? NormalizeOptional(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     /// <summary>
@@ -102,17 +151,19 @@ namespace PS4PKGTool.Utilities.Shadps4
             {
                 var model = Toml.ToModel(File.ReadAllText(filePath));
                 if (model is not TomlTable root) return null;
-                if (root["GUI"] is not TomlTable gui) return new Shadps4Config();
+                // Tomlyn's indexer THROWS on absent keys - use TryGetValue.
+                if (!root.TryGetValue("GUI", out var guiValue) || guiValue is not TomlTable gui)
+                    return new Shadps4Config();
 
                 var dirs = new List<Shadps4InstallDir>();
                 var enabled = new List<bool>();
-                if (gui["installDirs"] is TomlArray dirArray)
+                if (gui.TryGetValue("installDirs", out var dirsValue) && dirsValue is TomlArray dirArray)
                 {
                     foreach (var item in dirArray)
                         if (item is string s && !string.IsNullOrWhiteSpace(s))
-                            dirs.Add(new Shadps4InstallDir(s, true));
+                            dirs.Add(new Shadps4InstallDir(s.Trim(), true));
                 }
-                if (gui["installDirsEnabled"] is TomlArray enabledArray)
+                if (gui.TryGetValue("installDirsEnabled", out var enabledValue) && enabledValue is TomlArray enabledArray)
                 {
                     foreach (var item in enabledArray)
                         enabled.Add(item is bool b && b);
@@ -124,10 +175,12 @@ namespace PS4PKGTool.Utilities.Shadps4
                         dirs[i] = new Shadps4InstallDir(dirs[i].Path, isEnabled);
                 }
 
-                string? addonDir = gui["addonInstallDir"] as string;
+                string? addonDir = gui.TryGetValue("addonInstallDir", out var addonValue) && addonValue is string addonStr
+                    ? addonStr
+                    : null;
                 if (string.IsNullOrWhiteSpace(addonDir)) addonDir = null;
 
-                return new Shadps4Config { InstallDirs = dirs, AddonInstallDir = addonDir, HomeDir = null };
+                return new Shadps4Config { InstallDirs = dirs, AddonInstallDir = addonDir?.Trim(), HomeDir = null };
             }
             catch
             {

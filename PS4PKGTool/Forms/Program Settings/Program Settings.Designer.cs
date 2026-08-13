@@ -71,9 +71,6 @@ namespace PS4PKGTool
             darkLabelShadps4Core = new DarkUI.Controls.DarkLabel();
             tbShadps4CoreExe = new DarkUI.Controls.DarkTextBox();
             btnBrowseShadps4Core = new DarkUI.Controls.DarkButton();
-            darkLabelShadps4Launcher = new DarkUI.Controls.DarkLabel();
-            tbShadps4LauncherExe = new DarkUI.Controls.DarkTextBox();
-            btnBrowseShadps4Launcher = new DarkUI.Controls.DarkButton();
             darkLabelShadps4Detect = new DarkUI.Controls.DarkLabel();
             tabTrophies = new System.Windows.Forms.TabPage();
             grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
@@ -759,9 +756,6 @@ namespace PS4PKGTool
             grpShadps4.Controls.Add(darkLabelShadps4Core);
             grpShadps4.Controls.Add(tbShadps4CoreExe);
             grpShadps4.Controls.Add(btnBrowseShadps4Core);
-            grpShadps4.Controls.Add(darkLabelShadps4Launcher);
-            grpShadps4.Controls.Add(tbShadps4LauncherExe);
-            grpShadps4.Controls.Add(btnBrowseShadps4Launcher);
             grpShadps4.Controls.Add(darkLabelShadps4Detect);
             grpShadps4.Location = new System.Drawing.Point(12, 406);
             grpShadps4.Name = "grpShadps4";
@@ -835,17 +829,17 @@ namespace PS4PKGTool
             darkLabelShadps4Core.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabelShadps4Core.Location = new System.Drawing.Point(15, 88);
             darkLabelShadps4Core.Name = "darkLabelShadps4Core";
-            darkLabelShadps4Core.Size = new System.Drawing.Size(40, 15);
+            darkLabelShadps4Core.Size = new System.Drawing.Size(130, 15);
             darkLabelShadps4Core.TabIndex = 6;
-            darkLabelShadps4Core.Text = "Core:";
+            darkLabelShadps4Core.Text = "Selected executable:";
             //
             // tbShadps4CoreExe
             //
             tbShadps4CoreExe.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbShadps4CoreExe.Location = new System.Drawing.Point(60, 84);
+            tbShadps4CoreExe.Location = new System.Drawing.Point(145, 84);
             tbShadps4CoreExe.Name = "tbShadps4CoreExe";
             tbShadps4CoreExe.ReadOnly = true;
-            tbShadps4CoreExe.Size = new System.Drawing.Size(430, 23);
+            tbShadps4CoreExe.Size = new System.Drawing.Size(345, 23);
             tbShadps4CoreExe.TabIndex = 7;
             //
             // btnBrowseShadps4Core
@@ -857,35 +851,6 @@ namespace PS4PKGTool
             btnBrowseShadps4Core.TabIndex = 8;
             btnBrowseShadps4Core.Text = "Browse...";
             btnBrowseShadps4Core.Click += btnBrowseShadps4Core_Click;
-            //
-            // darkLabelShadps4Launcher
-            //
-            darkLabelShadps4Launcher.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelShadps4Launcher.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelShadps4Launcher.Location = new System.Drawing.Point(15, 115);
-            darkLabelShadps4Launcher.Name = "darkLabelShadps4Launcher";
-            darkLabelShadps4Launcher.Size = new System.Drawing.Size(60, 15);
-            darkLabelShadps4Launcher.TabIndex = 9;
-            darkLabelShadps4Launcher.Text = "Launcher:";
-            //
-            // tbShadps4LauncherExe
-            //
-            tbShadps4LauncherExe.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbShadps4LauncherExe.Location = new System.Drawing.Point(125, 111);
-            tbShadps4LauncherExe.Name = "tbShadps4LauncherExe";
-            tbShadps4LauncherExe.ReadOnly = true;
-            tbShadps4LauncherExe.Size = new System.Drawing.Size(365, 23);
-            tbShadps4LauncherExe.TabIndex = 10;
-            //
-            // btnBrowseShadps4Launcher
-            //
-            btnBrowseShadps4Launcher.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBrowseShadps4Launcher.Location = new System.Drawing.Point(495, 109);
-            btnBrowseShadps4Launcher.Name = "btnBrowseShadps4Launcher";
-            btnBrowseShadps4Launcher.Size = new System.Drawing.Size(95, 26);
-            btnBrowseShadps4Launcher.TabIndex = 11;
-            btnBrowseShadps4Launcher.Text = "Browse...";
-            btnBrowseShadps4Launcher.Click += btnBrowseShadps4Launcher_Click;
             //
             // darkLabelShadps4Detect
             //
@@ -1433,9 +1398,6 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel darkLabelShadps4Core;
         private DarkUI.Controls.DarkTextBox tbShadps4CoreExe;
         private DarkUI.Controls.DarkButton btnBrowseShadps4Core;
-        private DarkUI.Controls.DarkLabel darkLabelShadps4Launcher;
-        private DarkUI.Controls.DarkTextBox tbShadps4LauncherExe;
-        private DarkUI.Controls.DarkButton btnBrowseShadps4Launcher;
         private DarkUI.Controls.DarkLabel darkLabelShadps4Detect;
         private DarkUI.Controls.DarkButton btnDownloadShadps4Json;
         private DarkUI.Controls.DarkLabel darkLabelShadps4, labelShadps4JsonDate;

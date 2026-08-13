@@ -3395,7 +3395,7 @@ namespace PS4PKGTool
         #region Shadps4Integration
 
         private Shadps4Environment GetShadps4Environment()
-            => Shadps4EnvironmentResolver.Resolve(appSettings_.Shadps4CoreExePath, appSettings_.Shadps4LauncherExePath);
+            => Shadps4EnvironmentResolver.Resolve(appSettings_.Shadps4ExecutablePath);
 
         private DataRow? GetSelectedGridRow()
         {

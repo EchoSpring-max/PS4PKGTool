@@ -57,8 +57,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"theme_index={settings.ThemeIndex}");
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
                     writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
-                    writer.WriteLine($"shadps4_core_exe={settings.Shadps4CoreExePath}");
-                    writer.WriteLine($"shadps4_launcher_exe={settings.Shadps4LauncherExePath}");
+                    writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
 
                 }
             }
@@ -259,6 +258,10 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 string os = line.Substring("shadps4_os=".Length).Trim().ToLowerInvariant();
                                 appSettings_.Shadps4Os = os is "linux" or "macos" ? os : "windows";
+                            }
+                            else if (line.StartsWith("shadps4_executable="))
+                            {
+                                appSettings_.Shadps4ExecutablePath = line.Substring("shadps4_executable=".Length).Trim();
                             }
                             else if (line.StartsWith("shadps4_core_exe="))
                             {

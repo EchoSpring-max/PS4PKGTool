@@ -115,7 +115,7 @@ public class Shadps4IntegrationTests
         File.WriteAllText(exe, "fake");
         WriteValidConfig(Path.Combine(exeDir, "user"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(Shadps4UserDirectoryMode.Portable, env.UserDirectoryMode);
         Assert.AreEqual(Shadps4DetectionConfidence.High, env.DetectionConfidence);
@@ -131,7 +131,7 @@ public class Shadps4IntegrationTests
         string userDir = Path.Combine(appData, "shadPS4");
         WriteValidConfig(userDir);
 
-        var env = Shadps4EnvironmentResolver.Resolve(null, null, appData);
+        var env = Shadps4EnvironmentResolver.Resolve(null, appData);
 
         Assert.AreEqual(Shadps4UserDirectoryMode.AppData, env.UserDirectoryMode);
         Assert.AreEqual(Shadps4DetectionConfidence.Low, env.DetectionConfidence);
@@ -151,7 +151,7 @@ public class Shadps4IntegrationTests
         string appData = Path.Combine(_tempRoot, "appdata");
         WriteValidConfig(Path.Combine(appData, "shadPS4"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, appData);
+        var env = Shadps4EnvironmentResolver.Resolve(exe, appData);
 
         Assert.AreEqual(Shadps4UserDirectoryMode.Ambiguous, env.UserDirectoryMode);
         Assert.AreEqual(2, env.CandidateConfigPaths.Count);
@@ -168,7 +168,7 @@ public class Shadps4IntegrationTests
         // user folder exists but has NO config (the emulator auto-creates it)
         Directory.CreateDirectory(Path.Combine(exeDir, "user"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(Shadps4UserDirectoryMode.Custom, env.UserDirectoryMode);
         Assert.AreEqual(Shadps4DetectionConfidence.Low, env.DetectionConfidence);
@@ -177,7 +177,7 @@ public class Shadps4IntegrationTests
     [TestMethod]
     public void Detect_NothingConfigured_IsUnknown()
     {
-        var env = Shadps4EnvironmentResolver.Resolve(null, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(null, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(Shadps4UserDirectoryMode.Unknown, env.UserDirectoryMode);
         Assert.AreEqual(Shadps4DetectionConfidence.None, env.DetectionConfidence);
@@ -196,7 +196,7 @@ public class Shadps4IntegrationTests
         string appData = Path.Combine(_tempRoot, "appdata");
         WriteValidConfig(Path.Combine(appData, "shadPS4"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, appData);
+        var env = Shadps4EnvironmentResolver.Resolve(exe, appData);
 
         Assert.AreEqual(Shadps4UserDirectoryMode.AppData, env.UserDirectoryMode, "the valid AppData config must win");
         Assert.IsTrue(env.Warnings.Any(w => w.Contains("stale portable")), "stale folder must be reported");
@@ -208,7 +208,7 @@ public class Shadps4IntegrationTests
         string appData = Path.Combine(_tempRoot, "appdata");
         WriteValidConfig(Path.Combine(appData, "shadPS4"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(Path.Combine(_tempRoot, "missing", "shadPS4.exe"), null, appData);
+        var env = Shadps4EnvironmentResolver.Resolve(Path.Combine(_tempRoot, "missing", "shadPS4.exe"), appData);
 
         Assert.AreEqual(Shadps4UserDirectoryMode.AppData, env.UserDirectoryMode);
         Assert.IsTrue(env.Warnings.Any(w => w.Contains("does not exist")), "missing exe must be reported");
@@ -226,7 +226,7 @@ public class Shadps4IntegrationTests
         File.WriteAllText(launcher, "fake launcher");
         WriteValidConfig(Path.Combine(exeDir, "user"));
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(launcher, env.LauncherExePath, "verified launcher filename beside the core is detected");
     }
@@ -255,7 +255,7 @@ public class Shadps4IntegrationTests
         };
         File.WriteAllText(Path.Combine(userDir, "config.json"), root.ToString());
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(2, env.InstallDirectories.Count);
         CollectionAssert.Contains(env.InstallDirectories.ToArray(), lib1);
@@ -273,10 +273,10 @@ public class Shadps4IntegrationTests
         Directory.CreateDirectory(userDir);
         File.WriteAllText(Path.Combine(userDir, "config.json"), """{"general":{"install_dirs":[]}}""");
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(0, env.InstallDirectories.Count);
-        Assert.IsTrue(env.Warnings.Any(w => w.Contains("no game libraries")), "empty library list must be reported");
+        Assert.IsTrue(env.Warnings.Any(w => w.Contains("no enabled game libraries")), "empty library list must be reported");
     }
 
     [TestMethod]
@@ -299,7 +299,7 @@ public class Shadps4IntegrationTests
         };
         File.WriteAllText(Path.Combine(userDir, "config.json"), root.ToString());
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(1, env.InstallDirectories.Count, "configured paths are reported even when missing");
         Assert.AreEqual(missing, env.InstallDirectories[0]);
@@ -327,7 +327,7 @@ public class Shadps4IntegrationTests
         };
         File.WriteAllText(Path.Combine(userDir, "config.json"), root.ToString());
 
-        var env = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var env = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
 
         Assert.AreEqual(Shadps4UserDirectoryMode.Portable, env.UserDirectoryMode);
         Assert.AreEqual(lib, env.InstallDirectories[0]);
@@ -355,7 +355,7 @@ public class Shadps4IntegrationTests
         };
         File.WriteAllText(json, root.ToString());
 
-        var first = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var first = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
         Assert.AreEqual(lib1, first.InstallDirectories[0]);
 
         // The resolver keeps no persistent cache - a config change is picked up
@@ -366,7 +366,7 @@ public class Shadps4IntegrationTests
             new Newtonsoft.Json.Linq.JObject { ["path"] = lib2, ["enabled"] = true });
         File.WriteAllText(json, root.ToString());
 
-        var second = Shadps4EnvironmentResolver.Resolve(exe, null, Path.Combine(_tempRoot, "appdata"));
+        var second = Shadps4EnvironmentResolver.Resolve(exe, Path.Combine(_tempRoot, "appdata"));
         Assert.AreEqual(lib2, second.InstallDirectories[0], "a config change must be reflected on the next resolve");
     }
 
@@ -376,14 +376,257 @@ public class Shadps4IntegrationTests
         string exe = Path.Combine(_tempRoot, "shadPS4.exe");
         File.WriteAllText(exe, "fake");
 
-        var missing = Shadps4EnvironmentResolver.ValidateCoreExePath(Path.Combine(_tempRoot, "gone.exe"));
+        var missing = Shadps4EnvironmentResolver.ValidateSelectedExecutablePath(Path.Combine(_tempRoot, "gone.exe"));
         Assert.IsFalse(missing.IsValid);
 
-        var notExe = Shadps4EnvironmentResolver.ValidateCoreExePath(Path.Combine(_tempRoot, "shadPS4.bin"));
+        var notExe = Shadps4EnvironmentResolver.ValidateSelectedExecutablePath(Path.Combine(_tempRoot, "shadPS4.bin"));
         Assert.IsFalse(notExe.IsValid);
 
-        var ok = Shadps4EnvironmentResolver.ValidateCoreExePath(exe);
+        var ok = Shadps4EnvironmentResolver.ValidateSelectedExecutablePath(exe);
         Assert.IsTrue(ok.IsValid, "custom/nightly builds are accepted without metadata checks");
+    }
+
+    // ── distribution / executable model ──
+
+    private string MakeExe(string dir, string name)
+    {
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, name);
+        File.WriteAllText(path, "fake");
+        return path;
+    }
+
+    [TestMethod]
+    public void Distribution_SelectingCore_DetectsBoth()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        string launcher = MakeExe(dir, Shadps4EnvironmentResolver.QtLauncherFileName);
+        WriteValidConfig(Path.Combine(dir, "user"));
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(core, env.SelectedExecutablePath);
+        Assert.AreEqual(core, env.CoreExePath);
+        Assert.AreEqual(launcher, env.LauncherExePath);
+        Assert.AreEqual(Shadps4DistributionType.CoreAndQtLauncher, env.DistributionType);
+    }
+
+    [TestMethod]
+    public void Distribution_SelectingLauncher_DetectsBoth()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        string launcher = MakeExe(dir, Shadps4EnvironmentResolver.QtLauncherFileName);
+        WriteValidConfig(Path.Combine(dir, "user"));
+
+        var env = Shadps4EnvironmentResolver.Resolve(launcher, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(launcher, env.SelectedExecutablePath);
+        Assert.AreEqual(launcher, env.LauncherExePath);
+        Assert.AreEqual(core, env.CoreExePath);
+        Assert.AreEqual(Shadps4DistributionType.CoreAndQtLauncher, env.DistributionType);
+        Assert.IsTrue(env.IsUsable, "core detected beside the launcher enables launch features");
+    }
+
+    [TestMethod]
+    public void Distribution_CoreOnly()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        WriteValidConfig(Path.Combine(dir, "user"));
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(Shadps4DistributionType.CoreOnly, env.DistributionType);
+        Assert.IsNull(env.LauncherExePath, "missing counterpart is not an error");
+        Assert.IsTrue(env.IsUsable);
+    }
+
+    [TestMethod]
+    public void Distribution_LauncherOnly()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string launcher = MakeExe(dir, Shadps4EnvironmentResolver.QtLauncherFileName);
+        WriteValidConfig(Path.Combine(dir, "user"));
+
+        var env = Shadps4EnvironmentResolver.Resolve(launcher, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(Shadps4DistributionType.QtLauncherOnly, env.DistributionType);
+        Assert.IsNull(env.CoreExePath, "missing core is not an error");
+        Assert.IsTrue(env.IsValid, "config still resolves");
+        Assert.IsFalse(env.IsUsable, "launch needs the core, which this distribution lacks");
+    }
+
+    // ── config edge cases (JSON DTO robustness) ──
+
+    [TestMethod]
+    public void JsonConfig_UnknownProperties_AreIgnored()
+    {
+        string userDir = Path.Combine(_tempRoot, "user");
+        Directory.CreateDirectory(userDir);
+        string lib = Path.Combine(_tempRoot, "lib");
+        Directory.CreateDirectory(lib);
+        var root = new Newtonsoft.Json.Linq.JObject
+        {
+            ["General"] = new Newtonsoft.Json.Linq.JObject
+            {
+                ["install_dirs"] = new Newtonsoft.Json.Linq.JArray(
+                    new Newtonsoft.Json.Linq.JObject { ["path"] = lib, ["enabled"] = true }),
+                ["some_future_key"] = 123,
+                ["nested"] = new Newtonsoft.Json.Linq.JObject { ["x"] = 1 },
+            },
+            ["TopLevelUnknown"] = new Newtonsoft.Json.Linq.JObject { ["a"] = "b" },
+        };
+        File.WriteAllText(Path.Combine(userDir, "config.json"), root.ToString());
+
+        var config = new Shadps4JsonConfigReader().Read(Path.Combine(userDir, "config.json"));
+
+        Assert.IsNotNull(config);
+        Assert.AreEqual(1, config!.InstallDirs.Count);
+        Assert.AreEqual(lib, config.InstallDirs[0].Path);
+    }
+
+    [TestMethod]
+    public void JsonConfig_MissingGeneralAndInstallDirs_AreValidEmptyStates()
+    {
+        string userDir = Path.Combine(_tempRoot, "user");
+        Directory.CreateDirectory(userDir);
+        File.WriteAllText(Path.Combine(userDir, "config.json"), "{}");
+
+        var config = new Shadps4JsonConfigReader().Read(Path.Combine(userDir, "config.json"));
+        Assert.IsNotNull(config, "missing General is not a parse failure");
+        Assert.AreEqual(0, config!.InstallDirs.Count);
+        Assert.IsNull(config.AddonInstallDir);
+    }
+
+    [TestMethod]
+    public void JsonConfig_CapitalGeneralKey_ParsesLikeTheRealConfig()
+    {
+        // Mirrors the verified on-disk layout: "General" with a capital G,
+        // forward-slash paths, empty optional dirs.
+        string userDir = Path.Combine(_tempRoot, "user");
+        Directory.CreateDirectory(userDir);
+        string json = """{"General":{"install_dirs":[{"enabled":true,"path":"Z:/PKG/GAME"}],"addon_install_dir":"","home_dir":"","font_dir":"","sys_modules_dir":""}}""";
+        File.WriteAllText(Path.Combine(userDir, "config.json"), json);
+
+        var config = new Shadps4JsonConfigReader().Read(Path.Combine(userDir, "config.json"));
+
+        Assert.IsNotNull(config);
+        Assert.AreEqual(1, config!.InstallDirs.Count);
+        Assert.AreEqual("Z:/PKG/GAME", config.InstallDirs[0].Path);
+        Assert.IsNull(config.AddonInstallDir, "empty optional values mean 'not configured'");
+    }
+
+    [TestMethod]
+    public void Detect_EmptyOptionalPaths_UseVerifiedDefaults()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        string userDir = Path.Combine(dir, "user");
+        Directory.CreateDirectory(userDir);
+        File.WriteAllText(Path.Combine(userDir, "config.json"),
+            """{"General":{"install_dirs":[],"addon_install_dir":"","home_dir":"","font_dir":"","sys_modules_dir":""}}""");
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(Path.Combine(userDir, "home"), env.HomeDirectory);
+        Assert.AreEqual(Path.Combine(userDir, "fonts"), env.FontDirectory);
+        Assert.AreEqual(Path.Combine(userDir, "sys_modules"), env.SysModulesDirectory);
+        Assert.AreEqual(Path.Combine(userDir, "addcont"), env.AddonInstallDirectory);
+    }
+
+    [TestMethod]
+    public void Detect_DisabledLibrary_IsIgnored()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        string userDir = Path.Combine(dir, "user");
+        Directory.CreateDirectory(userDir);
+        string enabled = Path.Combine(_tempRoot, "enabled lib");
+        string disabled = Path.Combine(_tempRoot, "disabled lib");
+        Directory.CreateDirectory(enabled);
+        Directory.CreateDirectory(disabled);
+        var root = new Newtonsoft.Json.Linq.JObject
+        {
+            ["General"] = new Newtonsoft.Json.Linq.JObject
+            {
+                ["install_dirs"] = new Newtonsoft.Json.Linq.JArray(
+                    new Newtonsoft.Json.Linq.JObject { ["path"] = enabled, ["enabled"] = true },
+                    new Newtonsoft.Json.Linq.JObject { ["path"] = disabled, ["enabled"] = false }),
+            },
+        };
+        File.WriteAllText(Path.Combine(userDir, "config.json"), root.ToString());
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(1, env.InstallDirectories.Count);
+        Assert.AreEqual(enabled, env.InstallDirectories[0]);
+    }
+
+    [TestMethod]
+    public void Detect_ForwardSlashAndUnavailableDrivePaths_AreNormalizedAndWarned()
+    {
+        string dir = Path.Combine(_tempRoot, "dist");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        string userDir = Path.Combine(dir, "user");
+        Directory.CreateDirectory(userDir);
+        File.WriteAllText(Path.Combine(userDir, "config.json"),
+            """{"General":{"install_dirs":[{"enabled":true,"path":"Z:/PKG/GAME"},{"enabled":true,"path":"\\\\server\\share\\ps4 games"}]}}""");
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(2, env.InstallDirectories.Count);
+        Assert.AreEqual("Z:\\PKG\\GAME", env.InstallDirectories[0], "forward slashes normalize to backslashes");
+        Assert.AreEqual(@"\\server\share\ps4 games", env.InstallDirectories[1], "UNC paths are preserved");
+        Assert.IsTrue(env.Warnings.Any(w => w.Contains("Z:\\PKG\\GAME")), "unavailable drives are warned, not rejected");
+    }
+
+    [TestMethod]
+    public void Detect_ExeDirectory_IsNotAssumedToBeALibrary()
+    {
+        string dir = Path.Combine(_tempRoot, "dist with game folders");
+        string core = MakeExe(dir, Shadps4EnvironmentResolver.CoreExeFileName);
+        Directory.CreateDirectory(Path.Combine(dir, "CUSA00001")); // a game beside the exe
+        string userDir = Path.Combine(dir, "user");
+        Directory.CreateDirectory(userDir);
+        File.WriteAllText(Path.Combine(userDir, "config.json"), """{"General":{}}""");
+
+        var env = Shadps4EnvironmentResolver.Resolve(core, Path.Combine(_tempRoot, "appdata"));
+
+        Assert.AreEqual(0, env.InstallDirectories.Count,
+            "game libraries come ONLY from General.install_dirs, never from the executable folder");
+    }
+
+    [TestMethod]
+    public void Detect_LegacyTomlFallback_WhenNoJson()
+    {
+        string appData = Path.Combine(_tempRoot, "appdata");
+        string userDir = Path.Combine(appData, "shadPS4");
+        Directory.CreateDirectory(userDir);
+        string lib = Path.Combine(_tempRoot, "legacy lib");
+        Directory.CreateDirectory(lib);
+        File.WriteAllText(Path.Combine(userDir, "config.toml"),
+            $"[GUI]\ninstallDirs = [\"{lib.Replace("\\", "\\\\")}\"]\ninstallDirsEnabled = [true]\n");
+
+        var env = Shadps4EnvironmentResolver.Resolve(null, appData);
+
+        Assert.AreEqual(Shadps4UserDirectoryMode.AppData, env.UserDirectoryMode);
+        Assert.AreEqual(Shadps4ConfigFormat.LegacyToml, env.ConfigFormat);
+        Assert.AreEqual(1, env.InstallDirectories.Count);
+        Assert.AreEqual(lib, env.InstallDirectories[0]);
+    }
+
+    [TestMethod]
+    public void ProductionResolver_ContainsNoMachineSpecificPaths()
+    {
+        // base = <repo>\PS4PKGTool.Tests\bin\Debug\net10.0-windows -> 4 ups = repo root
+        string source = File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+                "PS4PKGTool", "Utilities", "Shadps4", "Shadps4EnvironmentResolver.cs"));
+        Assert.IsFalse(source.Contains(@"C:\Users"), "no hardcoded user profiles");
+        Assert.IsFalse(source.Contains("Z:"), "no hardcoded drive letters");
+        Assert.IsFalse(source.Contains("Desktop"), "no hardcoded Desktop folders");
     }
 
     // ── launcher ──

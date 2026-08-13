@@ -1,5 +1,6 @@
 using PS4PKGTool.Assets.Containers;
 using PS4PKGTool.Assets.IO;
+using PS4PKGTool.Assets.Unreal;
 
 namespace PS4PKGTool.Assets.Tests;
 
@@ -57,6 +58,44 @@ public class Phase4bPackageTests
             q += 4 + len + 4;
         }
         Console.WriteLine($"end pos={q}");
+    }
+
+    [TestMethod]
+    public void ProbeMipBulkLocations()
+    {
+        const string beePak = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\bee\bebee-ps4.pak";
+        if (!File.Exists(beePak) || !File.Exists(UexpPath)) { Assert.Inconclusive("Samples not present."); return; }
+        var pak = new FileAssetSource(beePak, "PKG entry");
+        var backend = new UnrealPakBackend();
+        var uexpEntry = backend.ListEntries(pak).First(e => e.Path.EndsWith("T_Default_Material_Grid_M.uexp"));
+        Console.WriteLine($"uexp entry: off={uexpEntry.Offset} size={uexpEntry.Size}");
+
+        // Mip bulk offsets from the uexp (absolute pak, entry-relative, end-relative?).
+        foreach (long off in new long[] { 250035, 315571, -11597 })
+        {
+            foreach (string baseName in new[] { "absolute", "entry+off", "entryEnd+off" })
+            {
+                long pos = baseName switch
+                {
+                    "absolute" => off,
+                    "entry+off" => uexpEntry.Offset + off,
+                    _ => uexpEntry.Offset + uexpEntry.Size + off,
+                };
+                if (pos < 0 || pos + 8 >= pak.Length) continue;
+                using var s = pak.OpenRead(pos, 8);
+                var head = new byte[8];
+                s.ReadExactly(head);
+                Console.WriteLine($"  {baseName} {off}: {BitConverter.ToString(head)}");
+            }
+        }
+
+        // Entries near the .uexp (the mip data may be a neighbouring entry).
+        var near = backend.ListEntries(pak)
+            .Where(e => e.Offset > uexpEntry.Offset - 2_000_000 && e.Offset < uexpEntry.Offset + 2_000_000)
+            .OrderBy(e => e.Offset).Take(20).ToList();
+        Console.WriteLine("entries near uexp:");
+        foreach (var e in near)
+            Console.WriteLine($"  {e.Offset}: {e.Path} raw={e.UncompressedSize}");
     }
 
     [TestMethod]

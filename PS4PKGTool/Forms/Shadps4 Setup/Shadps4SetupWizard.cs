@@ -258,6 +258,17 @@ namespace PS4PKGTool
                 {
                     _settings.Shadps4ActiveLauncher = Shadps4ActiveCore.ForManaged(_installedLauncher.BuildId);
                 }
+                // First-run default install target: a fresh shadPS4 has no
+                // config.json yet (created on its first launch), so nothing
+                // can auto-fill the install directory. Give the tool its own
+                // default under the managed root - shadPS4's config is never
+                // written; the user can add this folder in QtLauncher later.
+                if (_installedCore != null && string.IsNullOrWhiteSpace(_settings.Shadps4InstallDirectory))
+                {
+                    string defaultInstallDir = Path.Combine(_settings.Shadps4ManagedRoot, "Data");
+                    try { Directory.CreateDirectory(defaultInstallDir); } catch { }
+                    _settings.Shadps4InstallDirectory = defaultInstallDir;
+                }
                 SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
 
                 pbInstall.Visible = false;
@@ -298,6 +309,10 @@ namespace PS4PKGTool
                 ? "Not configured - set up game folders in QtLauncher"
                 : string.Join(" | ", env.InstallDirectories);
 
+            string installTarget = string.IsNullOrWhiteSpace(_settings.Shadps4InstallDirectory)
+                ? "(not set)"
+                : _settings.Shadps4InstallDirectory;
+
             string compatibility = "Unknown";
             string compNote = "The upstream project does not publish a compatibility mapping between core and launcher builds.";
 
@@ -308,7 +323,8 @@ namespace PS4PKGTool
                 $"QtLauncher:\n{(_installedLauncher?.ExecutablePath ?? "Not installed")}\n" +
                 $"Build: {(_installedLauncher?.BuildId ?? "-")}\n\n" +
                 $"Configuration: {configState}\n" +
-                $"Game libraries: {libs}\n\n" +
+                $"Game libraries: {libs}\n" +
+                $"PS4 PKG Tool install target: {installTarget}\n\n" +
                 $"Direct Play: {(_installedCore != null ? "Ready" : "Not ready - a core is required")}\n" +
                 $"Core/Launcher compatibility: {compatibility} ({compNote})\n\n" +
                 "Emulator settings, cheats and patches: configure using QtLauncher.";

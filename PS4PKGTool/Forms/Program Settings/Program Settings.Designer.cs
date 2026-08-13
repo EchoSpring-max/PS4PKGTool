@@ -29,6 +29,7 @@ namespace PS4PKGTool
             cmbTheme = new DarkUI.Controls.DarkComboBox();
             btnOpenAppData = new DarkUI.Controls.DarkButton();
             tabAppearance = new System.Windows.Forms.TabPage();
+            tabColumns = new System.Windows.Forms.TabPage();
             grpColumns = new DarkUI.Controls.DarkSectionPanel();
             PKGname = new DarkUI.Controls.DarkCheckBox();
             TitleId = new DarkUI.Controls.DarkCheckBox();
@@ -56,11 +57,13 @@ namespace PS4PKGTool
             btnAppPkgForeColor = new DarkUI.Controls.DarkButton();
             btnAppPkgBackColor = new DarkUI.Controls.DarkButton();
             btnResetPkgLabelColor = new DarkUI.Controls.DarkButton();
+            tabLibrary = new System.Windows.Forms.TabPage();
             grpPS5BC = new DarkUI.Controls.DarkSectionPanel();
             cbPs5BcCheck = new DarkUI.Controls.DarkCheckBox();
             btnDownloadPS5BCJson = new DarkUI.Controls.DarkButton();
             darkLabel9 = new DarkUI.Controls.DarkLabel();
             labelPs5BcJsonDownloadDate = new DarkUI.Controls.DarkLabel();
+            tabShadps4 = new System.Windows.Forms.TabPage();
             grpShadps4 = new DarkUI.Controls.DarkSectionPanel();
             cbShadps4Check = new DarkUI.Controls.DarkCheckBox();
             btnDownloadShadps4Json = new DarkUI.Controls.DarkButton();
@@ -141,16 +144,19 @@ namespace PS4PKGTool
             settingsTab.AllowDrop = true;
             settingsTab.Controls.Add(tabGeneral);
             settingsTab.Controls.Add(tabAppearance);
-            settingsTab.Controls.Add(tabTrophies);
-            settingsTab.Controls.Add(tabRename);
+            settingsTab.Controls.Add(tabColumns);
+            settingsTab.Controls.Add(tabLibrary);
+            settingsTab.Controls.Add(tabShadps4);
             settingsTab.Controls.Add(tabRPI);
+            settingsTab.Controls.Add(tabRename);
+            settingsTab.Controls.Add(tabTrophies);
             settingsTab.Font = new System.Drawing.Font("Segoe UI", 9F);
             settingsTab.ItemSize = new System.Drawing.Size(150, 28);
             settingsTab.Location = new System.Drawing.Point(12, 11);
             settingsTab.Name = "settingsTab";
             settingsTab.Padding = new System.Drawing.Point(0, 0);
             settingsTab.SelectedIndex = 0;
-            settingsTab.Size = new System.Drawing.Size(640, 756);
+            settingsTab.Size = new System.Drawing.Size(640, 552);
             settingsTab.TabIndex = 0;
             // 
             // tabGeneral
@@ -161,7 +167,7 @@ namespace PS4PKGTool
             tabGeneral.Controls.Add(grpStartup);
             tabGeneral.Location = new System.Drawing.Point(4, 32);
             tabGeneral.Name = "tabGeneral";
-            tabGeneral.Size = new System.Drawing.Size(632, 452);
+            tabGeneral.Size = new System.Drawing.Size(632, 516);
             tabGeneral.TabIndex = 0;
             tabGeneral.Text = "General";
             // 
@@ -361,20 +367,27 @@ namespace PS4PKGTool
             btnOpenAppData.Click += btnOpenAppData_Click;
             // 
             // tabAppearance
-            // 
+            //
             tabAppearance.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabAppearance.Controls.Add(grpColumns);
             tabAppearance.Controls.Add(grpColors);
-            tabAppearance.Controls.Add(grpPS5BC);
-            tabAppearance.Controls.Add(grpShadps4);
             tabAppearance.Location = new System.Drawing.Point(4, 32);
             tabAppearance.Name = "tabAppearance";
-            tabAppearance.Size = new System.Drawing.Size(632, 720);
+            tabAppearance.Size = new System.Drawing.Size(632, 516);
             tabAppearance.TabIndex = 1;
             tabAppearance.Text = "Appearance";
-            // 
+            //
+            // tabColumns
+            //
+            tabColumns.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabColumns.Controls.Add(grpColumns);
+            tabColumns.Location = new System.Drawing.Point(4, 32);
+            tabColumns.Name = "tabColumns";
+            tabColumns.Size = new System.Drawing.Size(632, 516);
+            tabColumns.TabIndex = 2;
+            tabColumns.Text = "Columns";
+            //
             // grpColumns
-            // 
+            //
             grpColumns.Controls.Add(PKGname);
             grpColumns.Controls.Add(TitleId);
             grpColumns.Controls.Add(ContentId);
@@ -541,7 +554,7 @@ namespace PS4PKGTool
             grpColors.Controls.Add(btnAppPkgForeColor);
             grpColors.Controls.Add(btnAppPkgBackColor);
             grpColors.Controls.Add(btnResetPkgLabelColor);
-            grpColors.Location = new System.Drawing.Point(12, 132);
+            grpColors.Location = new System.Drawing.Point(12, 16);
             grpColors.Name = "grpColors";
             grpColors.SectionHeader = "PKG Color Labeling";
             grpColors.Size = new System.Drawing.Size(605, 169);
@@ -692,13 +705,23 @@ namespace PS4PKGTool
             btnResetPkgLabelColor.Text = "Reset all";
             btnResetPkgLabelColor.Click += SetPKGLabelColor_Click;
             // 
+            // tabLibrary
+            //
+            tabLibrary.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabLibrary.Controls.Add(grpPS5BC);
+            tabLibrary.Location = new System.Drawing.Point(4, 32);
+            tabLibrary.Name = "tabLibrary";
+            tabLibrary.Size = new System.Drawing.Size(632, 516);
+            tabLibrary.TabIndex = 3;
+            tabLibrary.Text = "Library";
+            //
             // grpPS5BC
-            // 
+            //
             grpPS5BC.Controls.Add(cbPs5BcCheck);
             grpPS5BC.Controls.Add(btnDownloadPS5BCJson);
             grpPS5BC.Controls.Add(darkLabel9);
             grpPS5BC.Controls.Add(labelPs5BcJsonDownloadDate);
-            grpPS5BC.Location = new System.Drawing.Point(12, 307);
+            grpPS5BC.Location = new System.Drawing.Point(12, 16);
             grpPS5BC.Name = "grpPS5BC";
             grpPS5BC.SectionHeader = "PS5 Backward Compatibility";
             grpPS5BC.Size = new System.Drawing.Size(605, 93);
@@ -745,8 +768,18 @@ namespace PS4PKGTool
             labelPs5BcJsonDownloadDate.TabIndex = 3;
             labelPs5BcJsonDownloadDate.Text = "..";
             // 
+            // tabShadps4
+            //
+            tabShadps4.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabShadps4.Controls.Add(grpShadps4);
+            tabShadps4.Location = new System.Drawing.Point(4, 32);
+            tabShadps4.Name = "tabShadps4";
+            tabShadps4.Size = new System.Drawing.Size(632, 516);
+            tabShadps4.TabIndex = 4;
+            tabShadps4.Text = "shadPS4";
+            //
             // grpShadps4
-            // 
+            //
             grpShadps4.Controls.Add(cbShadps4Check);
             grpShadps4.Controls.Add(btnDownloadShadps4Json);
             grpShadps4.Controls.Add(darkLabelShadps4);
@@ -757,10 +790,10 @@ namespace PS4PKGTool
             grpShadps4.Controls.Add(tbShadps4CoreExe);
             grpShadps4.Controls.Add(btnBrowseShadps4Core);
             grpShadps4.Controls.Add(darkLabelShadps4Detect);
-            grpShadps4.Location = new System.Drawing.Point(12, 406);
+            grpShadps4.Location = new System.Drawing.Point(12, 12);
             grpShadps4.Name = "grpShadps4";
             grpShadps4.SectionHeader = "shadPS4 Compatibility";
-            grpShadps4.Size = new System.Drawing.Size(605, 300);
+            grpShadps4.Size = new System.Drawing.Size(605, 494);
             grpShadps4.TabIndex = 3;
             // 
             // cbShadps4Check
@@ -858,7 +891,7 @@ namespace PS4PKGTool
             darkLabelShadps4Detect.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 142);
             darkLabelShadps4Detect.Name = "darkLabelShadps4Detect";
-            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 150);
+            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 344);
             darkLabelShadps4Detect.TabIndex = 12;
             darkLabelShadps4Detect.Text = "Detection: not configured";
             // 
@@ -868,8 +901,8 @@ namespace PS4PKGTool
             tabTrophies.Controls.Add(grpTrophyCache);
             tabTrophies.Location = new System.Drawing.Point(4, 32);
             tabTrophies.Name = "tabTrophies";
-            tabTrophies.Size = new System.Drawing.Size(632, 452);
-            tabTrophies.TabIndex = 4;
+            tabTrophies.Size = new System.Drawing.Size(632, 516);
+            tabTrophies.TabIndex = 7;
             tabTrophies.Text = "Trophies";
             // 
             // grpTrophyCache
@@ -950,8 +983,8 @@ namespace PS4PKGTool
             tabRename.Controls.Add(grpRename);
             tabRename.Location = new System.Drawing.Point(4, 32);
             tabRename.Name = "tabRename";
-            tabRename.Size = new System.Drawing.Size(632, 452);
-            tabRename.TabIndex = 3;
+            tabRename.Size = new System.Drawing.Size(632, 516);
+            tabRename.TabIndex = 6;
             tabRename.Text = "PKG Rename";
             // 
             // grpRename
@@ -1118,8 +1151,8 @@ namespace PS4PKGTool
             tabRPI.Controls.Add(grpTools);
             tabRPI.Location = new System.Drawing.Point(4, 32);
             tabRPI.Name = "tabRPI";
-            tabRPI.Size = new System.Drawing.Size(632, 452);
-            tabRPI.TabIndex = 2;
+            tabRPI.Size = new System.Drawing.Size(632, 516);
+            tabRPI.TabIndex = 5;
             tabRPI.Text = "Remote PKG Installer";
             // 
             // grpNetwork
@@ -1262,7 +1295,7 @@ namespace PS4PKGTool
             // btnSaveClose
             // 
             btnSaveClose.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnSaveClose.Location = new System.Drawing.Point(12, 773);
+            btnSaveClose.Location = new System.Drawing.Point(12, 569);
             btnSaveClose.Name = "btnSaveClose";
             btnSaveClose.Size = new System.Drawing.Size(640, 49);
             btnSaveClose.TabIndex = 1;
@@ -1330,7 +1363,7 @@ namespace PS4PKGTool
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(664, 833);
+            ClientSize = new System.Drawing.Size(664, 629);
             Controls.Add(settingsTab);
             Controls.Add(btnSaveClose);
             Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -1372,7 +1405,7 @@ namespace PS4PKGTool
         }
 
         private DarkUI.Controls.DarkTabControl settingsTab;
-        private System.Windows.Forms.TabPage tabGeneral, tabAppearance, tabRPI, tabRename, tabTrophies;
+        private System.Windows.Forms.TabPage tabGeneral, tabAppearance, tabColumns, tabLibrary, tabShadps4, tabRPI, tabRename, tabTrophies;
         private DarkUI.Controls.DarkSectionPanel grpDirectories, grpDirList, grpDownloads, grpStartup;
         private DarkUI.Controls.DarkListBox lbPkgDirectoryList;
         private DarkUI.Controls.DarkCheckBox darkCheckBoxRecursive;

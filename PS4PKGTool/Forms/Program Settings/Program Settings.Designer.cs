@@ -66,6 +66,8 @@ namespace PS4PKGTool
             btnDownloadShadps4Json = new DarkUI.Controls.DarkButton();
             darkLabelShadps4 = new DarkUI.Controls.DarkLabel();
             labelShadps4JsonDate = new DarkUI.Controls.DarkLabel();
+            darkLabelShadps4Os = new DarkUI.Controls.DarkLabel();
+            cmbShadps4Os = new DarkUI.Controls.DarkComboBox();
             tabTrophies = new System.Windows.Forms.TabPage();
             grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
             lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
@@ -745,6 +747,8 @@ namespace PS4PKGTool
             grpShadps4.Controls.Add(btnDownloadShadps4Json);
             grpShadps4.Controls.Add(darkLabelShadps4);
             grpShadps4.Controls.Add(labelShadps4JsonDate);
+            grpShadps4.Controls.Add(darkLabelShadps4Os);
+            grpShadps4.Controls.Add(cmbShadps4Os);
             grpShadps4.Location = new System.Drawing.Point(12, 406);
             grpShadps4.Name = "grpShadps4";
             grpShadps4.SectionHeader = "shadPS4 Compatibility";
@@ -791,6 +795,25 @@ namespace PS4PKGTool
             labelShadps4JsonDate.Size = new System.Drawing.Size(220, 18);
             labelShadps4JsonDate.TabIndex = 3;
             labelShadps4JsonDate.Text = "..";
+            //
+            // darkLabelShadps4Os
+            //
+            darkLabelShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelShadps4Os.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabelShadps4Os.Location = new System.Drawing.Point(255, 33);
+            darkLabelShadps4Os.Name = "darkLabelShadps4Os";
+            darkLabelShadps4Os.Size = new System.Drawing.Size(28, 15);
+            darkLabelShadps4Os.TabIndex = 4;
+            darkLabelShadps4Os.Text = "OS:";
+            //
+            // cmbShadps4Os
+            //
+            cmbShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
+            cmbShadps4Os.Items.AddRange(new object[] { "Windows", "Linux", "macOS" });
+            cmbShadps4Os.Location = new System.Drawing.Point(290, 30);
+            cmbShadps4Os.Name = "cmbShadps4Os";
+            cmbShadps4Os.Size = new System.Drawing.Size(120, 24);
+            cmbShadps4Os.TabIndex = 5;
             // 
             // tabTrophies
             // 
@@ -1323,6 +1346,8 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnDownloadPS5BCJson;
         private DarkUI.Controls.DarkLabel darkLabel9, labelPs5BcJsonDownloadDate;
         private DarkUI.Controls.DarkCheckBox cbShadps4Check;
+        private DarkUI.Controls.DarkLabel darkLabelShadps4Os;
+        private DarkUI.Controls.DarkComboBox cmbShadps4Os;
         private DarkUI.Controls.DarkButton btnDownloadShadps4Json;
         private DarkUI.Controls.DarkLabel darkLabelShadps4, labelShadps4JsonDate;
         private DarkUI.Controls.DarkSectionPanel grpNetwork, grpTools;

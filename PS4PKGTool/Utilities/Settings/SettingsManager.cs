@@ -56,6 +56,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
                     writer.WriteLine($"theme_index={settings.ThemeIndex}");
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
+                    writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
 
                 }
             }
@@ -251,6 +252,11 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 bool.TryParse(line.Substring("shadps4_check=".Length), out bool shadps4_check);
                                 appSettings_.Shadps4Check = shadps4_check;
+                            }
+                            else if (line.StartsWith("shadps4_os="))
+                            {
+                                string os = line.Substring("shadps4_os=".Length).Trim().ToLowerInvariant();
+                                appSettings_.Shadps4Os = os is "linux" or "macos" ? os : "windows";
                             }
                         }
                     }

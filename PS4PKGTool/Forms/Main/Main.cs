@@ -265,7 +265,7 @@ namespace PS4PKGTool
             };
 
             // Group-by ComboBox
-            cbGroupBy.Items.AddRange(new object[] { "Title", "Title ID", "System Version", "PKG Type", "Category", "ShadPS4 (Windows)" });
+            cbGroupBy.Items.AddRange(new object[] { "Title", "Title ID", "System Version", "PKG Type", "Category", "ShadPS4" });
             cbGroupBy.SelectedIndex = 1; // default: Title ID
             cbGroupBy.SelectedIndexChanged += (_, _) => PopulateGroupedView();
 
@@ -2108,7 +2108,7 @@ namespace PS4PKGTool
                     dt.Columns.Add("Directory");
                     dt.Columns.Add("Backported");
                     dt.Columns.Add("Latest Update");
-                    dt.Columns.Add("ShadPS4 (Windows)");
+                    dt.Columns.Add("ShadPS4");
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
                 // Detach DataTable from DGV while adding rows on background thread to prevent STA exceptions
@@ -2421,7 +2421,7 @@ namespace PS4PKGTool
                 dttemp.Columns.Add("Directory");
                 dttemp.Columns.Add("Backported");
                 dttemp.Columns.Add("Latest Update");
-                dttemp.Columns.Add("ShadPS4 (Windows)");
+                dttemp.Columns.Add("ShadPS4");
 
                 // verify scanned ps4 pkg and count it
                 foreach (var item in PkgFileList)
@@ -2675,7 +2675,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) cols.Add(("Directory", 0));
             if (appSettings_.pkgBackportColumn) cols.Add(("Backported", 0));
             if (appSettings_.AutoFetchUpdate) cols.Add(("Latest Update", 0));
-            if (appSettings_.Shadps4Check) cols.Add(("ShadPS4 (Windows)", 0));
+            if (appSettings_.Shadps4Check) cols.Add(($"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})", 0));
             return cols;
         }
 
@@ -2695,7 +2695,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) data.Add(Cell("Directory"));
             if (appSettings_.pkgBackportColumn) data.Add(Cell("Backported"));
             if (appSettings_.AutoFetchUpdate) data.Add(Cell("Latest Update"));
-            if (appSettings_.Shadps4Check) data.Add(Cell("ShadPS4 (Windows)"));
+            if (appSettings_.Shadps4Check) data.Add(Cell("ShadPS4"));
             return data.ToArray();
         }
 
@@ -3062,23 +3062,23 @@ namespace PS4PKGTool
         }
 
         /// <summary>
-        /// Fills the "ShadPS4 (Windows)" column from the local compatibility
-        /// cache (by Title ID, column-name based - index-safe). No-op when the
-        /// check is disabled or the cache is missing.
+        /// Fills the "ShadPS4" column from the local compatibility cache
+        /// (by Title ID + the selected OS, column-name based - index-safe).
+        /// No-op when the check is disabled or the cache is missing.
         /// </summary>
         private static void ApplyShadps4Status(DataTable dt)
         {
             try
             {
                 if (!appSettings_.Shadps4Check) return;
-                if (dt == null || !dt.Columns.Contains("ShadPS4 (Windows)") || !dt.Columns.Contains("Title ID")) return;
+                if (dt == null || !dt.Columns.Contains("ShadPS4") || !dt.Columns.Contains("Title ID")) return;
                 foreach (DataRow row in dt.Rows)
                 {
                     string tid = row["Title ID"]?.ToString() ?? "";
                     if (string.IsNullOrEmpty(tid)) continue;
-                    string status = Shadps4Compat.Lookup(tid);
+                    string status = Shadps4Compat.Lookup(tid, appSettings_.Shadps4Os);
                     if (!string.IsNullOrEmpty(status))
-                        row["ShadPS4 (Windows)"] = status;
+                        row["ShadPS4"] = status;
                 }
             }
             catch (Exception ex) { Logger.LogWarning("Failed to apply shadPS4 status: " + ex.Message); }
@@ -3277,6 +3277,10 @@ namespace PS4PKGTool
                 PKGGridView.Columns[15].Visible = appSettings_.AutoFetchUpdate;
                 if (PKGGridView.Columns.Count > 16)
                     PKGGridView.Columns[16].Visible = appSettings_.Shadps4Check;
+                // The header reflects the OS the statuses are shown for
+                // (internal column name stays "ShadPS4" for all OSes).
+                if (appSettings_.Shadps4Check && PKGGridView.Columns.Contains("ShadPS4"))
+                    PKGGridView.Columns["ShadPS4"].HeaderText = $"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})";
             }
             catch (Exception ex) { Logger.LogWarning("Error updating column visibility: " + ex.Message); }
         }
@@ -4347,10 +4351,12 @@ namespace PS4PKGTool
                 #region checkGridHideUnhide
                 UpdateDataGridViewColumnVisibility();
                 SetBackgroundMusicVolume();
-                PopulateGroupedView(); // reflect column-visibility changes in the grouped view
-                // Fill shadPS4 statuses immediately after a download/toggle
+                // Fill shadPS4 statuses immediately after a download/toggle/OS
+                // change - BEFORE PopulateGroupedView so the grouped view sees
+                // the refreshed statuses.
                 if (appSettings_.Shadps4Check && PKGGridView.DataSource is DataTable shadDt)
                     ApplyShadps4Status(shadDt);
+                PopulateGroupedView(); // reflect column-visibility changes in the grouped view
                 #endregion checkGridHideUnhide
             }
         }
@@ -6665,7 +6671,7 @@ namespace PS4PKGTool
 
             // shadPS4 column: colored dot + status text (column-name based, index-safe)
             if (e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count
-                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4 (Windows)"
+                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4"
                 && e.Value != null && e.Value.ToString() != "")
             {
                 string status = e.Value.ToString();

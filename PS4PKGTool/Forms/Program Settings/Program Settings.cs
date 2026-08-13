@@ -95,6 +95,12 @@ namespace PS4PKGTool
 
             cbPs5BcCheck.Checked = appSettings_.psvr_neo_ps5bc_check;
             cbShadps4Check.Checked = appSettings_.Shadps4Check;
+            cmbShadps4Os.SelectedIndex = appSettings_.Shadps4Os switch
+            {
+                "linux" => 1,
+                "macos" => 2,
+                _ => 0, // windows (default)
+            };
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;
             Size.Checked = appSettings_.pkgsizeColumn;
@@ -191,6 +197,12 @@ namespace PS4PKGTool
             appSettings_.AutoFetchUpdate = cbAutoFetchUpdate.Checked;
             appSettings_.psvr_neo_ps5bc_check = cbPs5BcCheck.Checked;
             appSettings_.Shadps4Check = cbShadps4Check.Checked;
+            appSettings_.Shadps4Os = cmbShadps4Os.SelectedIndex switch
+            {
+                1 => "linux",
+                2 => "macos",
+                _ => "windows",
+            };
             appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;

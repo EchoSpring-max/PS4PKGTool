@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -10,15 +11,15 @@ using System.Threading.Tasks;
 namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 {
     /// <summary>
-    /// shadPS4 compatibility lookup (Windows only). The database is the
-    /// official shadps4-compatibility/shadps4-game-compatibility GitHub
+    /// shadPS4 compatibility lookup, per operating system. The database is
+    /// the official shadps4-compatibility/shadps4-game-compatibility GitHub
     /// repo - each game/OS combo is a GitHub Issue titled
     /// "CUSAxxxxx - Title", labeled with its status
     /// (status-playable/ingame/menus/boots/nothing) and its operating
-    /// system (os-windows/os-linux/os-macOS). Only os-windows reports
-    /// are kept. This class downloads the issues once (manual fetch),
-    /// caches a { CUSA → status } map in AppData\shadps4.json, and
-    /// looks up statuses by Title ID.
+    /// system (os-windows/os-linux/os-macOS). Issues without an os-* label
+    /// are ignored (no guessing). This class downloads the issues once
+    /// (manual fetch), caches a { CUSA -> { os -> status } } map in
+    /// AppData\shadps4.json, and looks up statuses by Title ID + OS.
     /// </summary>
     public static class Shadps4Compat
     {
@@ -28,7 +29,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         private static readonly string[] Labels =
             { "status-playable", "status-ingame", "status-menus", "status-boots", "status-nothing" };
 
-        private static Dictionary<string, string> _cache;
+        private static Dictionary<string, Dictionary<string, string>> _cache;
 
         public static bool CacheExists => File.Exists(CachePath);
 
@@ -50,23 +51,50 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             }
         }
 
-        /// <summary>Returns the status ("Playable", "In-Game", ...) for a Title ID, or "" if unknown.</summary>
-        public static string Lookup(string titleId)
+        /// <summary>Display name of an OS key ("windows" -> "Windows").</summary>
+        public static string OsDisplay(string os) => NormalizeOs(os) switch
+        {
+            "linux" => "Linux",
+            "macos" => "macOS",
+            _ => "Windows",
+        };
+
+        /// <summary>Returns the status ("Playable", "In-Game", ...) for a Title ID on the given OS, or "" if unknown.</summary>
+        public static string Lookup(string titleId, string os)
         {
             if (string.IsNullOrEmpty(titleId)) return "";
             if (_cache == null) LoadCache();
-            return _cache != null && _cache.TryGetValue(titleId, out var status) ? status : "";
+            if (_cache != null && _cache.TryGetValue(titleId, out var byOs)
+                && byOs.TryGetValue(NormalizeOs(os), out var status))
+                return status;
+            return "";
         }
 
         public static void LoadCache()
         {
-            _cache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _cache = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 if (!File.Exists(CachePath)) return;
-                var entries = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(CachePath));
-                if (entries != null)
-                    foreach (var kv in entries) _cache[kv.Key] = kv.Value;
+                var entries = JsonConvert.DeserializeObject<Dictionary<string, object>>(File.ReadAllText(CachePath));
+                if (entries == null) return;
+
+                foreach (var kv in entries)
+                {
+                    var byOs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    if (kv.Value is string legacyStatus)
+                    {
+                        // Flat pre-OS cache ({CUSA -> status}): migrate as the
+                        // Windows layer - those entries were Windows reports.
+                        if (legacyStatus.Length > 0) byOs["windows"] = legacyStatus;
+                    }
+                    else if (kv.Value is JObject jo)
+                    {
+                        foreach (var osKv in jo)
+                            byOs[NormalizeOs(osKv.Key)] = osKv.Value?.ToString() ?? "";
+                    }
+                    _cache[kv.Key] = byOs;
+                }
             }
             catch { }
         }
@@ -77,7 +105,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         /// </summary>
         public static async Task<(int count, string error)> DownloadAsync(IProgress<string> progress = null)
         {
-            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 using var http = new HttpClient();
@@ -103,27 +131,27 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                         foreach (var issue in issues)
                         {
-                            // Windows-only compatibility: the repo tags each
-                            // report with its operating system (os-windows /
-                            // os-linux / os-macOS). Only os-windows reports
-                            // count here - a game reported solely on Linux or
-                            // macOS must not show a Windows status.
-                            bool isWindows = false;
+                            // Collect the OS labels; issues without an os-*
+                            // label are ignored (don't guess the OS).
+                            var osTags = new List<string>();
                             foreach (var lbl in issue.labels)
                             {
-                                string labelName = (string)(lbl.name ?? "");
-                                if (labelName.Equals("os-windows", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    isWindows = true;
-                                    break;
-                                }
+                                string os = OsFromLabel((string)(lbl.name ?? ""));
+                                if (os != null && !osTags.Contains(os)) osTags.Add(os);
                             }
-                            if (!isWindows) continue;
+                            if (osTags.Count == 0) continue;
 
                             string title = (string)(issue.title ?? "");
                             var m = CusaRegex.Match(title);
-                            if (m.Success)
-                                result[m.Groups[1].Value] = LabelToStatus(label);
+                            if (!m.Success) continue;
+
+                            string status = LabelToStatus(label);
+                            if (!result.TryGetValue(m.Groups[1].Value, out var byOs))
+                            {
+                                byOs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                result[m.Groups[1].Value] = byOs;
+                            }
+                            foreach (string os in osTags) byOs[os] = status;
                         }
 
                         if (issues.Count < 100) break;
@@ -150,6 +178,24 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             "status-boots" => "Boots",
             "status-nothing" => "Nothing",
             _ => label
+        };
+
+        /// <summary>Maps an os-* label to a normalized OS key, or null when the label is not an OS label.</summary>
+        private static string OsFromLabel(string label) => (label ?? "").ToLowerInvariant() switch
+        {
+            "os-windows" => "windows",
+            "os-linux" => "linux",
+            "os-macos" => "macos",
+            _ => null
+        };
+
+        /// <summary>Normalizes an OS key ("mac"/"macos"/anything unknown -&gt; defaults).</summary>
+        private static string NormalizeOs(string os) => (os ?? "").Trim().ToLowerInvariant() switch
+        {
+            "linux" => "linux",
+            "macos" => "macos",
+            "mac" => "macos",
+            _ => "windows",
         };
 
         /// <summary>Status color for the grid cell (readable on the dark theme).</summary>

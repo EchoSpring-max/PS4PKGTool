@@ -160,7 +160,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             dt.Columns.Add("Directory");
             dt.Columns.Add("Backported");
             dt.Columns.Add("Latest Update");
-            dt.Columns.Add("ShadPS4 (Windows)");
+            dt.Columns.Add("ShadPS4");
 
             if (entries == null || entries.Count == 0)
                 return dt;

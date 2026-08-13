@@ -43,6 +43,8 @@ namespace PS4PKGTool.Utilities.Settings
         public bool pkgBackportColumn { get; set; }
         public bool AutoFetchUpdate { get; set; } = false;
         public bool Shadps4Check { get; set; } = false;
+        /// <summary>OS whose compatibility statuses are shown: windows | linux | macos.</summary>
+        public string Shadps4Os { get; set; } = "windows";
 
 
         #endregion columnVisibility

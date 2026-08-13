@@ -3495,18 +3495,20 @@ namespace PS4PKGTool
         {
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
 
-            using var fbd = new FolderBrowserDialog
+            // Install straight into the configured directory - the folder
+            // dialog appears only when none is configured (or the configured
+            // one no longer exists).
+            string library = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (string.IsNullOrEmpty(library) || !Directory.Exists(library))
             {
-                Description = "Choose the shadPS4 library (game install folder) to install into",
-                ShowNewFolderButton = true,
-            };
-            // Preset only from the user's configured install directory, and
-            // only while it exists on disk. Empty/no-config -> no preset.
-            string preset = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
-            if (!string.IsNullOrEmpty(preset) && Directory.Exists(preset))
-                fbd.SelectedPath = preset;
-            if (fbd.ShowDialog() != DialogResult.OK) return;
-            string library = fbd.SelectedPath;
+                using var fbd = new FolderBrowserDialog
+                {
+                    Description = "Choose the shadPS4 game install folder.",
+                    ShowNewFolderButton = true,
+                };
+                if (fbd.ShowDialog() != DialogResult.OK) return;
+                library = fbd.SelectedPath;
+            }
 
             string finalDir = Path.Combine(library, titleId);
             bool replace = false;

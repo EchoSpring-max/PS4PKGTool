@@ -25,7 +25,7 @@ public class Phase3UnitySerializedFileTests
     // ── synthetic fixtures: one object, LE, v17 ──
 
     /// <summary>8x8 DXT1 payload (4 blocks).</summary>
-    private static byte[] Dxt1Payload8x8()
+    internal static byte[] Dxt1Payload8x8()
     {
         var payload = new byte[32];
         var block = new byte[] { 0xFF, 0x7F, 0x00, 0x00, 0xE4, 0xFF, 0xFF, 0xFF };
@@ -34,7 +34,7 @@ public class Phase3UnitySerializedFileTests
     }
 
     /// <summary>Texture2D object with INLINE image data.</summary>
-    private static byte[] BuildInlineTextureObject()
+    internal static byte[] BuildInlineTextureObject()
     {
         var obj = new MemoryStream();
         WriteAlignedString(obj, "Tex1");
@@ -59,7 +59,7 @@ public class Phase3UnitySerializedFileTests
     }
 
     /// <summary>Texture2D object with STREAMED data (StreamingInfo -> .resS companion).</summary>
-    private static byte[] BuildStreamedTextureObject()
+    internal static byte[] BuildStreamedTextureObject()
     {
         var obj = new MemoryStream();
         WriteAlignedString(obj, "Tex1");
@@ -86,14 +86,14 @@ public class Phase3UnitySerializedFileTests
     }
 
     /// <summary>TextAsset object (m_Name only - no texture, exercises the listing fallback).</summary>
-    private static byte[] BuildTextAssetObject()
+    internal static byte[] BuildTextAssetObject()
     {
         var obj = new MemoryStream();
         WriteAlignedString(obj, "Text1");
         return obj.ToArray();
     }
 
-    private static byte[] BuildSyntheticSerializedFile(int classId, byte[] objectData)
+    internal static byte[] BuildSyntheticSerializedFile(int classId, byte[] objectData)
     {
 
         // Metadata (little-endian): unity version, platform, stripped types, types, objects.

@@ -300,6 +300,7 @@ namespace PS4PKGTool
             tabPage7 = new TabPage();
             panel6 = new Panel();
             btnExportTreeView = new DarkUI.Controls.DarkButton();
+            btnExportTextures = new DarkUI.Controls.DarkButton();
             btnExtractFullPKG = new DarkUI.Controls.DarkButton();
             darkLabel5 = new DarkUI.Controls.DarkLabel();
             tbPasscode = new DarkUI.Controls.DarkTextBox();
@@ -2909,6 +2910,7 @@ namespace PS4PKGTool
             // 
             // panel6
             // 
+            panel6.Controls.Add(btnExportTextures);
             panel6.Controls.Add(btnExportTreeView);
             panel6.Controls.Add(btnExtractFullPKG);
             panel6.Controls.Add(darkLabel5);
@@ -2943,9 +2945,21 @@ namespace PS4PKGTool
             btnExtractFullPKG.TabIndex = 100;
             btnExtractFullPKG.Text = "Extract full PKG";
             btnExtractFullPKG.Click += btnExtractFullPKG_Click;
-            // 
+            //
+            // btnExportTextures
+            //
+            btnExportTextures.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExportTextures.Location = new System.Drawing.Point(628, 2);
+            btnExportTextures.Margin = new Padding(3, 2, 3, 2);
+            btnExportTextures.Name = "btnExportTextures";
+            btnExportTextures.Size = new System.Drawing.Size(110, 23);
+            btnExportTextures.TabIndex = 102;
+            btnExportTextures.Text = "Export Textures";
+            btnExportTextures.Enabled = false;
+            btnExportTextures.Click += btnExportTextures_Click;
+            //
             // darkLabel5
-            // 
+            //
             darkLabel5.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabel5.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabel5.Location = new System.Drawing.Point(1, 6);
@@ -4060,6 +4074,7 @@ namespace PS4PKGTool
         private Panel panel2;
         private ToolStripMenuItem moveByPkgTitleIdToolStripMenuItem;
         private DarkUI.Controls.DarkButton btnExportTreeView;
+        private DarkUI.Controls.DarkButton btnExportTextures;
     }
 }
 

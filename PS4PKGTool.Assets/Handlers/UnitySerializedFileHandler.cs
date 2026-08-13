@@ -126,7 +126,7 @@ public sealed class UnitySerializedFileHandler : IAssetHandler, IAssetPreviewPro
     /// read from the .resS companion (resolved through ICompanionResolverSource).
     /// Null when the bytes are unavailable.
     /// </summary>
-    private static UnityTextureInfo? LoadTextureBytes(IAssetSource source, UnityTextureInfo info)
+    internal static UnityTextureInfo? LoadTextureBytes(IAssetSource source, UnityTextureInfo info)
     {
         if (info.InlineBytes is { Length: > 0 }) return info;
         if (string.IsNullOrEmpty(info.StreamPath) || info.StreamSize == 0) return null;

@@ -92,6 +92,9 @@ namespace PS4PKGTool
             picPreview.Image?.Dispose();
             picPreview.Image = null;
             lblFileViewerInfo.Text = "Select a file to preview it.";
+            if (btnExportTextures != null) btnExportTextures.Enabled = false;
+            _previewEntryPath = null;
+            _previewIsUnityFile = false;
         }
         private int _trophyLoadVersion;
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
@@ -5723,6 +5726,83 @@ namespace PS4PKGTool
             catch { }
         }
 
+        /// <summary>
+        /// Exports all decodeable textures of the currently previewed Unity .assets
+        /// entry as PNGs. Re-extracts the entry + .resS companion to a temp dir,
+        /// runs the framework exporter, reports the count.
+        /// </summary>
+        private void btnExportTextures_Click(object sender, EventArgs e)
+        {
+            string entryPath = _previewEntryPath ?? "";
+            if (string.IsNullOrEmpty(entryPath) || string.IsNullOrEmpty(PKG.SelectedPKGFilename))
+            {
+                ShowWarning("No PKG entry to export from.", false);
+                return;
+            }
+
+            using var fbd = new FolderBrowserDialog { Description = "Choose the folder for the exported texture PNGs" };
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            string outDir = fbd.SelectedPath;
+
+            var bg = new BackgroundWorker();
+            bg.DoWork += (_, _) =>
+            {
+                string tempDir = CreateOrbisTempDir("e");
+                try
+                {
+                    string extracted = ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, entryPath, tempDir);
+                    if (string.IsNullOrEmpty(extracted)) return;
+
+                    string companionEntry = entryPath + ".resS";
+                    string companionFile = Path.Combine(tempDir, Path.GetFileName(companionEntry));
+                    if (!File.Exists(companionFile))
+                        ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, companionEntry, tempDir);
+
+                    var source = new Assets.IO.FileAssetSource(extracted, "PKG entry",
+                        rel => File.Exists(Path.Combine(tempDir, Path.GetFileName(rel)))
+                            ? new Assets.IO.FileAssetSource(Path.Combine(tempDir, Path.GetFileName(rel)), "Unity .resS stream")
+                            : null);
+                    var detection = _assetService.Detect(source);
+                    if (detection == null) return;
+                    var descriptor = _assetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+
+                    int before = Directory.GetFiles(outDir, "*.png").Length;
+                    new Assets.Unity.UnityTextureExporter()
+                        .ExportConvertedAsync(source, descriptor, outDir, CancellationToken.None)
+                        .GetAwaiter().GetResult();
+                    int count = Directory.GetFiles(outDir, "*.png").Length - before;
+
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        ShowInformation($"Exported {count} texture PNG(s) to {outDir}.", true);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        ShowError("Texture export failed: " + ex.Message, false);
+                    });
+                }
+                finally
+                {
+                    try { Directory.Delete(tempDir, true); } catch { }
+                }
+            };
+            bg.RunWorkerCompleted += (_, _) =>
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Visible = false;
+                toolStripStatusLabel2.Text = "...";
+                this.Enabled = true;
+            };
+            this.Enabled = false;
+            toolStripStatusLabel2.Text = "Exporting textures...";
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.Visible = true;
+            bg.RunWorkerAsync();
+        }
+
         private void btnExportTreeView_Click(object sender, EventArgs e)
         {
             if (PKGTreeView.Nodes.Count == 0) { ShowError("No data to export.", false); return; }
@@ -7113,6 +7193,8 @@ namespace PS4PKGTool
         /// </summary>
         private BackgroundWorker _previewWorker;
         private int _previewVersion;
+        private string? _previewEntryPath;   // PKG entry currently previewed (for export)
+        private bool _previewIsUnityFile;    // last previewed entry was a Unity serialized file
         private static readonly Assets.AssetInspectionService _assetService = Assets.GenericAssetRegistryBuilder.Build();
 
         private Assets.Models.TextureData _previewTexture; // prepared on the worker thread
@@ -7123,6 +7205,10 @@ namespace PS4PKGTool
 
         private void PreviewEntry(string entryPath)
         {
+            // Export applies to the entry about to be previewed.
+            _previewEntryPath = entryPath;
+            _previewIsUnityFile = false;
+            if (btnExportTextures != null) btnExportTextures.Enabled = false;
             try
             {
                 if (Helper.IsOperationRunning)
@@ -7178,6 +7264,7 @@ namespace PS4PKGTool
                         // decoding happens OFF the UI thread.
                         var source = new Assets.IO.FileAssetSource(extracted, "PKG entry");
                         var detection = _assetService.Detect(source);
+                        _previewIsUnityFile = detection?.Format == Assets.Handlers.UnitySerializedFileHandler.FormatId;
 
                         // Unity .assets files stream texture data to a .resS companion -
                         // extract it into the same temp dir and wire a resolver so
@@ -7240,6 +7327,7 @@ namespace PS4PKGTool
                     toolStripStatusLabel2.Text = "...";
                     _previewWorker = null;
                     if (version != _previewVersion) return; // a newer preview started
+                    btnExportTextures.Enabled = _previewIsUnityFile; // export applies to Unity .assets entries
                     if (_previewError != null)
                     {
                         ShowError("Preview failed: " + _previewError, false);

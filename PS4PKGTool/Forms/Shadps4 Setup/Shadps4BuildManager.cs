@@ -46,8 +46,13 @@ namespace PS4PKGTool
             var activeLauncher = Shadps4ActiveCore.Parse(_settings.Shadps4ActiveLauncher);
 
             FillCoreList(_store.ListBuilds(Shadps4Component.Core), activeCore);
-            FillList(lstLauncherBuilds, _store.ListBuilds(Shadps4Component.QtLauncher), activeLauncher);
+            FillList(lstLauncherBuilds, _store.ListBuilds(Shadps4Component.QtLauncher), activeLauncher, NoLauncherBuildsHint);
         }
+
+        // DarkUI's DarkListBox crashes (OnDrawItem, index -1) when drawing an
+        // EMPTY list - always keep at least one placeholder item.
+        private const string NoCoreBuildsHint = "(no managed core builds yet - use Install shadPS4 Setup...)";
+        private const string NoLauncherBuildsHint = "(no managed launcher builds yet - use Install shadPS4 Setup...)";
 
         private void FillCoreList(IReadOnlyList<Shadps4InstalledBuild> builds, Shadps4ComponentRef active)
         {
@@ -58,9 +63,10 @@ namespace PS4PKGTool
                     && string.Equals(active.Value, b.BuildId, StringComparison.OrdinalIgnoreCase);
                 lstCoreBuilds.Items.Add(isActive ? $"✓ {b.BuildId}  Active" : $"  {b.BuildId}");
             }
+            if (lstCoreBuilds.Items.Count == 0) lstCoreBuilds.Items.Add(NoCoreBuildsHint);
         }
 
-        private void FillList(DarkUI.Controls.DarkListBox list, IReadOnlyList<Shadps4InstalledBuild> builds, Shadps4ComponentRef active)
+        private void FillList(DarkUI.Controls.DarkListBox list, IReadOnlyList<Shadps4InstalledBuild> builds, Shadps4ComponentRef active, string emptyHint)
         {
             list.Items.Clear();
             foreach (var b in builds)
@@ -69,6 +75,7 @@ namespace PS4PKGTool
                     && string.Equals(active.Value, b.BuildId, StringComparison.OrdinalIgnoreCase);
                 list.Items.Add(isActive ? $"✓ {b.BuildId}  Active" : $"  {b.BuildId}");
             }
+            if (list.Items.Count == 0) list.Items.Add(emptyHint);
         }
 
         private Shadps4InstalledBuild? SelectedCoreBuild()

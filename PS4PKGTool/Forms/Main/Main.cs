@@ -3474,6 +3474,20 @@ namespace PS4PKGTool
                 return;
             }
 
+            // No known shadPS4 compatibility status for this game: warn before
+            // installing, for both base games and patches.
+            string compat = row[PkgColumns.Shadps4]?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(compat))
+            {
+                string title = row[PkgColumns.Title]?.ToString() ?? "";
+                string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+                var choice = AppMessageBox.Show("shadPS4",
+                    $"No shadPS4 compatibility status is known for {title} ({titleId}).\n\n" +
+                    "The game may not run in the emulator. Continue with the installation?",
+                    AppMessageType.Warning, AppMessageButtons.YesNo);
+                if (choice != DialogResult.Yes) return;
+            }
+
             string pkgPath = GetRowPkgPath(row);
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
             {

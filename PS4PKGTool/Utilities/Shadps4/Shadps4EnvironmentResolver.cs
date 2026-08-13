@@ -80,15 +80,33 @@ namespace PS4PKGTool.Utilities.Shadps4
             }
 
             // Classify the distribution: verified core/launcher filenames in
-            // the selected directory. Nothing is invented.
+            // the selected directory, then its parent and grandparent.
+            // Verified real layout: versioned launcher folders ("Latest
+            // ShadPS4\" with only the launcher) sit under a root that holds
+            // the core (shadPS4.exe). Nothing beyond these names is invented.
             string? core = null, launcher = null;
+            string? coreDir = null;
             if (!string.IsNullOrWhiteSpace(selectedDir) && Directory.Exists(selectedDir))
             {
-                string coreCandidate = Path.Combine(selectedDir, CoreExeFileName);
-                string launcherCandidate = Path.Combine(selectedDir, QtLauncherFileName);
-                if (File.Exists(coreCandidate)) core = coreCandidate;
-                if (File.Exists(launcherCandidate)) launcher = launcherCandidate;
+                var probeDirs = new List<string> { selectedDir };
+                string? parent = Directory.GetParent(selectedDir)?.FullName;
+                if (!string.IsNullOrWhiteSpace(parent)) probeDirs.Add(parent);
+                string? grandparent = Directory.GetParent(parent ?? "")?.FullName;
+                if (!string.IsNullOrWhiteSpace(grandparent)) probeDirs.Add(grandparent);
+
+                foreach (var dir in probeDirs)
+                {
+                    if (core == null && File.Exists(Path.Combine(dir, CoreExeFileName)))
+                    {
+                        core = Path.Combine(dir, CoreExeFileName);
+                        coreDir = dir;
+                    }
+                    if (launcher == null && File.Exists(Path.Combine(dir, QtLauncherFileName)))
+                        launcher = Path.Combine(dir, QtLauncherFileName);
+                }
             }
+            if (core != null && !string.Equals(coreDir, selectedDir, StringComparison.OrdinalIgnoreCase))
+                warnings.Add($"shadPS4 core detected in a parent folder: {core}");
 
             var distribution = (core != null, launcher != null) switch
             {

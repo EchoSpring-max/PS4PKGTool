@@ -458,6 +458,27 @@ public class Shadps4IntegrationTests
         Assert.IsFalse(env.IsUsable, "launch needs the core, which this distribution lacks");
     }
 
+    [TestMethod]
+    public void Distribution_CoreInParentDirectory_IsDetected()
+    {
+        // Verified real layout: a versioned launcher folder inside a root
+        // that also holds the core.
+        string root = Path.Combine(_tempRoot, "SHADPS4");
+        string core = MakeExe(root, Shadps4EnvironmentResolver.CoreExeFileName);
+        string launcherDir = Path.Combine(root, "Latest ShadPS4");
+        string launcher = MakeExe(launcherDir, Shadps4EnvironmentResolver.QtLauncherFileName);
+        string appData = Path.Combine(_tempRoot, "appdata");
+        WriteValidConfig(Path.Combine(appData, "shadPS4"));
+
+        var env = Shadps4EnvironmentResolver.Resolve(launcher, appData);
+
+        Assert.AreEqual(core, env.CoreExePath, "the core in the parent folder is detected");
+        Assert.AreEqual(launcher, env.LauncherExePath);
+        Assert.AreEqual(Shadps4DistributionType.CoreAndQtLauncher, env.DistributionType);
+        Assert.IsTrue(env.Warnings.Any(w => w.Contains("parent folder")), "parent-folder detection is reported");
+        Assert.IsTrue(env.IsUsable, "launch features work with the parent-folder core");
+    }
+
     // ── config edge cases (JSON DTO robustness) ──
 
     [TestMethod]

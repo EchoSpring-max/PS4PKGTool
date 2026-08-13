@@ -3424,9 +3424,17 @@ namespace PS4PKGTool
 
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
             var env = GetShadps4Environment();
+            if (env.DistributionType == Shadps4DistributionType.QtLauncherOnly)
+            {
+                ShowWarning(
+                    "This shadPS4 installation only includes the Qt launcher - no shadPS4.exe core was found near it.\n\nThe core is required to launch games directly. Place shadPS4.exe next to the launcher (or in a parent folder), or select it in Program Settings.",
+                    false);
+                OpenProgramSettings();
+                return;
+            }
             if (!env.IsUsable)
             {
-                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 core executable.", false);
+                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 executable.", false);
                 OpenProgramSettings();
                 return;
             }
@@ -3465,9 +3473,11 @@ namespace PS4PKGTool
             }
 
             var env = GetShadps4Environment();
-            if (!env.IsUsable)
+            // Installing into a shadPS4 library only needs the resolved config
+            // and libraries - the core executable is not involved (launching is).
+            if (!env.IsValid)
             {
-                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 core executable.", false);
+                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 executable.", false);
                 OpenProgramSettings();
                 return;
             }

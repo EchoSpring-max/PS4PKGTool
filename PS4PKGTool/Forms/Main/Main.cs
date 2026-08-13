@@ -3496,13 +3496,9 @@ namespace PS4PKGTool
                     ShowInformation(message, false);
                     break;
                 case Shadps4LaunchStatus.GameNotFound:
-                    var choice = AppMessageBox.Show("shadPS4",
-                        $"{message}\n\nExtract the selected PKG to a folder and boot it from there instead?",
-                        AppMessageType.Info, AppMessageButtons.YesNo);
-                    if (choice == DialogResult.Yes)
-                        ExtractAndLaunchShadps4(row, env);
-                    else
-                        ShowWarning(message, false);
+                    // No extract-and-boot fallback: installing into the
+                    // library is the supported path.
+                    ShowWarning(message + "\n\nUse shadPS4 > Install Game to shadPS4 Library first.", false);
                     break;
                 default:
                     ShowWarning(message, false);
@@ -3743,90 +3739,6 @@ namespace PS4PKGTool
             };
             this.Enabled = false;
             toolStripStatusLabel2.Text = "Installing game to shadPS4 library...";
-            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
-            toolStripProgressBar1.Visible = true;
-            bg.RunWorkerAsync();
-        }
-
-        /// <summary>
-        /// Extract &amp; Launch: extracts the PKG to a user-chosen folder
-        /// (never %TEMP% - full games are too large) and boots the discovered
-        /// eboot.bin directly.
-        /// </summary>
-        private void ExtractAndLaunchShadps4(DataRow row, Shadps4Environment env)
-        {
-            string pkgPath = GetRowPkgPath(row);
-            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
-            {
-                ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
-                return;
-            }
-
-            using var fbd = new FolderBrowserDialog
-            {
-                Description = "Choose the folder to extract the game into (shadPS4 boots it from there)",
-                ShowNewFolderButton = true,
-            };
-            if (fbd.ShowDialog() != DialogResult.OK) return;
-            string destination = fbd.SelectedPath;
-
-            // Fail early when the destination volume clearly cannot hold the game.
-            try
-            {
-                long free = Shadps4InstallService.FreeSpace(destination);
-                long estimate = Shadps4InstallService.EstimatedExtractedSize(pkgPath);
-                if (free < estimate + Shadps4InstallService.SpaceMarginBytes)
-                {
-                    ShowWarning($"Not enough free space in {destination} for the extracted game (needs roughly {Helper.RoundBytes(estimate + Shadps4InstallService.SpaceMarginBytes)}, has {Helper.RoundBytes(free)}).", false);
-                    return;
-                }
-            }
-            catch { } // drive info unavailable - let the extraction surface the real error
-
-            var bg = new BackgroundWorker();
-            bg.DoWork += (_, _) =>
-            {
-                string? eboot = null;
-                try
-                {
-                    var svc = new Shadps4InstallService
-                    {
-                        OrbisExePath = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                    };
-                    var progress = new Progress<string>(s =>
-                    {
-                        this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
-                    });
-                    eboot = svc.ExtractToFolder(pkgPath, destination, progress, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError("Extract & Launch failed: " + ex.Message);
-                }
-
-                this.Invoke((MethodInvoker)delegate
-                {
-                    if (eboot == null)
-                    {
-                        ShowError("Extraction failed or the game layout could not be validated (no eboot.bin found).", false);
-                        return;
-                    }
-                    var (status, message) = new Shadps4Launcher().LaunchExecutable(env, eboot);
-                    if (status == Shadps4LaunchStatus.Started)
-                        ShowInformation($"Game extracted to {destination} and launched in shadPS4.", false);
-                    else
-                        ShowWarning($"Extracted to {destination}, but launch failed: {message}", false);
-                });
-            };
-            bg.RunWorkerCompleted += (_, _) =>
-            {
-                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
-                toolStripProgressBar1.Visible = false;
-                toolStripStatusLabel2.Text = "...";
-                this.Enabled = true;
-            };
-            this.Enabled = false;
-            toolStripStatusLabel2.Text = "Extracting game...";
             toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             toolStripProgressBar1.Visible = true;
             bg.RunWorkerAsync();

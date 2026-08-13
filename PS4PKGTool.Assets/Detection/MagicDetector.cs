@@ -20,6 +20,9 @@ public sealed class MagicDetector : IAssetDetector
         (new byte[] { 0x4F, 0x67, 0x67, 0x53 }, "ogg", null),           // "OggS"
         (new byte[] { 0x47, 0x4E, 0x46, 0x00 }, "gnf", null),           // "GNF\0" — PS4 texture
         (new byte[] { 0x41, 0x54, 0x39 }, "atrac9", null),              // "AT9" — ATRAC9 audio
+        (new byte[] { 0x55, 0x6E, 0x69, 0x74, 0x79, 0x46, 0x53, 0x00 }, "unity-bundle", "unity"), // "UnityFS\0"
+        (new byte[] { 0x55, 0x6E, 0x69, 0x74, 0x79, 0x52, 0x61, 0x77, 0x00 }, "unity-bundle", "unity"), // "UnityRaw\0"
+        (new byte[] { 0x55, 0x6E, 0x69, 0x74, 0x79, 0x57, 0x65, 0x62, 0x00 }, "unity-bundle", "unity"), // "UnityWeb\0"
     };
 
     public int Order => 0;

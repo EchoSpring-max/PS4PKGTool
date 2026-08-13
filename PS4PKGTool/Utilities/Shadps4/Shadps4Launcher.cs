@@ -19,6 +19,8 @@ namespace PS4PKGTool.Utilities.Shadps4
         GameNotFound,
         /// <summary>The executable path to boot does not exist.</summary>
         ExecutableNotFound,
+        /// <summary>A shadPS4 core instance is already running - only one can run at a time.</summary>
+        AlreadyRunning,
         /// <summary>Process.Start threw (reported message).</summary>
         StartFailed,
     }
@@ -46,6 +48,17 @@ namespace PS4PKGTool.Utilities.Shadps4
                     return true;
             return false;
         }
+
+        /// <summary>Test seam: "is the emulator CORE already running".</summary>
+        public static Func<bool> CoreRunningCheck { get; set; }
+            = () => Process.GetProcessesByName("shadPS4").Length > 0;
+
+        /// <summary>
+        /// True when the emulator core itself is running (a game is booted).
+        /// The QtLauncher UI alone does not count - launching a game while
+        /// only the launcher window is open is fine.
+        /// </summary>
+        public static bool IsCoreRunning() => CoreRunningCheck();
 
         /// <summary>The CLI arguments for launching an installed title by ID.</summary>
         public static string[] BuildTitleArguments(string titleId) => new[] { titleId.Trim() };
@@ -95,6 +108,11 @@ namespace PS4PKGTool.Utilities.Shadps4
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
                 return new Shadps4LaunchPlan(Shadps4LaunchStatus.ExecutableMissing,
                     "shadPS4 core executable not found. Configure it in Program Settings.", null, null);
+
+            if (IsCoreRunning())
+                return new Shadps4LaunchPlan(Shadps4LaunchStatus.AlreadyRunning,
+                    "shadPS4 is already running. Only one emulator instance can run at a time. Close the running shadPS4 to launch another game.",
+                    null, null);
 
             string? eboot = FindInstalledEboot(env, titleId);
             bool fromExtraDir = false;
@@ -156,6 +174,13 @@ namespace PS4PKGTool.Utilities.Shadps4
             {
                 Logger.LogWarning($"Shadps4Launch: target executable missing ({executablePath})");
                 return (Shadps4LaunchStatus.ExecutableNotFound, $"Executable not found: {executablePath}");
+            }
+
+            if (IsCoreRunning())
+            {
+                Logger.LogWarning("Shadps4Launch: core already running - refusing to start a second instance");
+                return (Shadps4LaunchStatus.AlreadyRunning,
+                    "shadPS4 is already running. Only one emulator instance can run at a time. Close the running shadPS4 to launch another game.");
             }
 
             return Start(exe, BuildExecutableArguments(executablePath));

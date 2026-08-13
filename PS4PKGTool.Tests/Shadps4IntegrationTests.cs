@@ -926,6 +926,39 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void Launch_WhenCoreAlreadyRunning_ReportsAlreadyRunning()
+    {
+        string lib = Path.Combine(_tempRoot, "lib");
+        string gameDir = Path.Combine(lib, "CUSA00900");
+        Directory.CreateDirectory(Path.Combine(gameDir, "sce_sys"));
+        File.WriteAllText(Path.Combine(gameDir, "eboot.bin"), "fake");
+        string core = Path.Combine(_tempRoot, "shadPS4.exe");
+        File.WriteAllText(core, "fake");
+        var env = new Shadps4Environment
+        {
+            CoreExePath = core,
+            InstallDirectories = new List<string> { lib },
+        };
+
+        var previous = Shadps4Launcher.CoreRunningCheck;
+        try
+        {
+            Shadps4Launcher.CoreRunningCheck = () => true;
+
+            var result = new Shadps4Launcher().LaunchInstalledTitle(env, "CUSA00900");
+            Assert.AreEqual(Shadps4LaunchStatus.AlreadyRunning, result.Status,
+                "a second game must not start while a core instance is running");
+
+            var plan = new Shadps4Launcher().ResolveLaunch(env, "CUSA00900");
+            Assert.AreEqual(Shadps4LaunchStatus.AlreadyRunning, plan.Status);
+        }
+        finally
+        {
+            Shadps4Launcher.CoreRunningCheck = previous;
+        }
+    }
+
+    [TestMethod]
     public void Launch_GameInToolInstallDir_LaunchesByPath()
     {
         // The game lives ONLY in the tool's own install directory, which

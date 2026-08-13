@@ -266,3 +266,31 @@ properties (FUnversionedHeader + class schema), then the cooked platform data
 referenced). The unversioned property schema for UTexture2D is the last
 unknown; the dims/format/mips live AFTER the properties, so the property
 values can be skipped once the schema order is pinned.
+
+## Phase 4b progress 3 (2026-08-13): Unreal package parser + texture metadata VALIDATED
+
+The UnrealPackage reader now decodes REAL standard-format packages end to end
+(Bee Simulator T_Default_Material_Grid_M, verified):
+
+- Summary: magic at 0 (game-specific preambles handled by magic-scan), legacy
+  -7 unversioned, TotalHeaderSize, byte-length PackageName, PackageFlags,
+  NameCount, ExportOffset/Count, ImportOffset. A 1-byte realignment handles
+  the cooked-flag extra byte observed in this format.
+- Name table: {int32 byteLen incl null, UTF-8 + null, uint32 hash}; position
+  located empirically (the summary's name offset is 0 in this format, and the
+  declared name count covers more than the parsed section - 17 real entries
+  here, not 193).
+- Export table: 40-byte records {Class, Super, Template, Outer, Name(8),
+  Flags, Size(4), ???(4), Offset(4)}; SerialOffset is relative to
+  TotalHeaderSize and addresses the .uexp companion.
+- Texture2D object data: unversioned properties skipped via the presence
+  header, then the cooked platform data anchored on the "PF_" pixel-format
+  FString: platform dims (512x512), format (PF_DXT5), mip count (10) - all
+  validated against real bytes.
+
+REMAINING for full texture decode: the mip BULK payloads are NOT in the
+.uexp - the bulk flags (0x0501 = PayloadAtEndOfFile + PayloadInSeperateFile +
+Force_NOT_InlinePayload) and offsets indicate the payloads live in the PAK
+(streaming texture data). Retrieving them needs the pak-source plumbed into
+the package reader, then BC decode. The bulk-header layout also needs
+verification against the actual payload locations.

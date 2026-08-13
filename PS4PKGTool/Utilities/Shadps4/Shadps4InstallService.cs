@@ -55,13 +55,19 @@ namespace PS4PKGTool.Utilities.Shadps4
         public Func<string, long>? FreeSpaceOverride { get; set; }
 
         /// <summary>
-        /// Installs the base-game PKG into the given shadPS4 library as
+        /// Installs the PKG into the given shadPS4 library as
         /// &lt;library&gt;\&lt;CUSAxxxxx&gt;. replaceExisting approves overwriting an
         /// existing installation (the UI must confirm first).
+        /// mergeIntoExisting is the update/patch path: instead of rejecting or
+        /// replacing an existing folder, the extracted (flattened) patch files
+        /// are merged over it - same-named files are overwritten, base-only
+        /// files remain. Without an existing folder it behaves like a fresh
+        /// install, so a patch can also be installed before its base game.
         /// </summary>
         public Shadps4InstallResult Install(
             string pkgPath, string titleId, string libraryDir, bool replaceExisting,
-            IProgress<string>? progress = null, CancellationToken ct = default)
+            IProgress<string>? progress = null, CancellationToken ct = default,
+            bool mergeIntoExisting = false)
         {
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
                 return new Shadps4InstallResult(Shadps4InstallStatus.PkgMissing, $"PKG not found: {pkgPath}");
@@ -69,7 +75,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 return new Shadps4InstallResult(Shadps4InstallStatus.LibraryMissing, $"shadPS4 library not found: {libraryDir}");
 
             string finalDir = Path.Combine(libraryDir, titleId);
-            if (Directory.Exists(finalDir) && !replaceExisting)
+            if (Directory.Exists(finalDir) && !replaceExisting && !mergeIntoExisting)
                 return new Shadps4InstallResult(Shadps4InstallStatus.ExistingInstall,
                     $"Game {titleId} is already installed in {libraryDir}.");
 
@@ -118,6 +124,13 @@ namespace PS4PKGTool.Utilities.Shadps4
                         "The extracted PKG does not contain a valid game layout (eboot.bin / sce_sys missing).");
 
                 progress?.Report("Finalizing installation...");
+                if (mergeIntoExisting && Directory.Exists(finalDir))
+                {
+                    // Update path: merge the patch over the existing dump.
+                    MergeOverwrite(staging, finalDir);
+                    return new Shadps4InstallResult(Shadps4InstallStatus.Success,
+                        $"Updated {titleId} in {finalDir}.", finalDir);
+                }
                 if (Directory.Exists(finalDir))
                 {
                     Directory.Delete(finalDir, true);
@@ -258,6 +271,30 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 Directory.Delete(sc0, true);
             }
+        }
+
+        /// <summary>
+        /// Moves the source tree over an existing destination tree: same-named
+        /// files are OVERWRITTEN by the source (patch wins), files only in the
+        /// destination remain. Used for update/patch installs - the base-game
+        /// merge inside FlattenToDumpLayout uses the opposite rule.
+        /// </summary>
+        private static void MergeOverwrite(string source, string dest)
+        {
+            foreach (string entry in Directory.GetFileSystemEntries(source))
+            {
+                string target = Path.Combine(dest, Path.GetFileName(entry));
+                if (Directory.Exists(entry))
+                {
+                    if (!Directory.Exists(target)) Directory.Move(entry, target);
+                    else MergeOverwrite(entry, target);
+                }
+                else
+                {
+                    File.Move(entry, target, overwrite: true);
+                }
+            }
+            Directory.Delete(source, true);
         }
 
         private static void MergeDirectory(string source, string dest)

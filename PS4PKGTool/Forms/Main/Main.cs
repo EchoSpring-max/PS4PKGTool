@@ -3466,9 +3466,11 @@ namespace PS4PKGTool
             if (row == null) { ShowWarning("Select a PKG in the grid first.", false); return; }
 
             string category = row[PkgColumns.Category]?.ToString() ?? "";
-            if (!category.Contains(PKGCategory.GAME))
+            bool isGame = category.Contains(PKGCategory.GAME);
+            bool isPatch = category.Contains(PKGCategory.PATCH);
+            if (!isGame && !isPatch)
             {
-                ShowWarning("Select a base game PKG - update and DLC installation is not supported yet.", false);
+                ShowWarning("Select a base game or update (patch) PKG - DLC/addon installation is not supported yet.", false);
                 return;
             }
 
@@ -3479,7 +3481,7 @@ namespace PS4PKGTool
                 return;
             }
 
-            InstallToShadps4Library(row, pkgPath);
+            InstallToShadps4Library(row, pkgPath, isPatch);
         }
 
         /// <summary>
@@ -3487,11 +3489,13 @@ namespace PS4PKGTool
         /// the library, validation, same-volume rename). Existing installations
         /// are never overwritten without explicit approval; a running shadPS4
         /// triggers an extra warning for replacement installs.
+        /// Patches (update PKGs) MERGE into the existing game folder instead of
+        /// replacing it - same-named files are overwritten, base files remain.
         /// The target folder comes from the user's shadPS4 install-directory
         /// setting (auto-filled from shadPS4's own config in Program Settings)
         /// and can be changed per install - nothing is hardcoded.
         /// </summary>
-        private void InstallToShadps4Library(DataRow row, string pkgPath)
+        private void InstallToShadps4Library(DataRow row, string pkgPath, bool isPatch)
         {
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
 
@@ -3525,11 +3529,23 @@ namespace PS4PKGTool
                     if (warn != DialogResult.Yes) return;
                 }
 
-                var replaceChoice = MessageBox.Show(
-                    $"Game already installed\n\nInstalled version: {installedVer}\nSelected PKG: {selectedVer}\n\nReplace the existing installation?",
-                    "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (replaceChoice != DialogResult.Yes) return;
-                replace = true;
+                if (isPatch)
+                {
+                    // Updates merge into the existing dump - files in the patch
+                    // overwrite the base's, everything else stays untouched.
+                    var mergeChoice = MessageBox.Show(
+                        $"Game already installed\n\nInstalled version: {installedVer}\nThis patch: {selectedVer}\n\nThe patch will be merged into the existing installation. Continue?",
+                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (mergeChoice != DialogResult.Yes) return;
+                }
+                else
+                {
+                    var replaceChoice = MessageBox.Show(
+                        $"Game already installed\n\nInstalled version: {installedVer}\nSelected PKG: {selectedVer}\n\nReplace the existing installation?",
+                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (replaceChoice != DialogResult.Yes) return;
+                    replace = true;
+                }
             }
 
             var bg = new BackgroundWorker();
@@ -3543,7 +3559,8 @@ namespace PS4PKGTool
                 {
                     this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
                 });
-                var result = svc.Install(pkgPath, titleId, library, replace, progress, CancellationToken.None);
+                var result = svc.Install(pkgPath, titleId, library, replace, progress, CancellationToken.None,
+                    mergeIntoExisting: isPatch);
 
                 this.Invoke((MethodInvoker)delegate
                 {

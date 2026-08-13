@@ -970,6 +970,57 @@ public class Shadps4IntegrationTests
         Assert.AreEqual("fake eboot", File.ReadAllText(Path.Combine(final, "eboot.bin")));
     }
 
+    // A patch PKG has the same CUSA tree (Image0 + Sc0) with updated files.
+    private static bool PatchExtract(string pkg, string dest, CancellationToken ct)
+    {
+        Directory.CreateDirectory(Path.Combine(dest, "Image0", "sce_sys"));
+        File.WriteAllText(Path.Combine(dest, "Image0", "sce_sys", "param.sfo"), "patch param");
+        File.WriteAllText(Path.Combine(dest, "Image0", "eboot.bin"), "patch eboot");
+        Directory.CreateDirectory(Path.Combine(dest, "Image0", "data"));
+        File.WriteAllText(Path.Combine(dest, "Image0", "data", "patch.dat"), "new file");
+        Directory.CreateDirectory(Path.Combine(dest, "Sc0"));
+        File.WriteAllText(Path.Combine(dest, "Sc0", "pic0.png"), "patch pic");
+        return true;
+    }
+
+    [TestMethod]
+    public void Install_Patch_MergesIntoExistingBaseFolder()
+    {
+        string lib = Path.Combine(_tempRoot, "lib");
+        Directory.CreateDirectory(lib);
+        string final = Path.Combine(lib, "CUSA12345");
+        Directory.CreateDirectory(Path.Combine(final, "data"));
+        File.WriteAllText(Path.Combine(final, "eboot.bin"), "base eboot");
+        File.WriteAllText(Path.Combine(final, "data", "base.dat"), "base-only file");
+        string pkg = MakeFakePkg(_tempRoot, "patch.pkg");
+
+        var result = MakeService(PatchExtract).Install(pkg, "CUSA12345", lib, replaceExisting: false,
+            mergeIntoExisting: true);
+
+        Assert.AreEqual(Shadps4InstallStatus.Success, result.Status);
+        Assert.AreEqual("patch eboot", File.ReadAllText(Path.Combine(final, "eboot.bin")), "patch overwrites same-named files");
+        Assert.AreEqual("patch param", File.ReadAllText(Path.Combine(final, "sce_sys", "param.sfo")), "patch metadata wins");
+        Assert.IsTrue(File.Exists(Path.Combine(final, "data", "base.dat")), "base-only files remain");
+        Assert.IsTrue(File.Exists(Path.Combine(final, "data", "patch.dat")), "new patch files are added");
+        Assert.IsTrue(File.Exists(Path.Combine(final, "sce_sys", "pic0.png")), "patch Sc0 lands under sce_sys");
+        Assert.IsFalse(Directory.Exists(Path.Combine(lib, ".ps4pkgtool-CUSA12345.tmp")), "staging folder must be gone");
+    }
+
+    [TestMethod]
+    public void Install_Patch_WithoutBaseFolder_InstallsFresh()
+    {
+        string lib = Path.Combine(_tempRoot, "lib");
+        Directory.CreateDirectory(lib);
+        string pkg = MakeFakePkg(_tempRoot, "patch.pkg");
+
+        var result = MakeService(PatchExtract).Install(pkg, "CUSA12345", lib, replaceExisting: false,
+            mergeIntoExisting: true);
+
+        Assert.AreEqual(Shadps4InstallStatus.Success, result.Status);
+        string game = Path.Combine(lib, "CUSA12345");
+        Assert.IsTrue(File.Exists(Path.Combine(game, "eboot.bin")), "patch alone installs as a dump folder");
+    }
+
     [TestMethod]
     public void Install_InsufficientSpace_RejectsBeforeWriting()
     {

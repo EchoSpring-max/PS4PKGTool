@@ -173,36 +173,90 @@ namespace PS4PKGTool.Utilities.Shadps4
         }
 
         /// <summary>
-        /// Merges the PKG extraction tree (Image0/, Sc0/) into the dump layout
-        /// shadPS4 expects: everything at the game-folder root, Image0 first and
-        /// Sc0 on top of it. On conflicts the Image0 copy wins (base-game files
-        /// take precedence over the second image). A no-op when the tree is
-        /// already flat (e.g. a future extractor emits the dump layout).
+        /// Dedicated "extract as PS4 game dump" layout transformation.
+        ///
+        /// The raw PKG extraction tree (Image0/, Sc0/) is NOT the layout
+        /// shadPS4 libraries use. The final game folder must resemble a
+        /// decrypted dump from a jailbroken PS4:
+        ///
+        ///   CUSAxxxxx\
+        ///   ├── eboot.bin
+        ///   ├── sce_module\
+        ///   ├── data\
+        ///   └── sce_sys\          (param.sfo, icon0.png, pic0.png, ...)
+        ///
+        /// - Image0\ contents become the ROOT of the game folder.
+        /// - Sc0\ contents are system metadata and merge into sce_sys\
+        ///   (a Sc0\sce_sys\ subtree merges its contents directly).
+        /// - Image0 copies win on conflicts.
+        /// A no-op when the tree is already flat (a future extractor may
+        /// emit the dump layout directly).
         /// </summary>
         public static void FlattenToDumpLayout(string folder)
         {
-            foreach (var rootName in new[] { "Image0", "Sc0" })
+            // Image0 contents become the game-folder root.
+            string image0 = Path.Combine(folder, "Image0");
+            if (Directory.Exists(image0))
             {
-                string rootDir = Path.Combine(folder, rootName);
-                if (!Directory.Exists(rootDir)) continue;
-
-                foreach (string entry in Directory.GetFileSystemEntries(rootDir))
+                foreach (string entry in Directory.GetFileSystemEntries(image0))
                 {
                     string dest = Path.Combine(folder, Path.GetFileName(entry));
                     if (Directory.Exists(entry))
                     {
                         if (Directory.Exists(dest))
-                            MergeDirectory(entry, dest); // Sc0 merges; Image0 files win
+                            MergeDirectory(entry, dest);
                         else
                             Directory.Move(entry, dest);
                     }
                     else
                     {
-                        if (File.Exists(dest)) continue; // Image0 copy wins
-                        File.Move(entry, dest);
+                        if (!File.Exists(dest)) File.Move(entry, dest);
                     }
                 }
-                Directory.Delete(rootDir, true);
+                Directory.Delete(image0, true);
+            }
+
+            // Sc0 contents belong under sce_sys.
+            string sc0 = Path.Combine(folder, "Sc0");
+            if (Directory.Exists(sc0))
+            {
+                string sceSys = Path.Combine(folder, "sce_sys");
+                Directory.CreateDirectory(sceSys);
+                foreach (string entry in Directory.GetFileSystemEntries(sc0))
+                {
+                    if (Directory.Exists(entry) &&
+                        Path.GetFileName(entry).Equals("sce_sys", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Already a sce_sys subtree - merge its contents directly.
+                        foreach (string sub in Directory.GetFileSystemEntries(entry))
+                        {
+                            string target = Path.Combine(sceSys, Path.GetFileName(sub));
+                            if (Directory.Exists(sub))
+                            {
+                                if (Directory.Exists(target)) MergeDirectory(sub, target);
+                                else Directory.Move(sub, target);
+                            }
+                            else
+                            {
+                                if (!File.Exists(target)) File.Move(sub, target);
+                            }
+                        }
+                        Directory.Delete(entry, true);
+                        continue;
+                    }
+
+                    string dest = Path.Combine(sceSys, Path.GetFileName(entry));
+                    if (Directory.Exists(entry))
+                    {
+                        if (Directory.Exists(dest)) MergeDirectory(entry, dest);
+                        else Directory.Move(entry, dest);
+                    }
+                    else
+                    {
+                        if (!File.Exists(dest)) File.Move(entry, dest); // Image0 copy wins
+                    }
+                }
+                Directory.Delete(sc0, true);
             }
         }
 

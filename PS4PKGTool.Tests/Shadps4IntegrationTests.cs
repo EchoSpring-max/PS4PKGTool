@@ -270,13 +270,18 @@ public class Shadps4IntegrationTests
 
     // ── install service ──
 
-    // Real orbis extraction produces the PKG tree: Image0/ (the game) + Sc0/.
+    // Real orbis extraction produces the PKG tree: Image0/ (game files) + Sc0/
+    // (system metadata that belongs under sce_sys in the final dump layout).
     private static bool FakeExtract(string pkg, string dest, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.Combine(dest, "Image0", "sce_sys"));
+        File.WriteAllText(Path.Combine(dest, "Image0", "sce_sys", "param.sfo"), "image0 param");
         File.WriteAllText(Path.Combine(dest, "Image0", "eboot.bin"), "fake eboot");
+        Directory.CreateDirectory(Path.Combine(dest, "Image0", "data"));
         Directory.CreateDirectory(Path.Combine(dest, "Sc0"));
-        File.WriteAllText(Path.Combine(dest, "Sc0", "extra.bin"), "extra");
+        File.WriteAllText(Path.Combine(dest, "Sc0", "param.sfo"), "sc0 param"); // conflict -> Image0 wins
+        File.WriteAllText(Path.Combine(dest, "Sc0", "icon0.png"), "icon");
+        File.WriteAllText(Path.Combine(dest, "Sc0", "pic0.png"), "pic");
         return true;
     }
 
@@ -309,10 +314,15 @@ public class Shadps4IntegrationTests
         Assert.AreEqual(Shadps4InstallStatus.Success, result.Status);
         string game = Path.Combine(lib, "CUSA12345");
         Assert.IsTrue(Directory.Exists(game));
-        // shadPS4 expects the dump layout: files at the game-folder root.
+        // shadPS4 expects a dump-style folder: Image0 content at the root,
+        // Sc0 metadata under sce_sys.
         Assert.IsTrue(File.Exists(Path.Combine(game, "eboot.bin")));
+        Assert.IsTrue(Directory.Exists(Path.Combine(game, "data")));
         Assert.IsTrue(Directory.Exists(Path.Combine(game, "sce_sys")));
-        Assert.IsTrue(File.Exists(Path.Combine(game, "extra.bin")), "Sc0 content merges into the root");
+        Assert.AreEqual("image0 param", File.ReadAllText(Path.Combine(game, "sce_sys", "param.sfo")), "Image0 copy must win conflicts");
+        Assert.IsTrue(File.Exists(Path.Combine(game, "sce_sys", "icon0.png")), "Sc0 files land under sce_sys");
+        Assert.IsTrue(File.Exists(Path.Combine(game, "sce_sys", "pic0.png")), "Sc0 files land under sce_sys");
+        Assert.IsFalse(File.Exists(Path.Combine(game, "param.sfo")), "Sc0 content must NOT sit at the root");
         Assert.IsFalse(Directory.Exists(Path.Combine(game, "Image0")), "Image0 tree must be flattened away");
         Assert.IsFalse(Directory.Exists(Path.Combine(game, "Sc0")), "Sc0 tree must be flattened away");
         Assert.IsFalse(Directory.Exists(Path.Combine(lib, ".ps4pkgtool-CUSA12345.tmp")), "staging folder must be gone");
@@ -323,14 +333,31 @@ public class Shadps4IntegrationTests
     {
         string folder = Path.Combine(_tempRoot, "extracted");
         Directory.CreateDirectory(Path.Combine(folder, "Image0", "sce_sys"));
-        File.WriteAllText(Path.Combine(folder, "Image0", "eboot.bin"), "image0");
-        Directory.CreateDirectory(Path.Combine(folder, "Sc0", "sce_sys"));
-        File.WriteAllText(Path.Combine(folder, "Sc0", "eboot.bin"), "sc0");
+        File.WriteAllText(Path.Combine(folder, "Image0", "sce_sys", "param.sfo"), "image0");
+        Directory.CreateDirectory(Path.Combine(folder, "Sc0"));
+        File.WriteAllText(Path.Combine(folder, "Sc0", "param.sfo"), "sc0");
 
         Shadps4InstallService.FlattenToDumpLayout(folder);
 
-        Assert.AreEqual("image0", File.ReadAllText(Path.Combine(folder, "eboot.bin")), "Image0 copy must win conflicts");
+        Assert.AreEqual("image0", File.ReadAllText(Path.Combine(folder, "sce_sys", "param.sfo")), "Image0 copy must win conflicts");
         Assert.IsFalse(Directory.Exists(Path.Combine(folder, "Image0")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(folder, "Sc0")));
+    }
+
+    [TestMethod]
+    public void Flatten_Sc0SceSysSubtree_MergesContentsDirectly()
+    {
+        string folder = Path.Combine(_tempRoot, "extracted");
+        Directory.CreateDirectory(Path.Combine(folder, "Image0", "sce_sys"));
+        File.WriteAllText(Path.Combine(folder, "Image0", "eboot.bin"), "eboot");
+        // Some PKGs keep Sc0 metadata inside its own sce_sys subtree.
+        Directory.CreateDirectory(Path.Combine(folder, "Sc0", "sce_sys"));
+        File.WriteAllText(Path.Combine(folder, "Sc0", "sce_sys", "pic0.png"), "pic");
+
+        Shadps4InstallService.FlattenToDumpLayout(folder);
+
+        Assert.IsTrue(File.Exists(Path.Combine(folder, "sce_sys", "pic0.png")), "Sc0\\sce_sys content merges directly into sce_sys");
+        Assert.IsFalse(Directory.Exists(Path.Combine(folder, "sce_sys", "sce_sys")), "no nested sce_sys\\sce_sys");
         Assert.IsFalse(Directory.Exists(Path.Combine(folder, "Sc0")));
     }
 

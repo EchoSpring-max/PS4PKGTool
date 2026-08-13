@@ -22,6 +22,9 @@ namespace PS4PKGTool
             lblManagedRoot = new DarkUI.Controls.DarkLabel();
             tbManagedRoot = new DarkUI.Controls.DarkTextBox();
             btnBrowseRoot = new DarkUI.Controls.DarkButton();
+            lblInstallDir = new DarkUI.Controls.DarkLabel();
+            tbInstallDir = new DarkUI.Controls.DarkTextBox();
+            btnBrowseInstallDir = new DarkUI.Controls.DarkButton();
             chkInstallLauncher = new DarkUI.Controls.DarkCheckBox();
             lblLauncherHint = new DarkUI.Controls.DarkLabel();
             btnBack2 = new DarkUI.Controls.DarkButton();
@@ -104,6 +107,9 @@ namespace PS4PKGTool
             panelStep2.Controls.Add(lblManagedRoot);
             panelStep2.Controls.Add(tbManagedRoot);
             panelStep2.Controls.Add(btnBrowseRoot);
+            panelStep2.Controls.Add(lblInstallDir);
+            panelStep2.Controls.Add(tbInstallDir);
+            panelStep2.Controls.Add(btnBrowseInstallDir);
             panelStep2.Controls.Add(chkInstallLauncher);
             panelStep2.Controls.Add(lblLauncherHint);
             panelStep2.Controls.Add(btnBack2);
@@ -142,6 +148,33 @@ namespace PS4PKGTool
             btnBrowseRoot.Text = "Browse...";
             btnBrowseRoot.Click += btnBrowseRoot_Click;
             //
+            // lblInstallDir
+            //
+            lblInstallDir.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblInstallDir.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblInstallDir.Location = new System.Drawing.Point(24, 100);
+            lblInstallDir.Name = "lblInstallDir";
+            lblInstallDir.Size = new System.Drawing.Size(572, 16);
+            lblInstallDir.TabIndex = 7;
+            lblInstallDir.Text = "Install directory (games installed by PS4 PKG Tool):";
+            //
+            // tbInstallDir
+            //
+            tbInstallDir.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbInstallDir.Location = new System.Drawing.Point(24, 118);
+            tbInstallDir.Name = "tbInstallDir";
+            tbInstallDir.Size = new System.Drawing.Size(440, 23);
+            tbInstallDir.TabIndex = 8;
+            //
+            // btnBrowseInstallDir
+            //
+            btnBrowseInstallDir.Location = new System.Drawing.Point(470, 116);
+            btnBrowseInstallDir.Name = "btnBrowseInstallDir";
+            btnBrowseInstallDir.Size = new System.Drawing.Size(90, 26);
+            btnBrowseInstallDir.TabIndex = 9;
+            btnBrowseInstallDir.Text = "Browse...";
+            btnBrowseInstallDir.Click += btnBrowseInstallDir_Click;
+            //
             // chkInstallLauncher
             //
             chkInstallLauncher.AutoSize = true;
@@ -149,7 +182,7 @@ namespace PS4PKGTool
             chkInstallLauncher.CheckState = System.Windows.Forms.CheckState.Checked;
             chkInstallLauncher.Font = new System.Drawing.Font("Segoe UI", 9F);
             chkInstallLauncher.ForeColor = System.Drawing.Color.Gainsboro;
-            chkInstallLauncher.Location = new System.Drawing.Point(24, 116);
+            chkInstallLauncher.Location = new System.Drawing.Point(24, 162);
             chkInstallLauncher.Name = "chkInstallLauncher";
             chkInstallLauncher.Size = new System.Drawing.Size(380, 19);
             chkInstallLauncher.TabIndex = 3;
@@ -159,7 +192,7 @@ namespace PS4PKGTool
             //
             lblLauncherHint.Font = new System.Drawing.Font("Segoe UI", 8F);
             lblLauncherHint.ForeColor = System.Drawing.Color.FromArgb(160, 160, 160);
-            lblLauncherHint.Location = new System.Drawing.Point(42, 138);
+            lblLauncherHint.Location = new System.Drawing.Point(42, 184);
             lblLauncherHint.Name = "lblLauncherHint";
             lblLauncherHint.Size = new System.Drawing.Size(540, 40);
             lblLauncherHint.TabIndex = 4;
@@ -294,6 +327,9 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel lblManagedRoot;
         private DarkUI.Controls.DarkTextBox tbManagedRoot;
         private DarkUI.Controls.DarkButton btnBrowseRoot;
+        private DarkUI.Controls.DarkLabel lblInstallDir;
+        private DarkUI.Controls.DarkTextBox tbInstallDir;
+        private DarkUI.Controls.DarkButton btnBrowseInstallDir;
         private DarkUI.Controls.DarkCheckBox chkInstallLauncher;
         private DarkUI.Controls.DarkLabel lblLauncherHint;
         private DarkUI.Controls.DarkButton btnBack2;

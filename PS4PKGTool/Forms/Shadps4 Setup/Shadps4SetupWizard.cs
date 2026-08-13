@@ -53,6 +53,21 @@ namespace PS4PKGTool
             panelStep2.Visible = step == 2;
             panelStep3.Visible = step == 3;
             panelStep4.Visible = step == 4;
+            if (step == 2) PrefillStep2();
+        }
+
+        /// <summary>Whether the user already made an install-directory choice in step 2.</summary>
+        private bool _installDirApplied;
+
+        /// <summary>Prefills the install directory with the managed-root default when nothing is set yet.</summary>
+        private void PrefillStep2()
+        {
+            if (string.IsNullOrWhiteSpace(tbInstallDir.Text)
+                && !string.IsNullOrWhiteSpace(tbManagedRoot.Text))
+            {
+                tbInstallDir.Text = Path.Combine(tbManagedRoot.Text.Trim(), "Data");
+            }
+            _installDirApplied = false;
         }
 
         // ── step 1 ──
@@ -146,14 +161,38 @@ namespace PS4PKGTool
 
         private void btnBrowseRoot_Click(object sender, EventArgs e)
         {
+            string previous = tbManagedRoot.Text.Trim();
             using var fbd = new FolderBrowserDialog
             {
                 Description = "Choose the managed shadPS4 builds folder",
                 ShowNewFolderButton = true,
             };
-            if (Directory.Exists(tbManagedRoot.Text.Trim())) fbd.SelectedPath = tbManagedRoot.Text.Trim();
+            if (Directory.Exists(previous)) fbd.SelectedPath = previous;
             if (fbd.ShowDialog() != DialogResult.OK) return;
             tbManagedRoot.Text = fbd.SelectedPath;
+
+            // Follow the root with the default install dir, but only while
+            // the field still holds the previous default (or is empty) - a
+            // manual choice is never overwritten.
+            string current = tbInstallDir.Text.Trim();
+            string oldDefault = Path.Combine(previous, "Data");
+            if (string.IsNullOrWhiteSpace(current)
+                || string.Equals(current, oldDefault, StringComparison.OrdinalIgnoreCase))
+            {
+                tbInstallDir.Text = Path.Combine(tbManagedRoot.Text.Trim(), "Data");
+            }
+        }
+
+        private void btnBrowseInstallDir_Click(object sender, EventArgs e)
+        {
+            using var fbd = new FolderBrowserDialog
+            {
+                Description = "Choose where PS4 PKG Tool installs games for shadPS4",
+                ShowNewFolderButton = true,
+            };
+            if (Directory.Exists(tbInstallDir.Text.Trim())) fbd.SelectedPath = tbInstallDir.Text.Trim();
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            tbInstallDir.Text = fbd.SelectedPath;
         }
 
         private void btnBack2_Click(object sender, EventArgs e)
@@ -181,6 +220,15 @@ namespace PS4PKGTool
 
             // Managed root is chosen once - persist it.
             _settings.Shadps4ManagedRoot = root;
+            // The install directory choice from this step (may be empty to
+            // leave it unset - the post-install default is then skipped).
+            _installDirApplied = true;
+            string installDir = tbInstallDir.Text.Trim();
+            _settings.Shadps4InstallDirectory = installDir;
+            if (!string.IsNullOrWhiteSpace(installDir))
+            {
+                try { Directory.CreateDirectory(installDir); } catch { }
+            }
             SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
             _store = new Shadps4ManagedBuilds(root);
 
@@ -258,12 +306,13 @@ namespace PS4PKGTool
                 {
                     _settings.Shadps4ActiveLauncher = Shadps4ActiveCore.ForManaged(_installedLauncher.BuildId);
                 }
-                // First-run default install target: a fresh shadPS4 has no
-                // config.json yet (created on its first launch), so nothing
-                // can auto-fill the install directory. Give the tool its own
-                // default under the managed root - shadPS4's config is never
-                // written; the user can add this folder in QtLauncher later.
-                if (_installedCore != null && string.IsNullOrWhiteSpace(_settings.Shadps4InstallDirectory))
+                // First-run default install target (only when step 2 did not
+                // already apply a choice): a fresh shadPS4 has no config.json
+                // yet (created on its first launch), so nothing can auto-fill
+                // it. shadPS4's config is never written; the user can add the
+                // folder in QtLauncher later.
+                if (_installedCore != null && !_installDirApplied
+                    && string.IsNullOrWhiteSpace(_settings.Shadps4InstallDirectory))
                 {
                     string defaultInstallDir = Path.Combine(_settings.Shadps4ManagedRoot, "Data");
                     try { Directory.CreateDirectory(defaultInstallDir); } catch { }

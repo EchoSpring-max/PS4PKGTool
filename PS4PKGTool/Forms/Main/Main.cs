@@ -499,8 +499,8 @@ namespace PS4PKGTool
             {
                 Logger.LogInformation($"FATAL: App startup failed: {ex.Message}");
                 Logger.LogError($"Form1_Load crashed: {ex}");
-                MessageBox.Show($"Startup failed:\n{ex.Message}", "Fatal Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppMessageBox.Show("Fatal Error", $"Startup failed:\n{ex.Message}",
+                    AppMessageType.Error, AppMessageButtons.OK);
             }
         }
 
@@ -1568,7 +1568,7 @@ namespace PS4PKGTool
             var dt = PKGGridView.DataSource as DataTable;
             if (dt == null || dt.Rows.Count == 0)
             {
-                ShowWarning("Nothing to save - the PKG list is empty.", false);
+                ShowWarning("Nothing to save, the PKG list is empty.", false);
                 return;
             }
             Logger.LogInformation("Saving manifest manually..");
@@ -3427,14 +3427,14 @@ namespace PS4PKGTool
             if (env.DistributionType == Shadps4DistributionType.QtLauncherOnly)
             {
                 ShowWarning(
-                    "This shadPS4 installation only includes the Qt launcher - no shadPS4.exe core was found near it.\n\nThe core is required to launch games directly. Place shadPS4.exe next to the launcher (or in a parent folder), or select it in Program Settings.",
+                    "This shadPS4 installation only includes the Qt launcher, no shadPS4.exe core was found near it.\n\nThe core is required to launch games directly. Place shadPS4.exe next to the launcher (or in a parent folder), or select it in Program Settings.",
                     false);
                 OpenProgramSettings();
                 return;
             }
             if (!env.IsUsable)
             {
-                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 executable.", false);
+                ShowWarning("shadPS4 is not configured. Open Program Settings and select the shadPS4 executable.", false);
                 OpenProgramSettings();
                 return;
             }
@@ -3446,9 +3446,9 @@ namespace PS4PKGTool
                     ShowInformation(message, false);
                     break;
                 case Shadps4LaunchStatus.GameNotFound:
-                    var choice = MessageBox.Show(
+                    var choice = AppMessageBox.Show("shadPS4",
                         $"{message}\n\nExtract the selected PKG to a folder and boot it from there instead?",
-                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        AppMessageType.Info, AppMessageButtons.YesNo);
                     if (choice == DialogResult.Yes)
                         ExtractAndLaunchShadps4(row, env);
                     else
@@ -3470,7 +3470,7 @@ namespace PS4PKGTool
             bool isPatch = category.Contains(PKGCategory.PATCH);
             if (!isGame && !isPatch)
             {
-                ShowWarning("Select a base game or update (patch) PKG - DLC/addon installation is not supported yet.", false);
+                ShowWarning("Select a base game or update (patch) PKG. DLC/addon installation is not supported yet.", false);
                 return;
             }
 
@@ -3522,11 +3522,11 @@ namespace PS4PKGTool
                 && File.Exists(Path.Combine(finalDir, "eboot.bin"));
             if (isPatch && !hasBase)
             {
-                var warnBase = MessageBox.Show(
+                var warnBase = AppMessageBox.Show("shadPS4",
                     $"No base game detected for {titleId} in\n{library}\n\n" +
-                    "A patch alone cannot boot - it updates the base game's files, which are not installed yet.\n\n" +
+                    "A patch alone cannot boot, it only updates the base game's files, which are not installed yet.\n\n" +
                     "Install the patch anyway?",
-                    "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    AppMessageType.Warning, AppMessageButtons.YesNo);
                 if (warnBase != DialogResult.Yes) return;
             }
 
@@ -3538,9 +3538,9 @@ namespace PS4PKGTool
 
                 if (Shadps4Launcher.IsEmulatorRunning())
                 {
-                    var warn = MessageBox.Show(
+                    var warn = AppMessageBox.Show("shadPS4",
                         "shadPS4 is currently running.\n\nModifying an installed game while the emulator is using it may fail or leave inconsistent files.\n\nContinue?",
-                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                        AppMessageType.Warning, AppMessageButtons.YesNo);
                     if (warn != DialogResult.Yes) return;
                 }
 
@@ -3548,16 +3548,16 @@ namespace PS4PKGTool
                 {
                     // Updates merge into the existing dump - files in the patch
                     // overwrite the base's, everything else stays untouched.
-                    var mergeChoice = MessageBox.Show(
+                    var mergeChoice = AppMessageBox.Show("shadPS4",
                         $"Game already installed\n\nInstalled version: {installedVer}\nThis patch: {selectedVer}\n\nThe patch will be merged into the existing installation. Continue?",
-                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        AppMessageType.Info, AppMessageButtons.YesNo);
                     if (mergeChoice != DialogResult.Yes) return;
                 }
                 else
                 {
-                    var replaceChoice = MessageBox.Show(
+                    var replaceChoice = AppMessageBox.Show("shadPS4",
                         $"Game already installed\n\nInstalled version: {installedVer}\nSelected PKG: {selectedVer}\n\nReplace the existing installation?",
-                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        AppMessageType.Info, AppMessageButtons.YesNo);
                     if (replaceChoice != DialogResult.Yes) return;
                     replace = true;
                 }

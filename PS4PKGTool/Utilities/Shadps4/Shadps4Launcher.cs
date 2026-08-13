@@ -79,7 +79,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
             string exe = env.CoreExePath ?? "";
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
-                return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found - configure it in Program Settings.");
+                return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found. Configure it in Program Settings.");
 
             if (FindInstalledEboot(env, titleId) == null)
                 return (Shadps4LaunchStatus.GameNotFound, $"Game {titleId} is not installed in any configured shadPS4 library.");
@@ -92,7 +92,7 @@ namespace PS4PKGTool.Utilities.Shadps4
         {
             string exe = env.CoreExePath ?? "";
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
-                return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found - configure it in Program Settings.");
+                return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found. Configure it in Program Settings.");
 
             if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
                 return (Shadps4LaunchStatus.ExecutableNotFound, $"Executable not found: {executablePath}");

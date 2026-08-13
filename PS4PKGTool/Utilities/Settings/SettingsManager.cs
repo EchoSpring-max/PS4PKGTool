@@ -297,8 +297,8 @@ namespace PS4PKGTool.Utilities.Settings
         /// Rules:
         ///  - empty and exact-duplicate entries are dropped;
         ///  - sibling groups (2+) sharing the same parent collapse to that
-        ///    parent (B:\PKG\Base + Update\Title1, Title2, ... and even
-        ///    B:\PKG\Game & Patch + B:\PKG\New folder become B:\PKG);
+        ///    parent (&lt;lib&gt;\Base + Update\Title1, Title2, ... and even
+        ///    &lt;lib&gt;\Game &amp; Patch + &lt;lib&gt;\New folder become &lt;lib&gt;);
         ///  - entries still nested inside a kept entry are dropped.
         /// Scanning a configured directory covers its children (recursive, or
         /// via the immediate-subfolder scan), so the result - top-level roots

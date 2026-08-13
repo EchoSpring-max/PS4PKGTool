@@ -250,12 +250,29 @@ namespace PS4PKGTool.Utilities.Shadps4
                 var psi = BuildProcessStartInfo(exe, arguments);
                 Logger.LogInformation($"Shadps4Launch: starting {exe} {string.Join(" ", arguments)} (cwd: {psi.WorkingDirectory})");
                 Process.Start(psi);
-                return (Shadps4LaunchStatus.Started, "shadPS4 launched.");
+                string version = CoreVersion(exe);
+                return (Shadps4LaunchStatus.Started,
+                    string.IsNullOrWhiteSpace(version) ? "shadPS4 launched." : $"shadPS4 launched [v{version}]");
             }
             catch (Exception ex)
             {
                 Logger.LogError("Shadps4Launch: Process.Start failed: " + ex);
                 return (Shadps4LaunchStatus.StartFailed, ex.Message);
+            }
+        }
+
+        /// <summary>File version of the core exe ("0.17.0.0" -&gt; "0.17.0"), or "" when unavailable.</summary>
+        private static string CoreVersion(string exe)
+        {
+            try
+            {
+                string v = FileVersionInfo.GetVersionInfo(exe).FileVersion?.Trim() ?? "";
+                if (v.EndsWith(".0")) v = v[..^2]; // trim the trailing ".0" of 4-part versions
+                return v;
+            }
+            catch
+            {
+                return "";
             }
         }
     }

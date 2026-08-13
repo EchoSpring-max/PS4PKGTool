@@ -3515,6 +3515,21 @@ namespace PS4PKGTool
             }
 
             string finalDir = Path.Combine(library, titleId);
+
+            // A patch without a base game cannot boot - it only updates the
+            // base's files. Warn (but do not block) when no base is detected.
+            bool hasBase = Directory.Exists(finalDir)
+                && File.Exists(Path.Combine(finalDir, "eboot.bin"));
+            if (isPatch && !hasBase)
+            {
+                var warnBase = MessageBox.Show(
+                    $"No base game detected for {titleId} in\n{library}\n\n" +
+                    "A patch alone cannot boot - it updates the base game's files, which are not installed yet.\n\n" +
+                    "Install the patch anyway?",
+                    "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (warnBase != DialogResult.Yes) return;
+            }
+
             bool replace = false;
             if (Directory.Exists(finalDir))
             {

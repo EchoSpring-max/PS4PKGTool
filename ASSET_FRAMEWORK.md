@@ -294,3 +294,28 @@ Force_NOT_InlinePayload) and offsets indicate the payloads live in the PAK
 (streaming texture data). Retrieving them needs the pak-source plumbed into
 the package reader, then BC decode. The bulk-header layout also needs
 verification against the actual payload locations.
+
+## Final status (2026-08-13): what "finish all" delivered, what is sample-blocked
+
+DONE (verified):
+- Phase 0-3e (framework, generic formats, PS4 metadata, Unity full pipeline)
+- Phase 4a (Unreal PAK: three real paks verified)
+- Phase 4b (Unreal package parse + texture metadata; pixel decode blocked on
+  streaming bulk payload locations that resolve to no accessible data)
+- Phase 6 (asset workspace UI: container children browse + per-child preview
+  in the File Browser viewer; the app-visible payoff)
+
+SAMPLE-BLOCKED (not code-blocked):
+- Phase 5a PSARC: format documented; theme PKGs in the library keep their
+  psarc content encrypted (orbis lists only Sc0 system files, no PSAR magic
+  in the extracted bytes). Needs a decrypted theme psarc sample.
+- Phase 5b GNF decode: metadata handler done; no real GNF file in the
+  library (games ship BC-in-pak / Unity resS / UE formats). Needs a GNF
+  sample to verify the deswizzle.
+- Phase 7 (3D viewport), Phase 8 (Wwise/CRIWARE): deferred - large standalone
+  efforts.
+
+Validation corpus on disk: C:\Users\User\AppData\Local\Temp\p4t_spike_ue
+(CODE VEIN base 14.4GB + update 628MB, Bee Simulator 6.4GB paks, extracted
+samples, CUE4Parse/AssetStudio reference sources). Delete to reclaim ~22GB
+when done with Unreal work.

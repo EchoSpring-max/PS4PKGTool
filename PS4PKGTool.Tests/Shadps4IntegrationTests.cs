@@ -757,6 +757,21 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void LaunchProcessInfo_RunsFromTheEmulatorFolder()
+    {
+        string dir = Path.Combine(_tempRoot, "emu dir");
+        Directory.CreateDirectory(dir);
+        string exe = Path.Combine(dir, "shadPS4.exe");
+        File.WriteAllText(exe, "x");
+
+        var psi = Shadps4Launcher.BuildProcessStartInfo(exe, new[] { "CUSA12345" });
+
+        Assert.AreEqual(dir, psi.WorkingDirectory, "the core must run from its own folder, like the Qt launcher does");
+        CollectionAssert.AreEqual(new[] { "CUSA12345" }, psi.ArgumentList);
+        Assert.AreEqual(exe, psi.FileName);
+    }
+
+    [TestMethod]
     public void LaunchInstalledTitle_RejectsInvalidIdAndMissingExe()
     {
         var env = new Shadps4Environment { CoreExePath = Path.Combine(_tempRoot, "missing.exe") };

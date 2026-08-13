@@ -160,19 +160,33 @@ namespace PS4PKGTool.Utilities.Shadps4
             }
         }
 
+        /// <summary>
+        /// Builds the process info for spawning the emulator. The working
+        /// directory is set to the executable's folder: shadPS4 resolves
+        /// caches/logs relative to where it is started, and the Qt launcher
+        /// always runs the core from its own directory - starting it from
+        /// PS4 PKG Tool's folder instead makes games crash that boot fine
+        /// from the launcher.
+        /// </summary>
+        public static ProcessStartInfo BuildProcessStartInfo(string exe, string[] arguments)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe,
+                UseShellExecute = false,
+                CreateNoWindow = false,
+                WorkingDirectory = Path.GetDirectoryName(exe) ?? "",
+            };
+            foreach (var arg in arguments)
+                psi.ArgumentList.Add(arg);
+            return psi;
+        }
+
         private static (Shadps4LaunchStatus Status, string Message) Start(string exe, string[] arguments)
         {
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = exe,
-                    UseShellExecute = false,
-                    CreateNoWindow = false,
-                };
-                foreach (var arg in arguments)
-                    psi.ArgumentList.Add(arg);
-                Process.Start(psi);
+                Process.Start(BuildProcessStartInfo(exe, arguments));
                 return (Shadps4LaunchStatus.Started, "shadPS4 launched.");
             }
             catch (Exception ex)

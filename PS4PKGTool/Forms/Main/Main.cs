@@ -6771,6 +6771,13 @@ namespace PS4PKGTool
                 int total = PKGGridView.Rows.Count;
                 Logger.LogInformation($"Move PKG by {moveBy}: {total} PKG(s) → {outputFolder}");
 
+                // Track the chosen output root once so the moved games stay
+                // discoverable. The per-destination folders must NOT be added:
+                // scanning the root already covers them (recursively, or via
+                // the immediate-subfolder scan), and one entry per moved PKG
+                // polluted the saved directory list.
+                CheckAndAddPathToList(outputFolder);
+
                 for (int i = 0; i < total; i++)
                 {
                     try
@@ -6820,7 +6827,6 @@ namespace PS4PKGTool
                         Tool.CreateDirectoryIfNotExists(dest);
                         string newPath = Path.Combine(dest, info.FileName);
                         File.Move(info.FilePath, newPath);
-                        CheckAndAddPathToList(dest);
                     }
                     catch (Exception ex)
                     {

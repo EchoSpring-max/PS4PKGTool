@@ -285,7 +285,78 @@ namespace PS4PKGTool.Utilities.Settings
                 // Handle exceptions appropriately
                 ShowError("Error loading settings: " + ex.Message, true);
             }
+
+            NormalizePkgDirectories(appSettings_.PkgDirectories);
             return appSettings_;
+        }
+
+        /// <summary>
+        /// Keeps the configured directory list clean. The move-PKG feature
+        /// once added one entry per destination folder, leaving hundreds of
+        /// redundant subfolders (226 entries from 2 real roots).
+        /// Rules:
+        ///  - empty and exact-duplicate entries are dropped;
+        ///  - sibling groups (2+) sharing the same parent collapse to that
+        ///    parent (B:\PKG\Base + Update\Title1, Title2, ... and even
+        ///    B:\PKG\Game & Patch + B:\PKG\New folder become B:\PKG);
+        ///  - entries still nested inside a kept entry are dropped.
+        /// Scanning a configured directory covers its children (recursive, or
+        /// via the immediate-subfolder scan), so the result - top-level roots
+        /// only - loses no coverage.
+        /// </summary>
+        private static void NormalizePkgDirectories(List<string> dirs)
+        {
+            var unique = new List<string>();
+            foreach (string raw in dirs)
+            {
+                string d = raw?.Trim() ?? "";
+                if (d.Length == 0) continue;
+                if (!unique.Any(c => string.Equals(c, d, StringComparison.OrdinalIgnoreCase)))
+                    unique.Add(d);
+            }
+
+            // Collapse sibling groups to their common parent; lone entries stay.
+            var collapsed = new List<string>();
+            foreach (var group in unique.GroupBy(ParentPath, StringComparer.OrdinalIgnoreCase))
+            {
+                string parent = group.Key ?? "";
+                if (group.Count() >= 2 && !string.IsNullOrEmpty(parent))
+                {
+                    if (!collapsed.Any(c => string.Equals(c, parent, StringComparison.OrdinalIgnoreCase)))
+                        collapsed.Add(parent);
+                }
+                else
+                {
+                    foreach (string d in group)
+                        if (!collapsed.Any(c => string.Equals(c, d, StringComparison.OrdinalIgnoreCase)))
+                            collapsed.Add(d);
+                }
+            }
+
+            // Drop entries nested inside another entry (a collapsed parent may
+            // itself nest under a kept root).
+            var final = collapsed.Where(d => !collapsed.Any(other =>
+                !string.Equals(other, d, StringComparison.OrdinalIgnoreCase)
+                && IsStrictChildOf(d, other))).ToList();
+
+            dirs.Clear();
+            dirs.AddRange(final);
+        }
+
+        /// <summary>Parent directory of a path (no trailing separator), or null when none.</summary>
+        private static string? ParentPath(string path)
+        {
+            string trimmed = path.TrimEnd('\\', '/');
+            int idx = trimmed.LastIndexOf('\\');
+            if (idx <= 0) return null;
+            return trimmed.Substring(0, idx);
+        }
+
+        private static bool IsStrictChildOf(string child, string parent)
+        {
+            string p = parent.TrimEnd('\\', '/');
+            return child.StartsWith(p + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || child.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

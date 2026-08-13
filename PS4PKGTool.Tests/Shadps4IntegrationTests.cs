@@ -667,6 +667,85 @@ public class Shadps4IntegrationTests
             "default is empty - no preset is invented without a shadPS4 config");
     }
 
+    [TestMethod]
+    public void Settings_PkgDirectories_NestedEntriesAreDroppedOnLoad()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            PkgDirectories = new List<string>
+            {
+                @"E:\Games",
+                @"E:\Games\Base + Update\Some Title", // nested - dropped
+                @"E:\Games\CUSA12345",                // nested - dropped
+                @"E:\Games\Base + Update\Some Title", // duplicate + nested
+                @"D:\Other",
+                "",
+                "   ",
+            },
+        };
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        CollectionAssert.AreEqual(
+            new[] { @"E:\Games", @"D:\Other" },
+            loaded.PkgDirectories.ToArray(),
+            "nested and duplicate entries are cleaned on load; roots are kept");
+    }
+
+    [TestMethod]
+    public void Settings_PkgDirectories_SiblingGroupsCollapseUnrelatedRootsStay()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            PkgDirectories = new List<string>
+            {
+                @"E:\Games\A",
+                @"E:\Games\B",   // sibling of A - both collapse to E:\Games
+                @"E:\GamesX",    // NOT a child of E:\Games - kept
+                @"D:\Other",     // different root - kept
+            },
+        };
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        CollectionAssert.AreEqual(
+            new[] { @"E:\Games", @"E:\GamesX", @"D:\Other" },
+            loaded.PkgDirectories.ToArray(),
+            "sibling pollution collapses to the shared parent; unrelated roots stay");
+    }
+
+    [TestMethod]
+    public void Settings_PkgDirectories_TitleMovePollutionCollapsesToSingleRoot()
+    {
+        // Real-world shape: moving by title once added one entry per title
+        // folder (226 entries from 2 real roots). Every entry is a sibling
+        // group under B:\PKG, so the whole list normalizes to B:\PKG.
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            PkgDirectories = new List<string>
+            {
+                @"B:\PKG\Game & Patch",
+                @"B:\PKG\New folder",
+                @"B:\PKG\Base + Update\Title A",
+                @"B:\PKG\Base + Update\Title B",
+                @"B:\PKG\Base + Update\Title C",
+            },
+        };
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        CollectionAssert.AreEqual(
+            new[] { @"B:\PKG" },
+            loaded.PkgDirectories.ToArray(),
+            "the polluted list normalizes to its common root");
+    }
+
     // ── launcher ──
 
     [TestMethod]

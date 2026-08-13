@@ -45,13 +45,21 @@ public sealed class UnitySerializedFile
             using var s = source.OpenRead(0, 20);
             var head = new byte[s.Length];
             s.ReadExactly(head);
-            if (head.Length < 20) return false;
-            // Version field at [8..12): known serialized versions as BE or LE.
-            uint be = (uint)((head[8] << 24) | (head[9] << 16) | (head[10] << 8) | head[11]);
-            uint le = BitConverter.ToUInt32(head, 8);
-            return be is >= 5 and <= 22 || le is >= 5 and <= 22;
+            return IsLikelySerializedFile(head);
         }
         catch { return false; }
+    }
+
+    /// <summary>
+    /// Head-buffer probe: the version field at [8..12) must be a known
+    /// serialized-file version in either byte order. Cheap, bounded, safe.
+    /// </summary>
+    public static bool IsLikelySerializedFile(ReadOnlySpan<byte> head)
+    {
+        if (head.Length < 20) return false;
+        uint be = (uint)((head[8] << 24) | (head[9] << 16) | (head[10] << 8) | head[11]);
+        uint le = BitConverter.ToUInt32(head[8..]);
+        return be is >= 5 and <= 22 || le is >= 5 and <= 22;
     }
 
     public static UnitySerializedFile Parse(IAssetSource source)

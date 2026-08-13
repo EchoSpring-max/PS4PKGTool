@@ -139,9 +139,7 @@ public class RealUnitySampleTests
             if (payload is null || payload.Length < 8) continue;
 
             string fourCc = info.Format switch { 10 => "DXT1", 11 => "DXT3", _ => "DXT5" };
-            byte[] dds = BuildDdsHeader(info.Width, info.Height, fourCc, payload);
-            var ddsInfo = DdsDecoder.ReadHeader(dds);
-            var (rgba, _) = DdsDecoder.Decode(dds, ddsInfo);
+            byte[] rgba = DdsDecoder.DecodeBcPayload(info.Width, info.Height, fourCc, payload);
 
             Console.WriteLine($"decoded: {info.Name} {info.Width}x{info.Height} {fourCc} -> {rgba.Length} RGBA bytes (expected {info.Width * info.Height * 4})");
             Assert.AreEqual(info.Width * info.Height * 4, rgba.Length, "Decoded RGBA buffer must match dimensions");
@@ -149,20 +147,5 @@ public class RealUnitySampleTests
         }
 
         Assert.Fail("No DXT1/3/5 texture with readable image data found in the sample.");
-    }
-
-    /// <summary>Wraps a Unity image payload in a minimal 128-byte DDS header for the BC decoder.</summary>
-    private static byte[] BuildDdsHeader(int width, int height, string fourCc, byte[] payload)
-    {
-        var buf = new byte[128 + payload.Length];
-        System.Text.Encoding.ASCII.GetBytes("DDS ").CopyTo(buf, 0);
-        BitConverter.GetBytes(124).CopyTo(buf, 4);         // dwSize
-        BitConverter.GetBytes(height).CopyTo(buf, 12);
-        BitConverter.GetBytes(width).CopyTo(buf, 16);
-        BitConverter.GetBytes(width * height / 2).CopyTo(buf, 20); // pitch
-        BitConverter.GetBytes(32).CopyTo(buf, 76);         // DDS_PIXELFORMAT.dwSize
-        System.Text.Encoding.ASCII.GetBytes(fourCc).CopyTo(buf, 84);
-        payload.CopyTo(buf, 128);
-        return buf;
     }
 }

@@ -15,6 +15,7 @@ public static class GenericAssetRegistryBuilder
     {
         var detectors = new AssetDetectorRegistry();
         detectors.Register(new MagicDetector());
+        detectors.Register(new UnitySerializedFileDetector());
         detectors.Register(new TextDetector());
         detectors.Register(new ExtensionFallbackDetector());
 
@@ -27,6 +28,7 @@ public static class GenericAssetRegistryBuilder
         handlers.Register(new GnfHandler(), GnfHandler.FormatId);
         handlers.Register(new Atrac9Handler(), Atrac9Handler.FormatId);
         handlers.Register(new UnityBundleHandler(), UnityBundleHandler.FormatId);
+        handlers.Register(new UnitySerializedFileHandler(), UnitySerializedFileHandler.FormatId);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.WavFormat), AudioMetadataHandler.WavFormat);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.OggFormat), AudioMetadataHandler.OggFormat);
         handlers.Register(new TextFileHandler(), TextFileHandler.FormatId);

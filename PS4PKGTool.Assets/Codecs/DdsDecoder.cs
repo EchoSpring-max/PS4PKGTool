@@ -15,6 +15,26 @@ public static class DdsDecoder
 
     public static bool HasDdsMagic(ReadOnlySpan<byte> head) => head.Length >= 4 && head[0] == 'D' && head[1] == 'D' && head[2] == 'S' && head[3] == ' ';
 
+    /// <summary>
+    /// Decodes a raw BC1/BC2/BC3 (DXT1/3/5) payload with NO DDS header - e.g.
+    /// image data inside a Unity texture object. Synthesizes a minimal header
+    /// and decodes the first mip level.
+    /// </summary>
+    public static byte[] DecodeBcPayload(int width, int height, string fourCc, ReadOnlySpan<byte> payload)
+    {
+        var dds = new byte[128 + payload.Length];
+        System.Text.Encoding.ASCII.GetBytes("DDS ").CopyTo(dds, 0);
+        BitConverter.GetBytes(124).CopyTo(dds, 4);                          // dwSize
+        BitConverter.GetBytes(height).CopyTo(dds, 12);
+        BitConverter.GetBytes(width).CopyTo(dds, 16);
+        BitConverter.GetBytes(width * height / 2).CopyTo(dds, 20);          // pitch
+        BitConverter.GetBytes(32).CopyTo(dds, 76);                          // DDS_PIXELFORMAT.dwSize
+        System.Text.Encoding.ASCII.GetBytes(fourCc).CopyTo(dds, 84);
+        payload.CopyTo(dds.AsSpan(128));
+        var info = ReadHeader(dds);
+        return Decode(dds, info).rgba;
+    }
+
     public sealed class DdsInfo
     {
         public required int Width { get; init; }

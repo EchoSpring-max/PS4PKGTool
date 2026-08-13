@@ -184,3 +184,29 @@ Only after A-G pass do engine integrations begin.
 - Native in-process DLL: only when justified (Oodle remains user-supplied external)
 - External helper executables: avoided for the asset subsystem
 - THIRD-PARTY-NOTICES.md required at release (MIT/Apache/GPL notices)
+
+## Implementation status (branch: feature/asset-framework, private)
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Framework core (IAssetSource, capabilities, errors, detection, nesting) | DONE - 7/7 tests |
+| 1 | Generic formats: PNG/JPEG/BMP/GIF, DDS/BC1-3, WAV, OGG, text + app preview integration | DONE - 7/7 tests |
+| 2A | PS4-native metadata: GNF, ATRAC9 | DONE - 4/4 tests |
+| 3a | Unity bundle container (UnityFS/UnityRaw/UnityWeb) + member browsing | DONE - 3/3 tests |
+| 3b | Unity serialized file parser + hardcoded Texture2D layout, validated against real Overcooked 2 PS4 samples (LE body, stripped type trees, all textures streamed to .resS) | DONE - 4/4 tests |
+| 3c | IUnityAssetBackend seam + AssetStudioBackend + UnitySerializedFileHandler (detect/inspect/browse/preview) | DONE - 7/7 tests (synthetic inline fixture + fake backend seam + real sample) |
+| 3d | App-visible: browse .assets in File Browser (needs the resS companion extraction for streamed textures); export (PNG/OBJ) | NEXT |
+| 4 | Unreal (CUE4Parse) | pending |
+| 5 | Hard PS4: full GNF decode, PSARC, ATRAC9 decode | pending |
+| 6 | Asset workspace UI | pending |
+| 7 | 3D viewport (OpenTK) | pending |
+| 8 | Middleware: Wwise, CRIWARE, FMOD | pending |
+
+Key learnings:
+- Unity serialized data endianness follows the BUILD MACHINE (x86 = LE), not the
+  target platform. Header fields are always BE; the marker byte at offset 16
+  drives the body (0 = LE, matching AssetStudio).
+- PS4 Unity builds ship stripped type trees - hardcoded class layouts are
+  mandatory, generic type-tree walking does not work.
+- PS4 Unity builds stream ALL texture image data out to .resS companions
+  (verified: 199/199 textures in resources.assets, 0 inline).

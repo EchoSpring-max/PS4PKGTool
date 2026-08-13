@@ -225,6 +225,7 @@ namespace PS4PKGTool
             _installDirApplied = true;
             string installDir = tbInstallDir.Text.Trim();
             _settings.Shadps4InstallDirectory = installDir;
+            Logger.LogInformation($"Shadps4Wizard: install dir chosen = '{installDir}'");
             if (!string.IsNullOrWhiteSpace(installDir))
             {
                 try { Directory.CreateDirectory(installDir); } catch { }

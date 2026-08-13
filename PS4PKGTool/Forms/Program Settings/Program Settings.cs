@@ -105,6 +105,7 @@ namespace PS4PKGTool
             tbShadps4ActiveCore.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveCore);
             tbShadps4ActiveLauncher.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher);
             tbShadps4InstallDirectory.Text = appSettings_.Shadps4InstallDirectory ?? "";
+            Logger.LogInformation($"Shadps4Settings: install dir field set to '{tbShadps4InstallDirectory.Text}'");
             RefreshShadps4Detection();
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;

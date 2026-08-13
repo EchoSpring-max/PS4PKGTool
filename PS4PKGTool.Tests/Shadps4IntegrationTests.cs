@@ -896,6 +896,24 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void Launch_UsesOnlyTheActiveCore_NeverTheLauncher()
+    {
+        string launcher = Path.Combine(_tempRoot, "shadPS4QtLauncher.exe");
+        File.WriteAllText(launcher, "launcher");
+        var env = new Shadps4Environment
+        {
+            LauncherExePath = launcher, // a real launcher exists...
+            CoreExePath = null,         // ...but no active core
+            InstallDirectories = new List<string> { Path.Combine(_tempRoot, "lib") },
+        };
+
+        var result = new Shadps4Launcher().LaunchInstalledTitle(env, "CUSA12345");
+
+        Assert.AreEqual(Shadps4LaunchStatus.ExecutableMissing, result.Status,
+            "Play must NEVER fall back to the QtLauncher as an intermediate step");
+    }
+
+    [TestMethod]
     public void LaunchInstalledTitle_RejectsInvalidIdAndMissingExe()
     {
         var env = new Shadps4Environment { CoreExePath = Path.Combine(_tempRoot, "missing.exe") };

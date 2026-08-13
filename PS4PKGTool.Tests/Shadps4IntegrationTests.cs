@@ -270,10 +270,13 @@ public class Shadps4IntegrationTests
 
     // ── install service ──
 
+    // Real orbis extraction produces the PKG tree: Image0/ (the game) + Sc0/.
     private static bool FakeExtract(string pkg, string dest, CancellationToken ct)
     {
-        Directory.CreateDirectory(Path.Combine(dest, "sce_sys"));
-        File.WriteAllText(Path.Combine(dest, "eboot.bin"), "fake eboot");
+        Directory.CreateDirectory(Path.Combine(dest, "Image0", "sce_sys"));
+        File.WriteAllText(Path.Combine(dest, "Image0", "eboot.bin"), "fake eboot");
+        Directory.CreateDirectory(Path.Combine(dest, "Sc0"));
+        File.WriteAllText(Path.Combine(dest, "Sc0", "extra.bin"), "extra");
         return true;
     }
 
@@ -295,7 +298,7 @@ public class Shadps4IntegrationTests
         };
 
     [TestMethod]
-    public void Install_StagingSuccess_ProducesCusaFolder()
+    public void Install_StagingSuccess_ProducesDumpLayoutCusaFolder()
     {
         string lib = Path.Combine(_tempRoot, "lib");
         Directory.CreateDirectory(lib);
@@ -304,9 +307,31 @@ public class Shadps4IntegrationTests
         var result = MakeService(FakeExtract).Install(pkg, "CUSA12345", lib, false);
 
         Assert.AreEqual(Shadps4InstallStatus.Success, result.Status);
-        Assert.IsTrue(Directory.Exists(Path.Combine(lib, "CUSA12345")));
-        Assert.IsTrue(File.Exists(Path.Combine(lib, "CUSA12345", "eboot.bin")));
+        string game = Path.Combine(lib, "CUSA12345");
+        Assert.IsTrue(Directory.Exists(game));
+        // shadPS4 expects the dump layout: files at the game-folder root.
+        Assert.IsTrue(File.Exists(Path.Combine(game, "eboot.bin")));
+        Assert.IsTrue(Directory.Exists(Path.Combine(game, "sce_sys")));
+        Assert.IsTrue(File.Exists(Path.Combine(game, "extra.bin")), "Sc0 content merges into the root");
+        Assert.IsFalse(Directory.Exists(Path.Combine(game, "Image0")), "Image0 tree must be flattened away");
+        Assert.IsFalse(Directory.Exists(Path.Combine(game, "Sc0")), "Sc0 tree must be flattened away");
         Assert.IsFalse(Directory.Exists(Path.Combine(lib, ".ps4pkgtool-CUSA12345.tmp")), "staging folder must be gone");
+    }
+
+    [TestMethod]
+    public void Flatten_Image0WinsOnSc0Conflict()
+    {
+        string folder = Path.Combine(_tempRoot, "extracted");
+        Directory.CreateDirectory(Path.Combine(folder, "Image0", "sce_sys"));
+        File.WriteAllText(Path.Combine(folder, "Image0", "eboot.bin"), "image0");
+        Directory.CreateDirectory(Path.Combine(folder, "Sc0", "sce_sys"));
+        File.WriteAllText(Path.Combine(folder, "Sc0", "eboot.bin"), "sc0");
+
+        Shadps4InstallService.FlattenToDumpLayout(folder);
+
+        Assert.AreEqual("image0", File.ReadAllText(Path.Combine(folder, "eboot.bin")), "Image0 copy must win conflicts");
+        Assert.IsFalse(Directory.Exists(Path.Combine(folder, "Image0")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(folder, "Sc0")));
     }
 
     [TestMethod]
@@ -394,7 +419,7 @@ public class Shadps4IntegrationTests
         string pkg = MakeFakePkg(_tempRoot);
         var svc = MakeService((p, d, ct) =>
         {
-            Directory.CreateDirectory(Path.Combine(d, "sce_sys"));
+            Directory.CreateDirectory(Path.Combine(d, "Image0", "sce_sys"));
             return true; // no eboot.bin written
         });
 

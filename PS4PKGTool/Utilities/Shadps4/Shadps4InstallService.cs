@@ -105,8 +105,14 @@ namespace PS4PKGTool.Utilities.Shadps4
                 if (ct.IsCancellationRequested)
                     return new Shadps4InstallResult(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
 
+                // shadPS4 libraries hold DUMP-LAYOUT game folders (eboot.bin and
+                // sce_sys at the folder root), not the PKG Image0/Sc0 tree the
+                // extractor produces - flatten before validating/finalizing.
+                progress?.Report("Arranging game files...");
+                FlattenToDumpLayout(staging);
+
                 progress?.Report("Validating extracted game...");
-                string? eboot = Shadps4Launcher.FindEboot(staging, depth: 5);
+                string? eboot = Shadps4Launcher.FindEboot(staging, depth: 3);
                 if (eboot == null || !Directory.Exists(Path.Combine(staging, "sce_sys")))
                     return new Shadps4InstallResult(Shadps4InstallStatus.ValidationFailed,
                         "The extracted PKG does not contain a valid game layout (eboot.bin / sce_sys missing).");
@@ -150,6 +156,8 @@ namespace PS4PKGTool.Utilities.Shadps4
         /// <summary>
         /// Extracts a PKG to a user-chosen folder (Extract &amp; Launch flow) and
         /// returns the eboot.bin path, or null when extraction/validation failed.
+        /// The game root must follow the dump layout, so the extraction is
+        /// flattened before the eboot is located.
         /// </summary>
         public string? ExtractToFolder(string pkgPath, string destinationDir,
             IProgress<string>? progress = null, CancellationToken ct = default)
@@ -160,7 +168,60 @@ namespace PS4PKGTool.Utilities.Shadps4
                 ? ExtractOverride(pkgPath, destinationDir, ct)
                 : ExtractWithOrbis(pkgPath, destinationDir, ct);
             if (!ok || ct.IsCancellationRequested) return null;
-            return Shadps4Launcher.FindEboot(destinationDir, depth: 5);
+            FlattenToDumpLayout(destinationDir);
+            return Shadps4Launcher.FindEboot(destinationDir, depth: 3);
+        }
+
+        /// <summary>
+        /// Merges the PKG extraction tree (Image0/, Sc0/) into the dump layout
+        /// shadPS4 expects: everything at the game-folder root, Image0 first and
+        /// Sc0 on top of it. On conflicts the Image0 copy wins (base-game files
+        /// take precedence over the second image). A no-op when the tree is
+        /// already flat (e.g. a future extractor emits the dump layout).
+        /// </summary>
+        public static void FlattenToDumpLayout(string folder)
+        {
+            foreach (var rootName in new[] { "Image0", "Sc0" })
+            {
+                string rootDir = Path.Combine(folder, rootName);
+                if (!Directory.Exists(rootDir)) continue;
+
+                foreach (string entry in Directory.GetFileSystemEntries(rootDir))
+                {
+                    string dest = Path.Combine(folder, Path.GetFileName(entry));
+                    if (Directory.Exists(entry))
+                    {
+                        if (Directory.Exists(dest))
+                            MergeDirectory(entry, dest); // Sc0 merges; Image0 files win
+                        else
+                            Directory.Move(entry, dest);
+                    }
+                    else
+                    {
+                        if (File.Exists(dest)) continue; // Image0 copy wins
+                        File.Move(entry, dest);
+                    }
+                }
+                Directory.Delete(rootDir, true);
+            }
+        }
+
+        private static void MergeDirectory(string source, string dest)
+        {
+            foreach (string entry in Directory.GetFileSystemEntries(source))
+            {
+                string target = Path.Combine(dest, Path.GetFileName(entry));
+                if (Directory.Exists(entry))
+                {
+                    if (!Directory.Exists(target)) Directory.Move(entry, target);
+                    else MergeDirectory(entry, target);
+                }
+                else
+                {
+                    if (!File.Exists(target)) File.Move(entry, target);
+                }
+            }
+            Directory.Delete(source, true);
         }
 
         /// <summary>Available free space on the volume that hosts the given directory.</summary>

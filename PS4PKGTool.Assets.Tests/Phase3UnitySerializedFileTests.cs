@@ -22,11 +22,20 @@ public class Phase3UnitySerializedFileTests
 
     private readonly AssetInspectionService _service = GenericAssetRegistryBuilder.Build();
 
-    // ── synthetic fixture: one Texture2D (8x8 DXT1, inline data), LE, v17 ──
+    // ── synthetic fixtures: one object, LE, v17 ──
 
-    private static byte[] BuildSyntheticSerializedFile()
+    /// <summary>8x8 DXT1 payload (4 blocks).</summary>
+    private static byte[] Dxt1Payload8x8()
     {
-        // Object data (little-endian).
+        var payload = new byte[32];
+        var block = new byte[] { 0xFF, 0x7F, 0x00, 0x00, 0xE4, 0xFF, 0xFF, 0xFF };
+        for (int i = 0; i < 4; i++) block.CopyTo(payload, i * 8);
+        return payload;
+    }
+
+    /// <summary>Texture2D object with INLINE image data.</summary>
+    private static byte[] BuildInlineTextureObject()
+    {
         var obj = new MemoryStream();
         WriteAlignedString(obj, "Tex1");
         WriteI32(obj, 0);              // Texture.m_ForcedFallbackFormat
@@ -45,10 +54,47 @@ public class Phase3UnitySerializedFileTests
         WriteI32(obj, 0);              // m_LightmapFormat
         WriteI32(obj, 0);              // m_ColorSpace
         WriteI32(obj, 32);             // image data size (inline)
-        // 8x8 DXT1 = 4 blocks: white-ish / black.
-        var block = new byte[] { 0xFF, 0x7F, 0x00, 0x00, 0xE4, 0xFF, 0xFF, 0xFF };
-        for (int i = 0; i < 4; i++) obj.Write(block, 0, block.Length);
-        byte[] objectData = obj.ToArray();
+        obj.Write(Dxt1Payload8x8());
+        return obj.ToArray();
+    }
+
+    /// <summary>Texture2D object with STREAMED data (StreamingInfo -> .resS companion).</summary>
+    private static byte[] BuildStreamedTextureObject()
+    {
+        var obj = new MemoryStream();
+        WriteAlignedString(obj, "Tex1");
+        WriteI32(obj, 0);              // Texture.m_ForcedFallbackFormat
+        obj.WriteByte(0);              // Texture.m_DownscaleFallback
+        PadTo4(obj);
+        WriteI32(obj, 8);              // m_Width
+        WriteI32(obj, 8);              // m_Height
+        WriteU32(obj, 32);             // m_CompleteImageSize
+        WriteI32(obj, 10);             // m_TextureFormat = DXT1
+        WriteI32(obj, 1);              // m_MipCount
+        obj.WriteByte(1);              // m_IsReadable
+        PadTo4(obj);
+        WriteI32(obj, 1);              // m_ImageCount
+        WriteI32(obj, 2);              // m_TextureDimension
+        for (int i = 0; i < 6; i++) WriteI32(obj, 0); // GLTextureSettings
+        WriteI32(obj, 0);              // m_LightmapFormat
+        WriteI32(obj, 0);              // m_ColorSpace
+        WriteI32(obj, 0);              // image data size = 0 -> StreamingInfo follows
+        WriteU32(obj, 16);             // stream offset (payload sits at +16 in the companion)
+        WriteU32(obj, 32);             // stream size
+        WriteAlignedString(obj, "synthetic.assets.resS");
+        return obj.ToArray();
+    }
+
+    /// <summary>TextAsset object (m_Name only - no texture, exercises the listing fallback).</summary>
+    private static byte[] BuildTextAssetObject()
+    {
+        var obj = new MemoryStream();
+        WriteAlignedString(obj, "Text1");
+        return obj.ToArray();
+    }
+
+    private static byte[] BuildSyntheticSerializedFile(int classId, byte[] objectData)
+    {
 
         // Metadata (little-endian): unity version, platform, stripped types, types, objects.
         var meta = new MemoryStream();
@@ -56,7 +102,7 @@ public class Phase3UnitySerializedFileTests
         WriteU32(meta, 31);            // target platform = PS4
         meta.WriteByte(0);             // enableTypeTree = false
         WriteI32(meta, 1);             // type count
-        WriteI32(meta, 28);            // classId = Texture2D
+        WriteI32(meta, classId);
         meta.WriteByte(0);             // isStrippedType
         WriteI16(meta, 0);             // scriptTypeIndex
         meta.Write(new byte[16]);      // oldTypeHash
@@ -65,7 +111,7 @@ public class Phase3UnitySerializedFileTests
         WriteI64(meta, 1);             // pathId
         WriteU32(meta, 0);             // byteStart (relative to dataOffset)
         WriteU32(meta, (uint)objectData.Length);
-        WriteI32(meta, 0);             // typeId -> classId 28
+        WriteI32(meta, 0);             // typeId -> classId
         byte[] metadata = meta.ToArray();
 
         // Header: the first four fields are ALWAYS big-endian.
@@ -87,7 +133,7 @@ public class Phase3UnitySerializedFileTests
     [TestMethod]
     public async Task Detect_Inspect_And_Browse_SyntheticFile()
     {
-        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(), "synthetic.assets");
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(28, BuildInlineTextureObject()), "synthetic.assets");
 
         var detection = _service.Detect(source);
         Assert.IsNotNull(detection);
@@ -106,22 +152,84 @@ public class Phase3UnitySerializedFileTests
     }
 
     [TestMethod]
-    public async Task PreviewFile_ShowsObjectListing()
+    public async Task PreviewFile_WithInlineTexture_ReturnsContactSheet()
     {
-        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(), "synthetic.assets");
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(28, BuildInlineTextureObject()), "synthetic.assets");
+        var detection = _service.Detect(source)!;
+
+        var preview = await _service.TryPreviewAsync(source, detection);
+        Assert.IsNotNull(preview);
+        Assert.IsNotNull(preview!.Texture, "Decodeable textures must produce a contact sheet, not a listing");
+        Assert.IsTrue(preview.Texture!.Width >= 240 && preview.Texture.Height >= 240, "Contact sheet is a scaled grid");
+        StringAssert.Contains(preview.Info ?? "", "1 texture");
+    }
+
+    [TestMethod]
+    public async Task PreviewFile_WithoutDecodeableTextures_FallsBackToListing()
+    {
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(49, BuildTextAssetObject()), "synthetic.assets");
         var detection = _service.Detect(source)!;
 
         var preview = await _service.TryPreviewAsync(source, detection);
         Assert.IsNotNull(preview);
         Assert.IsNotNull(preview!.Text);
         StringAssert.Contains(preview.Text!, "1 objects");
-        StringAssert.Contains(preview.Text!, "Texture2D x1");
+        StringAssert.Contains(preview.Text!, "TextAsset x1");
+    }
+
+    [TestMethod]
+    public async Task PreviewStreamedTexture_ResolvesCompanion()
+    {
+        // Companion file: 16 garbage bytes prefix, then the DXT1 payload at offset 16.
+        string tempDir = Path.Combine(Path.GetTempPath(), "p4t_3d_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var companion = new byte[16 + 32];
+            Dxt1Payload8x8().CopyTo(companion, 16);
+            File.WriteAllBytes(Path.Combine(tempDir, "synthetic.assets.resS"), companion);
+            File.WriteAllBytes(Path.Combine(tempDir, "synthetic.assets"),
+                BuildSyntheticSerializedFile(28, BuildStreamedTextureObject()));
+
+            var source = new FileAssetSource(Path.Combine(tempDir, "synthetic.assets"), "PKG entry",
+                rel => File.Exists(Path.Combine(tempDir, rel))
+                    ? new FileAssetSource(Path.Combine(tempDir, rel), "Unity .resS stream")
+                    : null);
+            var detection = _service.Detect(source)!;
+            Assert.AreEqual(UnitySerializedFileHandler.FormatId, detection.Format);
+
+            // Whole-file preview resolves the companion and decodes the streamed texture.
+            var preview = await _service.TryPreviewAsync(source, detection);
+            Assert.IsNotNull(preview?.Texture, "Streamed texture should decode via the companion resolver");
+            StringAssert.Contains(preview!.Info ?? "", "1 texture");
+
+            // Child preview decodes the exact texture dimensions.
+            var child = (await _service.GetChildrenAsync(source, detection, 0))[0];
+            var childPreview = await _service.TryPreviewAsync(child, detection);
+            Assert.IsNotNull(childPreview?.Texture);
+            Assert.AreEqual(8, childPreview!.Texture!.Width);
+            Assert.AreEqual(8, childPreview.Texture.Height);
+            Assert.AreEqual(8 * 8 * 4, childPreview.Texture.Rgba8.Length);
+        }
+        finally { try { Directory.Delete(tempDir, true); } catch { } }
+    }
+
+    [TestMethod]
+    public async Task PreviewStreamedTexture_WithoutResolver_ThrowsHint()
+    {
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(28, BuildStreamedTextureObject()), "synthetic.assets");
+        var detection = _service.Detect(source)!;
+        var child = (await _service.GetChildrenAsync(source, detection, 0))[0];
+
+        var ex = await Assert.ThrowsAsync<UnsupportedAssetException>(
+            () => _service.TryPreviewAsync(child, detection));
+        StringAssert.Contains(ex.Message, "resS");
     }
 
     [TestMethod]
     public async Task PreviewInlineTextureChild_Decodes()
     {
-        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(), "synthetic.assets");
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(28, BuildInlineTextureObject()), "synthetic.assets");
         var detection = _service.Detect(source)!;
         var child = (await _service.GetChildrenAsync(source, detection, 0))[0];
 

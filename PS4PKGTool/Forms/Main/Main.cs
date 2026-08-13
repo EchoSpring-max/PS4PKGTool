@@ -7178,6 +7178,24 @@ namespace PS4PKGTool
                         // decoding happens OFF the UI thread.
                         var source = new Assets.IO.FileAssetSource(extracted, "PKG entry");
                         var detection = _assetService.Detect(source);
+
+                        // Unity .assets files stream texture data to a .resS companion -
+                        // extract it into the same temp dir and wire a resolver so
+                        // streamed textures decode (PS4 builds stream everything).
+                        if (detection?.Format == Assets.Handlers.UnitySerializedFileHandler.FormatId)
+                        {
+                            string companionEntry = entryPath + ".resS";
+                            string companionFile = Path.Combine(tempDir, Path.GetFileName(companionEntry));
+                            if (!File.Exists(companionFile))
+                                ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, companionEntry, tempDir);
+                            if (File.Exists(companionFile))
+                            {
+                                source = new Assets.IO.FileAssetSource(extracted, "PKG entry",
+                                    rel => File.Exists(Path.Combine(tempDir, Path.GetFileName(rel)))
+                                        ? new Assets.IO.FileAssetSource(Path.Combine(tempDir, Path.GetFileName(rel)), "Unity .resS stream")
+                                        : null);
+                            }
+                        }
                         if (detection != null)
                         {
                             var descriptor = _assetService.InspectAsync(source, detection).GetAwaiter().GetResult();

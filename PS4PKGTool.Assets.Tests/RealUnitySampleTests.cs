@@ -1,5 +1,6 @@
 using PS4PKGTool.Assets.Codecs;
 using PS4PKGTool.Assets.Containers;
+using PS4PKGTool.Assets.Handlers;
 using PS4PKGTool.Assets.IO;
 
 namespace PS4PKGTool.Assets.Tests;
@@ -105,6 +106,30 @@ public class RealUnitySampleTests
         Assert.IsTrue(streamed > 0, "Expected streamed textures in resources.assets");
         Assert.AreEqual(textures.Count, inline + streamed, "Every texture must be inline or streamed, nothing else");
         Console.WriteLine($"summary(all {textures.Count}): inline={inline} streamed={streamed}");
+    }
+
+    [TestMethod]
+    public void PreviewRealSample_BuildsContactSheet_WithResSCompanion()
+    {
+        string resS = AssetsPath + ".resS";
+        if (!File.Exists(AssetsPath) || !File.Exists(resS)) { Assert.Inconclusive("Real sample + resS not present."); return; }
+
+        var dir = Path.GetDirectoryName(AssetsPath)!;
+        var source = new FileAssetSource(AssetsPath, "PKG entry",
+            rel => File.Exists(Path.Combine(dir, rel))
+                ? new FileAssetSource(Path.Combine(dir, rel), "Unity .resS stream")
+                : null);
+        var service = GenericAssetRegistryBuilder.Build();
+        var detection = service.Detect(source)!;
+        Assert.AreEqual(UnitySerializedFileHandler.FormatId, detection.Format);
+
+        // The app flow: whole-file preview resolves the .resS and decodes both
+        // streamed DXT5 textures into a contact sheet.
+        var preview = service.TryPreviewAsync(source, detection).GetAwaiter().GetResult();
+        Assert.IsNotNull(preview?.Texture, "Contact sheet expected with the companion available");
+        Assert.IsTrue(preview!.Texture!.Width >= 240 && preview.Texture.Height >= 240);
+        StringAssert.Contains(preview.Info ?? "", "2 textures");
+        Console.WriteLine($"contact sheet: {preview.Info} ({preview.Texture.Width}x{preview.Texture.Height})");
     }
 
     [TestMethod]

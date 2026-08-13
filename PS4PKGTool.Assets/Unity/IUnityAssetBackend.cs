@@ -25,6 +25,20 @@ public sealed class UnityTextureInfo
     public string? StreamPath { get; init; }
     public long StreamOffset { get; init; }
     public uint StreamSize { get; init; }
+
+    /// <summary>Copy with the image bytes supplied (e.g. read from the .resS companion).</summary>
+    public UnityTextureInfo WithInlineBytes(byte[] bytes) => new()
+    {
+        Name = Name,
+        Width = Width,
+        Height = Height,
+        Format = Format,
+        MipCount = MipCount,
+        InlineBytes = bytes,
+        StreamPath = StreamPath,
+        StreamOffset = StreamOffset,
+        StreamSize = StreamSize,
+    };
 }
 
 /// <summary>

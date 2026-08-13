@@ -66,6 +66,12 @@ namespace PS4PKGTool.Utilities.Settings
         /// </summary>
         public string Shadps4ActiveLauncher { get; set; } = "";
         /// <summary>
+        /// Root for PS4PKGTool-managed shadPS4 builds (default:
+        /// %LOCALAPPDATA%\PS4PKGTool\shadPS4). Chosen once; every version
+        /// installs under &lt;root&gt;\builds\. Empty = the default.
+        /// </summary>
+        public string Shadps4ManagedRoot { get; set; } = "";
+        /// <summary>
         /// Install target for "Install Game to shadPS4 Library". Auto-filled
         /// from shadPS4's own config (first enabled game library) in Program
         /// Settings; the user may override it. Empty = no preset (the folder

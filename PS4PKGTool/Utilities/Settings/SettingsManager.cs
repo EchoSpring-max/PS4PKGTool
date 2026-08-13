@@ -61,6 +61,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
                     writer.WriteLine($"shadps4_active_core={settings.Shadps4ActiveCore}");
                     writer.WriteLine($"shadps4_active_launcher={settings.Shadps4ActiveLauncher}");
+                    writer.WriteLine($"shadps4_managed_root={settings.Shadps4ManagedRoot}");
                     writer.WriteLine($"shadps4_install_directory={settings.Shadps4InstallDirectory}");
 
                 }
@@ -274,6 +275,10 @@ namespace PS4PKGTool.Utilities.Settings
                             else if (line.StartsWith("shadps4_active_launcher="))
                             {
                                 appSettings_.Shadps4ActiveLauncher = line.Substring("shadps4_active_launcher=".Length).Trim();
+                            }
+                            else if (line.StartsWith("shadps4_managed_root="))
+                            {
+                                appSettings_.Shadps4ManagedRoot = line.Substring("shadps4_managed_root=".Length).Trim();
                             }
                             else if (line.StartsWith("shadps4_install_directory="))
                             {

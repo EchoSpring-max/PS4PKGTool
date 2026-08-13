@@ -195,7 +195,7 @@ Only after A-G pass do engine integrations begin.
 | 3a | Unity bundle container (UnityFS/UnityRaw/UnityWeb) + member browsing | DONE - 3/3 tests |
 | 3b | Unity serialized file parser + hardcoded Texture2D layout, validated against real Overcooked 2 PS4 samples (LE body, stripped type trees, all textures streamed to .resS) | DONE - 4/4 tests |
 | 3c | IUnityAssetBackend seam + AssetStudioBackend + UnitySerializedFileHandler (detect/inspect/browse/preview) | DONE - 7/7 tests (synthetic inline fixture + fake backend seam + real sample) |
-| 3d | App-visible: browse .assets in File Browser (needs the resS companion extraction for streamed textures); export (PNG/OBJ) | NEXT |
+| 3d | resS companion extraction + texture contact sheet preview (app-visible) | DONE - 4 new tests |
 | 4 | Unreal (CUE4Parse) | pending |
 | 5 | Hard PS4: full GNF decode, PSARC, ATRAC9 decode | pending |
 | 6 | Asset workspace UI | pending |

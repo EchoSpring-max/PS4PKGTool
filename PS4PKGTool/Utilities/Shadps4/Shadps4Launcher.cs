@@ -72,30 +72,73 @@ namespace PS4PKGTool.Utilities.Shadps4
             return null;
         }
 
-        /// <summary>Launches an installed title by CUSA ID.</summary>
-        public (Shadps4LaunchStatus Status, string Message) LaunchInstalledTitle(Shadps4Environment env, string titleId)
+        /// <summary>The resolved launch plan for an installed title, before anything is started.</summary>
+        public sealed record Shadps4LaunchPlan(
+            Shadps4LaunchStatus Status, string Message, string? Exe, string[]? Arguments);
+
+        /// <summary>
+        /// Decides how to launch an installed title WITHOUT starting anything
+        /// (testable):
+        ///  - game in a shadPS4-configured library → boot by Title ID;
+        ///  - game only in an extra search dir (the tool's own install
+        ///    directory, which shadPS4's config does not know) → boot by
+        ///    explicit -g &lt;eboot&gt; path, because the core's own ID search
+        ///    would not find it either.
+        /// </summary>
+        public Shadps4LaunchPlan ResolveLaunch(Shadps4Environment env, string titleId, IEnumerable<string>? extraSearchDirs = null)
         {
-            Logger.LogInformation($"Shadps4Launch: title {titleId} via {env.CoreExePath}");
             if (!CusaId.IsMatch(titleId ?? ""))
-            {
-                Logger.LogWarning($"Shadps4Launch: invalid title id '{titleId}'");
-                return (Shadps4LaunchStatus.InvalidTitleId, $"'{titleId}' is not a valid CUSA Title ID.");
-            }
+                return new Shadps4LaunchPlan(Shadps4LaunchStatus.InvalidTitleId,
+                    $"'{titleId}' is not a valid CUSA Title ID.", null, null);
 
             string exe = env.CoreExePath ?? "";
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
+                return new Shadps4LaunchPlan(Shadps4LaunchStatus.ExecutableMissing,
+                    "shadPS4 core executable not found. Configure it in Program Settings.", null, null);
+
+            string? eboot = FindInstalledEboot(env, titleId);
+            bool fromExtraDir = false;
+            if (eboot == null && extraSearchDirs != null)
             {
-                Logger.LogWarning($"Shadps4Launch: core executable missing ({exe})");
-                return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found. Configure it in Program Settings.");
+                foreach (string dir in extraSearchDirs)
+                {
+                    if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) continue;
+                    string? folder = FindFolderByTitleId(dir, titleId, depth: 5);
+                    string? e = folder != null ? FindEboot(folder, depth: 5) : null;
+                    if (e != null) { eboot = e; fromExtraDir = true; break; }
+                }
             }
 
-            if (FindInstalledEboot(env, titleId) == null)
+            if (eboot == null)
+                return new Shadps4LaunchPlan(Shadps4LaunchStatus.GameNotFound,
+                    $"Game {titleId} is not installed in any configured shadPS4 library.", null, null);
+
+            if (fromExtraDir)
             {
-                Logger.LogWarning($"Shadps4Launch: {titleId} not found in any configured library");
-                return (Shadps4LaunchStatus.GameNotFound, $"Game {titleId} is not installed in any configured shadPS4 library.");
+                // The core's own ID search only knows shadPS4's configured
+                // libraries - boot the found eboot by path instead.
+                Logger.LogInformation($"Shadps4Launch: {titleId} found in the tool's install directory ({eboot}) - launching by path");
+                return new Shadps4LaunchPlan(Shadps4LaunchStatus.Started, "shadPS4 launching by path.",
+                    exe, BuildExecutableArguments(eboot));
             }
-            Logger.LogInformation($"Shadps4Launch: game found, booting {titleId}...");
-            return Start(exe, BuildTitleArguments(titleId));
+
+            Logger.LogInformation($"Shadps4Launch: {titleId} found in a configured library - launching by title id");
+            return new Shadps4LaunchPlan(Shadps4LaunchStatus.Started, "shadPS4 launching.",
+                exe, BuildTitleArguments(titleId));
+        }
+
+        /// <summary>Launches an installed title by CUSA ID.</summary>
+        public (Shadps4LaunchStatus Status, string Message) LaunchInstalledTitle(
+            Shadps4Environment env, string titleId, IEnumerable<string>? extraSearchDirs = null)
+        {
+            Logger.LogInformation($"Shadps4Launch: title {titleId} via {env.CoreExePath}");
+            var plan = ResolveLaunch(env, titleId, extraSearchDirs);
+            if (plan.Arguments == null || string.IsNullOrWhiteSpace(plan.Exe))
+            {
+                Logger.LogWarning($"Shadps4Launch: {plan.Status}: {plan.Message}");
+                return (plan.Status, plan.Message);
+            }
+            return Start(plan.Exe, plan.Arguments);
         }
 
         /// <summary>Boots a specific executable (extracted game) directly.</summary>

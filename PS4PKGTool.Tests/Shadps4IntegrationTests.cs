@@ -926,6 +926,72 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void Launch_GameInToolInstallDir_LaunchesByPath()
+    {
+        // The game lives ONLY in the tool's own install directory, which
+        // shadPS4's config (and therefore the core's ID search) does not
+        // know - it must boot by explicit -g <eboot> path.
+        string toolData = Path.Combine(_tempRoot, "toolData");
+        string gameDir = Path.Combine(toolData, "CUSA00900");
+        Directory.CreateDirectory(Path.Combine(gameDir, "sce_sys"));
+        string eboot = Path.Combine(gameDir, "eboot.bin");
+        File.WriteAllText(eboot, "fake");
+        string core = Path.Combine(_tempRoot, "shadPS4.exe");
+        File.WriteAllText(core, "fake");
+
+        var env = new Shadps4Environment
+        {
+            CoreExePath = core,
+            InstallDirectories = new List<string>(), // shadPS4 config knows nothing
+        };
+
+        var plan = new Shadps4Launcher().ResolveLaunch(env, "CUSA00900", new[] { toolData });
+
+        Assert.AreEqual(Shadps4LaunchStatus.Started, plan.Status);
+        CollectionAssert.AreEqual(new[] { "-g", eboot }, plan.Arguments,
+            "a game in the tool's install dir boots by path, not by title id");
+    }
+
+    [TestMethod]
+    public void Launch_GameInConfiguredLibrary_LaunchesByTitleId()
+    {
+        string lib = Path.Combine(_tempRoot, "lib");
+        string gameDir = Path.Combine(lib, "CUSA00900");
+        Directory.CreateDirectory(Path.Combine(gameDir, "sce_sys"));
+        File.WriteAllText(Path.Combine(gameDir, "eboot.bin"), "fake");
+        string core = Path.Combine(_tempRoot, "shadPS4.exe");
+        File.WriteAllText(core, "fake");
+
+        var env = new Shadps4Environment
+        {
+            CoreExePath = core,
+            InstallDirectories = new List<string> { lib },
+        };
+
+        var plan = new Shadps4Launcher().ResolveLaunch(env, "CUSA00900");
+
+        CollectionAssert.AreEqual(new[] { "CUSA00900" }, plan.Arguments,
+            "a game in a shadPS4-configured library boots by title id");
+    }
+
+    [TestMethod]
+    public void Launch_GameNowhere_ReportsGameNotFound()
+    {
+        string core = Path.Combine(_tempRoot, "shadPS4.exe");
+        File.WriteAllText(core, "fake");
+        var env = new Shadps4Environment
+        {
+            CoreExePath = core,
+            InstallDirectories = new List<string> { Path.Combine(_tempRoot, "emptyLib") },
+        };
+
+        var plan = new Shadps4Launcher().ResolveLaunch(env, "CUSA00900", new[] { Path.Combine(_tempRoot, "toolData") });
+
+        Assert.AreEqual(Shadps4LaunchStatus.GameNotFound, plan.Status);
+        Assert.IsNull(plan.Arguments);
+    }
+
+    [TestMethod]
     public void Launch_UsesOnlyTheActiveCore_NeverTheLauncher()
     {
         string launcher = Path.Combine(_tempRoot, "shadPS4QtLauncher.exe");

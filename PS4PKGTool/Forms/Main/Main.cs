@@ -3483,7 +3483,13 @@ namespace PS4PKGTool
                 CoreExePath = corePath,
                 InstallDirectories = env.InstallDirectories,
             };
-            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(launchEnv, titleId);
+            // Games installed into the tool's OWN install directory (which
+            // shadPS4's config does not know) are found via the launcher's
+            // extra-search dirs and booted by path.
+            var extraSearchDirs = new List<string>();
+            string toolInstallDir = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(toolInstallDir)) extraSearchDirs.Add(toolInstallDir);
+            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(launchEnv, titleId, extraSearchDirs);
             switch (status)
             {
                 case Shadps4LaunchStatus.Started:

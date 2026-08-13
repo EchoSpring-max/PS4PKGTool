@@ -3417,6 +3417,25 @@ namespace PS4PKGTool
             OpenProgramSettings();
         }
 
+        /// <summary>Opens the first-run setup wizard (install recommended / specific version / adopt existing).</summary>
+        private void toolStripMenuItemShadps4InstallSetup_Click(object sender, EventArgs e)
+        {
+            using var wizard = new Shadps4SetupWizard(appSettings_);
+            wizard.ShowDialog(this);
+            if (wizard.Tag as string == "use-existing")
+            {
+                OpenProgramSettings();
+                return;
+            }
+            // After a successful install the wizard persists the active
+            // core/launcher itself; just refresh any cached state.
+            Logger.LogInformation("shadPS4 setup wizard closed.");
+        }
+
+        /// <summary>Resolves managed build ids against the installed store (hook for the active-core model).</summary>
+        private string? ResolveManagedShadps4Build(string buildId)
+            => new Shadps4ManagedBuilds(appSettings_.Shadps4ManagedRoot).ResolveManagedExecutable(buildId);
+
         private void toolStripMenuItemShadps4Launch_Click(object sender, EventArgs e)
         {
             var row = GetSelectedGridRow();
@@ -3429,7 +3448,7 @@ namespace PS4PKGTool
             // automatically - a real incident happened when an old parent-folder
             // core was used and the game crashed.
             string activeCore = appSettings_.Shadps4ActiveCore ?? "";
-            string? corePath = Shadps4ActiveCore.ResolveExecutable(activeCore, null, out string? error);
+            string? corePath = Shadps4ActiveCore.ResolveExecutable(activeCore, ResolveManagedShadps4Build, out string? error);
             if (corePath == null)
             {
                 var envForCandidate = GetShadps4Environment();
@@ -3493,7 +3512,7 @@ namespace PS4PKGTool
         private void toolStripMenuItemShadps4OpenLauncher_Click(object sender, EventArgs e)
         {
             string activeLauncher = appSettings_.Shadps4ActiveLauncher ?? "";
-            string? launcherPath = Shadps4ActiveCore.ResolveExecutable(activeLauncher, null, out string? error);
+            string? launcherPath = Shadps4ActiveCore.ResolveExecutable(activeLauncher, ResolveManagedShadps4Build, out string? error);
             if (launcherPath == null)
             {
                 var env = GetShadps4Environment();

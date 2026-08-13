@@ -72,11 +72,18 @@ namespace PS4PKGTool
             darkLabelShadps4Os = new DarkUI.Controls.DarkLabel();
             cmbShadps4Os = new DarkUI.Controls.DarkComboBox();
             darkLabelShadps4Core = new DarkUI.Controls.DarkLabel();
-            tbShadps4CoreExe = new DarkUI.Controls.DarkTextBox();
+            tbShadps4ActiveCore = new DarkUI.Controls.DarkTextBox();
             btnBrowseShadps4Core = new DarkUI.Controls.DarkButton();
+            btnManageShadps4Builds = new DarkUI.Controls.DarkButton();
+            darkLabelShadps4Launcher = new DarkUI.Controls.DarkLabel();
+            tbShadps4ActiveLauncher = new DarkUI.Controls.DarkTextBox();
+            btnOpenShadps4Launcher = new DarkUI.Controls.DarkButton();
+            btnInstallShadps4Launcher = new DarkUI.Controls.DarkButton();
             darkLabelShadps4InstallDir = new DarkUI.Controls.DarkLabel();
             tbShadps4InstallDirectory = new DarkUI.Controls.DarkTextBox();
             btnBrowseShadps4InstallDirectory = new DarkUI.Controls.DarkButton();
+            btnOpenShadps4ConfigFolder = new DarkUI.Controls.DarkButton();
+            btnCheckShadps4Updates = new DarkUI.Controls.DarkButton();
             darkLabelShadps4Detect = new DarkUI.Controls.DarkLabel();
             tabRPI = new System.Windows.Forms.TabPage();
             grpNetwork = new DarkUI.Controls.DarkSectionPanel();
@@ -794,11 +801,18 @@ namespace PS4PKGTool
             grpShadps4.Controls.Add(darkLabelShadps4Os);
             grpShadps4.Controls.Add(cmbShadps4Os);
             grpShadps4.Controls.Add(darkLabelShadps4Core);
-            grpShadps4.Controls.Add(tbShadps4CoreExe);
+            grpShadps4.Controls.Add(tbShadps4ActiveCore);
             grpShadps4.Controls.Add(btnBrowseShadps4Core);
+            grpShadps4.Controls.Add(btnManageShadps4Builds);
+            grpShadps4.Controls.Add(darkLabelShadps4Launcher);
+            grpShadps4.Controls.Add(tbShadps4ActiveLauncher);
+            grpShadps4.Controls.Add(btnOpenShadps4Launcher);
+            grpShadps4.Controls.Add(btnInstallShadps4Launcher);
             grpShadps4.Controls.Add(darkLabelShadps4InstallDir);
             grpShadps4.Controls.Add(tbShadps4InstallDirectory);
             grpShadps4.Controls.Add(btnBrowseShadps4InstallDirectory);
+            grpShadps4.Controls.Add(btnOpenShadps4ConfigFolder);
+            grpShadps4.Controls.Add(btnCheckShadps4Updates);
             grpShadps4.Controls.Add(darkLabelShadps4Detect);
             grpShadps4.Location = new System.Drawing.Point(12, 12);
             grpShadps4.Name = "grpShadps4";
@@ -867,39 +881,88 @@ namespace PS4PKGTool
             cmbShadps4Os.TabIndex = 5;
             // 
             // darkLabelShadps4Core
-            // 
+            //
             darkLabelShadps4Core.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelShadps4Core.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelShadps4Core.Location = new System.Drawing.Point(15, 88);
+            darkLabelShadps4Core.Location = new System.Drawing.Point(15, 84);
             darkLabelShadps4Core.Name = "darkLabelShadps4Core";
             darkLabelShadps4Core.Size = new System.Drawing.Size(130, 15);
             darkLabelShadps4Core.TabIndex = 6;
-            darkLabelShadps4Core.Text = "Selected executable:";
-            // 
-            // tbShadps4CoreExe
-            // 
-            tbShadps4CoreExe.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbShadps4CoreExe.Location = new System.Drawing.Point(145, 84);
-            tbShadps4CoreExe.Name = "tbShadps4CoreExe";
-            tbShadps4CoreExe.ReadOnly = true;
-            tbShadps4CoreExe.Size = new System.Drawing.Size(345, 23);
-            tbShadps4CoreExe.TabIndex = 7;
-            // 
+            darkLabelShadps4Core.Text = "Active shadPS4 Core:";
+            //
+            // tbShadps4ActiveCore
+            //
+            tbShadps4ActiveCore.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbShadps4ActiveCore.Location = new System.Drawing.Point(145, 80);
+            tbShadps4ActiveCore.Name = "tbShadps4ActiveCore";
+            tbShadps4ActiveCore.ReadOnly = true;
+            tbShadps4ActiveCore.Size = new System.Drawing.Size(230, 23);
+            tbShadps4ActiveCore.TabIndex = 7;
+            //
             // btnBrowseShadps4Core
-            // 
+            //
             btnBrowseShadps4Core.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBrowseShadps4Core.Location = new System.Drawing.Point(495, 82);
+            btnBrowseShadps4Core.Location = new System.Drawing.Point(380, 78);
             btnBrowseShadps4Core.Name = "btnBrowseShadps4Core";
             btnBrowseShadps4Core.Size = new System.Drawing.Size(95, 26);
             btnBrowseShadps4Core.TabIndex = 8;
             btnBrowseShadps4Core.Text = "Browse...";
             btnBrowseShadps4Core.Click += btnBrowseShadps4Core_Click;
             //
+            // btnManageShadps4Builds
+            //
+            btnManageShadps4Builds.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnManageShadps4Builds.Location = new System.Drawing.Point(480, 78);
+            btnManageShadps4Builds.Name = "btnManageShadps4Builds";
+            btnManageShadps4Builds.Size = new System.Drawing.Size(110, 26);
+            btnManageShadps4Builds.TabIndex = 13;
+            btnManageShadps4Builds.Text = "Manage Builds...";
+            btnManageShadps4Builds.Click += btnManageShadps4Builds_Click;
+            //
+            // darkLabelShadps4Launcher
+            //
+            darkLabelShadps4Launcher.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelShadps4Launcher.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabelShadps4Launcher.Location = new System.Drawing.Point(15, 114);
+            darkLabelShadps4Launcher.Name = "darkLabelShadps4Launcher";
+            darkLabelShadps4Launcher.Size = new System.Drawing.Size(130, 15);
+            darkLabelShadps4Launcher.TabIndex = 14;
+            darkLabelShadps4Launcher.Text = "QtLauncher:";
+            //
+            // tbShadps4ActiveLauncher
+            //
+            tbShadps4ActiveLauncher.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbShadps4ActiveLauncher.Location = new System.Drawing.Point(145, 110);
+            tbShadps4ActiveLauncher.Name = "tbShadps4ActiveLauncher";
+            tbShadps4ActiveLauncher.ReadOnly = true;
+            tbShadps4ActiveLauncher.Size = new System.Drawing.Size(230, 23);
+            tbShadps4ActiveLauncher.TabIndex = 15;
+            //
+            // btnOpenShadps4Launcher
+            //
+            btnOpenShadps4Launcher.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnOpenShadps4Launcher.Location = new System.Drawing.Point(380, 108);
+            btnOpenShadps4Launcher.Name = "btnOpenShadps4Launcher";
+            btnOpenShadps4Launcher.Size = new System.Drawing.Size(95, 26);
+            btnOpenShadps4Launcher.TabIndex = 16;
+            btnOpenShadps4Launcher.Text = "Open";
+            btnOpenShadps4Launcher.Click += btnOpenShadps4Launcher_Click;
+            //
+            // btnInstallShadps4Launcher
+            //
+            btnInstallShadps4Launcher.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnInstallShadps4Launcher.Location = new System.Drawing.Point(480, 108);
+            btnInstallShadps4Launcher.Name = "btnInstallShadps4Launcher";
+            btnInstallShadps4Launcher.Size = new System.Drawing.Size(110, 26);
+            btnInstallShadps4Launcher.TabIndex = 17;
+            btnInstallShadps4Launcher.Text = "Install/Change";
+            btnInstallShadps4Launcher.Click += btnInstallShadps4Launcher_Click;
+            //
             // darkLabelShadps4InstallDir
             //
             darkLabelShadps4InstallDir.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelShadps4InstallDir.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelShadps4InstallDir.Location = new System.Drawing.Point(15, 118);
+            darkLabelShadps4InstallDir.Location = new System.Drawing.Point(15, 146);
             darkLabelShadps4InstallDir.Name = "darkLabelShadps4InstallDir";
             darkLabelShadps4InstallDir.Size = new System.Drawing.Size(130, 15);
             darkLabelShadps4InstallDir.TabIndex = 9;
@@ -908,7 +971,7 @@ namespace PS4PKGTool
             // tbShadps4InstallDirectory
             //
             tbShadps4InstallDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbShadps4InstallDirectory.Location = new System.Drawing.Point(145, 114);
+            tbShadps4InstallDirectory.Location = new System.Drawing.Point(145, 142);
             tbShadps4InstallDirectory.Name = "tbShadps4InstallDirectory";
             tbShadps4InstallDirectory.Size = new System.Drawing.Size(345, 23);
             tbShadps4InstallDirectory.TabIndex = 10;
@@ -916,20 +979,40 @@ namespace PS4PKGTool
             // btnBrowseShadps4InstallDirectory
             //
             btnBrowseShadps4InstallDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBrowseShadps4InstallDirectory.Location = new System.Drawing.Point(495, 112);
+            btnBrowseShadps4InstallDirectory.Location = new System.Drawing.Point(495, 140);
             btnBrowseShadps4InstallDirectory.Name = "btnBrowseShadps4InstallDirectory";
             btnBrowseShadps4InstallDirectory.Size = new System.Drawing.Size(95, 26);
             btnBrowseShadps4InstallDirectory.TabIndex = 11;
             btnBrowseShadps4InstallDirectory.Text = "Browse...";
             btnBrowseShadps4InstallDirectory.Click += btnBrowseShadps4InstallDirectory_Click;
             //
+            // btnOpenShadps4ConfigFolder
+            //
+            btnOpenShadps4ConfigFolder.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnOpenShadps4ConfigFolder.Location = new System.Drawing.Point(15, 170);
+            btnOpenShadps4ConfigFolder.Name = "btnOpenShadps4ConfigFolder";
+            btnOpenShadps4ConfigFolder.Size = new System.Drawing.Size(130, 26);
+            btnOpenShadps4ConfigFolder.TabIndex = 18;
+            btnOpenShadps4ConfigFolder.Text = "Open Config Folder";
+            btnOpenShadps4ConfigFolder.Click += btnOpenShadps4ConfigFolder_Click;
+            //
+            // btnCheckShadps4Updates
+            //
+            btnCheckShadps4Updates.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnCheckShadps4Updates.Location = new System.Drawing.Point(150, 170);
+            btnCheckShadps4Updates.Name = "btnCheckShadps4Updates";
+            btnCheckShadps4Updates.Size = new System.Drawing.Size(130, 26);
+            btnCheckShadps4Updates.TabIndex = 19;
+            btnCheckShadps4Updates.Text = "Check for Updates";
+            btnCheckShadps4Updates.Click += btnCheckShadps4Updates_Click;
+            //
             // darkLabelShadps4Detect
             //
             darkLabelShadps4Detect.Font = new System.Drawing.Font("Segoe UI", 8F);
             darkLabelShadps4Detect.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 172);
+            darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 202);
             darkLabelShadps4Detect.Name = "darkLabelShadps4Detect";
-            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 314);
+            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 190);
             darkLabelShadps4Detect.TabIndex = 12;
             darkLabelShadps4Detect.Text = "Detection: not configured";
             // 
@@ -1470,11 +1553,18 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel darkLabelShadps4Os;
         private DarkUI.Controls.DarkComboBox cmbShadps4Os;
         private DarkUI.Controls.DarkLabel darkLabelShadps4Core;
-        private DarkUI.Controls.DarkTextBox tbShadps4CoreExe;
+        private DarkUI.Controls.DarkTextBox tbShadps4ActiveCore;
         private DarkUI.Controls.DarkButton btnBrowseShadps4Core;
+        private DarkUI.Controls.DarkButton btnManageShadps4Builds;
+        private DarkUI.Controls.DarkLabel darkLabelShadps4Launcher;
+        private DarkUI.Controls.DarkTextBox tbShadps4ActiveLauncher;
+        private DarkUI.Controls.DarkButton btnOpenShadps4Launcher;
+        private DarkUI.Controls.DarkButton btnInstallShadps4Launcher;
         private DarkUI.Controls.DarkLabel darkLabelShadps4InstallDir;
         private DarkUI.Controls.DarkTextBox tbShadps4InstallDirectory;
         private DarkUI.Controls.DarkButton btnBrowseShadps4InstallDirectory;
+        private DarkUI.Controls.DarkButton btnOpenShadps4ConfigFolder;
+        private DarkUI.Controls.DarkButton btnCheckShadps4Updates;
         private DarkUI.Controls.DarkLabel darkLabelShadps4Detect;
         private DarkUI.Controls.DarkButton btnDownloadShadps4Json;
         private DarkUI.Controls.DarkLabel darkLabelShadps4, labelShadps4JsonDate;

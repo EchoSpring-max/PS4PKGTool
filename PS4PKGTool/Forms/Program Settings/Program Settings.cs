@@ -102,15 +102,8 @@ namespace PS4PKGTool
                 "macos" => 2,
                 _ => 0, // windows (default)
             };
-            // Migration: earlier builds stored the core/launcher separately.
-            string selected = appSettings_.Shadps4ExecutablePath;
-            if (string.IsNullOrWhiteSpace(selected))
-            {
-                selected = !string.IsNullOrWhiteSpace(appSettings_.Shadps4CoreExePath)
-                    ? appSettings_.Shadps4CoreExePath
-                    : appSettings_.Shadps4LauncherExePath;
-            }
-            tbShadps4CoreExe.Text = selected ?? "";
+            tbShadps4ActiveCore.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveCore);
+            tbShadps4ActiveLauncher.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher);
             tbShadps4InstallDirectory.Text = appSettings_.Shadps4InstallDirectory ?? "";
             RefreshShadps4Detection();
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
@@ -215,7 +208,6 @@ namespace PS4PKGTool
                 2 => "macos",
                 _ => "windows",
             };
-            appSettings_.Shadps4ExecutablePath = tbShadps4CoreExe.Text.Trim();
             appSettings_.Shadps4InstallDirectory = tbShadps4InstallDirectory.Text.Trim();
             appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
 
@@ -438,12 +430,133 @@ namespace PS4PKGTool
         {
             using var ofd = new OpenFileDialog
             {
-                Title = "Select the shadPS4 executable (shadPS4.exe or shadPS4QtLauncher.exe)",
-                Filter = "shadPS4 executable (shadPS4.exe;shadPS4QtLauncher.exe)|shadPS4.exe;shadPS4QtLauncher.exe|Executables (*.exe)|*.exe",
+                Title = "Select the shadPS4 core (shadPS4.exe)",
+                Filter = "shadPS4 core (shadPS4.exe)|shadPS4.exe|Executables (*.exe)|*.exe",
             };
             if (ofd.ShowDialog() != DialogResult.OK) return;
-            tbShadps4CoreExe.Text = ofd.FileName;
+            // Adopt the chosen installation - reference only, never modified.
+            appSettings_.Shadps4ActiveCore = Shadps4ActiveCore.ForAdopted(ofd.FileName);
+            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
             RefreshShadps4Detection();
+        }
+
+        private void btnInstallShadps4Launcher_Click(object sender, EventArgs e)
+        {
+            using var ofd = new OpenFileDialog
+            {
+                Title = "Select the shadPS4 QtLauncher (shadPS4QtLauncher.exe)",
+                Filter = "shadPS4 QtLauncher (shadPS4QtLauncher.exe)|shadPS4QtLauncher.exe|Executables (*.exe)|*.exe",
+            };
+            if (ofd.ShowDialog() != DialogResult.OK) return;
+            appSettings_.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(ofd.FileName);
+            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+            RefreshShadps4Detection();
+        }
+
+        private void btnOpenShadps4Launcher_Click(object sender, EventArgs e)
+        {
+            var store = new Shadps4ManagedBuilds(appSettings_.Shadps4ManagedRoot);
+            string? path = Shadps4ActiveCore.ResolveExecutable(
+                appSettings_.Shadps4ActiveLauncher, store.ResolveManagedExecutable, out string? error);
+            if (path == null)
+            {
+                MessageBoxHelper.ShowWarning((error ?? "No QtLauncher configured.") + "\n\nUse Install/Change to select or install one.", false);
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = false,
+                    WorkingDirectory = Path.GetDirectoryName(path) ?? "",
+                });
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to open the shadPS4 QtLauncher:\n{ex.Message}", false);
+            }
+        }
+
+        private void btnManageShadps4Builds_Click(object sender, EventArgs e)
+        {
+            using var dlg = new Shadps4BuildManager(appSettings_);
+            dlg.ShowDialog(this);
+            tbShadps4ActiveCore.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveCore);
+            tbShadps4ActiveLauncher.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher);
+            RefreshShadps4Detection();
+        }
+
+        private void btnOpenShadps4ConfigFolder_Click(object sender, EventArgs e)
+        {
+            string configDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "shadPS4");
+            if (!Directory.Exists(configDir))
+            {
+                ShowWarning("The shadPS4 config folder does not exist yet.\n\nStart shadPS4 once and it will be created.", false);
+                return;
+            }
+            Process.Start("explorer.exe", configDir);
+        }
+
+        private async void btnCheckShadps4Updates_Click(object sender, EventArgs e)
+        {
+            btnCheckShadps4Updates.Enabled = false;
+            btnCheckShadps4Updates.Text = "Checking...";
+            try
+            {
+                var feed = new Shadps4ReleaseFeed();
+                var stable = await feed.GetReleasesAsync(Shadps4FeedKind.CoreStable);
+                var nightly = await feed.GetReleasesAsync(Shadps4FeedKind.CoreNightly);
+                var launcher = await feed.GetReleasesAsync(Shadps4FeedKind.QtLauncher);
+
+                string? latestStable = stable.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.Tag;
+                string? latestNightly = nightly.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.BuildId;
+                string? latestLauncher = launcher.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.BuildId;
+
+                string coreError = stable.Error ?? nightly.Error;
+                if (coreError != null)
+                {
+                    ShowWarning("shadPS4 update check failed:\n" + coreError, false);
+                    return;
+                }
+
+                var message =
+                    "Core\n" +
+                    $"  Installed: {DescribeActiveComponent(appSettings_.Shadps4ActiveCore)}\n" +
+                    $"  Latest stable: {latestStable ?? "unknown"}\n" +
+                    $"  Latest nightly: {latestNightly ?? "unknown"}\n\n" +
+                    "QtLauncher\n" +
+                    $"  Installed: {DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher)}\n" +
+                    $"  Latest: {latestLauncher ?? "unknown"}\n\n" +
+                    "Updates are never installed or activated automatically. Use Manage Builds to install a specific version.";
+
+                var choice = AppMessageBox.Show("shadPS4 Updates", message,
+                    AppMessageType.Info, AppMessageButtons.YesNo);
+                if (choice == DialogResult.Yes)
+                    Tool.OpenWebLink("https://github.com/shadps4-emu/shadPS4/releases");
+            }
+            catch (Exception ex)
+            {
+                ShowWarning("shadPS4 update check failed: " + ex.Message, false);
+            }
+            finally
+            {
+                btnCheckShadps4Updates.Enabled = true;
+                btnCheckShadps4Updates.Text = "Check for Updates";
+            }
+        }
+
+        /// <summary>Human-readable form of an active-component setting for the settings textboxes.</summary>
+        private static string DescribeActiveComponent(string? setting)
+        {
+            var r = Shadps4ActiveCore.Parse(setting);
+            return r.Source switch
+            {
+                Shadps4ComponentSource.Managed => "Build " + r.Value,
+                Shadps4ComponentSource.Adopted => r.Value,
+                _ => "(not set)",
+            };
         }
 
         private void btnBrowseShadps4InstallDirectory_Click(object sender, EventArgs e)
@@ -470,7 +583,7 @@ namespace PS4PKGTool
         {
             try
             {
-                var env = Shadps4EnvironmentResolver.Resolve(tbShadps4CoreExe.Text.Trim());
+                var env = Shadps4EnvironmentResolver.Resolve(appSettings_.Shadps4ExecutablePath);
 
                 // Auto-fill the install directory from shadPS4's own config
                 // (first enabled library) - only when the user has not set
@@ -483,11 +596,11 @@ namespace PS4PKGTool
 
                 var lines = new List<string>
                 {
+                    $"Active core: {DescribeActiveComponent(appSettings_.Shadps4ActiveCore)}",
+                    $"QtLauncher: {DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher)}",
                     $"Status: {(env.IsValid ? "Configuration detected successfully" : "shadPS4 not configured or not found")}",
                     $"Mode: {env.UserDirectoryMode}{(env.DetectionConfidence == Shadps4DetectionConfidence.Low ? " (low confidence)" : "")}",
                     $"Distribution: {env.DistributionType}",
-                    $"Core: {Shorten(env.CoreExePath)}",
-                    $"Qt launcher: {Shorten(env.LauncherExePath)}",
                     $"Config: {Shorten(env.ConfigPath)} ({env.ConfigFormat})",
                     $"Libraries: {(env.InstallDirectories.Count == 0 ? "(none enabled)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}",
                     $"Addon/DLC: {Shorten(env.AddonInstallDirectory)}",

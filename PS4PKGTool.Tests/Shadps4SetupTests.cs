@@ -241,6 +241,30 @@ namespace PS4PKGTool.Tests
         }
 
         [TestMethod]
+        public void Store_InstallingNewVersion_KeepsOldBuildForRollback()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+
+            string stagingA = Path.Combine(_tempRoot, "stagingA");
+            Directory.CreateDirectory(stagingA);
+            File.WriteAllText(Path.Combine(stagingA, "shadPS4.exe"), "old");
+            store.Commit(Parse(NightlyJson, Shadps4FeedKind.CoreNightly)[0], stagingA); // abc... e81418b
+
+            string stagingB = Path.Combine(_tempRoot, "stagingB");
+            Directory.CreateDirectory(stagingB);
+            File.WriteAllText(Path.Combine(stagingB, "shadPS4.exe"), "new");
+            var releaseB = MakeRelease(Shadps4FeedKind.CoreNightly, "tag-b", "deadbeef", "b.zip", 100);
+            store.Commit(releaseB, stagingB);
+
+            var builds = store.ListBuilds(Shadps4Component.Core);
+
+            Assert.AreEqual(2, builds.Count, "installing a newer build NEVER deletes the old one - rollback is switching back");
+            Assert.IsNotNull(store.FindExe(Shadps4Component.Core, "e81418b46ea2b2ad8822d5d98b2210cf118d159e"));
+            Assert.IsNotNull(store.FindExe(Shadps4Component.Core, "deadbeef"));
+        }
+
+        [TestMethod]
         public void Store_CommitRejectsMissingExpectedExe()
         {
             string root = Path.Combine(_tempRoot, "managed");

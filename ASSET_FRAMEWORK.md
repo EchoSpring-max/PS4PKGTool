@@ -241,3 +241,28 @@ Options to unblock:
    packages use the STANDARD format (magic at 0) - most likely.
 3. Defer 4b until the asset workspace (Phase 6) makes pak-entry browsing
    user-visible anyway.
+
+## Phase 4b progress 2 (2026-08-13): PAK v8 + compressed entries + standard format confirmed
+
+- PAK version 8 support (FNameBasedCompressionMethod): 1-byte method index in
+  entries; trailer carries the method name ("Zlib") and can sit well before
+  EOF - the trailer scan now searches backward with version/index validation.
+- Compressed entries decode: self-describing records with block lists
+  ({start,end} ranges; v5+ entry-relative, v4 absolute). Verified against
+  Bee Simulator (Zlib entries round-trip).
+- Bee Simulator base pak (6.4 GB): 67,486 entries, 4,246 textures browsable
+  and extractable.
+- STANDARD package format CONFIRMED on Bee Simulator (magic at offset 0) -
+  the CODE VEIN 53-byte preamble is game-specific, not the norm.
+- Standard summary mapping (verified against EOF alignment on real textures):
+  magic@0, legacy -7 (unversioned), TotalHeaderSize, byte-length PackageName,
+  PackageFlags, NameCount, ExportOffset/Count, ImportOffset. Name table =
+  {int32 byteLen incl null, UTF-8 + null, uint32 hash}. Export records 40
+  bytes (3 x 40 = EOF exact). Import table ends where the export table begins.
+
+REMAINING for 4b: the UTexture2D object data in the .uexp uses UNVERSIONED
+properties (FUnversionedHeader + class schema), then the cooked platform data
+(FTexturePlatformData/FTexture2DMipMap/FByteBulkData layouts are fully
+referenced). The unversioned property schema for UTexture2D is the last
+unknown; the dims/format/mips live AFTER the properties, so the property
+values can be skipped once the schema order is pinned.

@@ -38,15 +38,52 @@ public sealed class UnrealPakBackend : IUnrealAssetBackend
             throw new UnsupportedAssetException($"Entry '{entry.Path}' is AES-encrypted - decryption is not supported yet.");
 
         var pak = Get(source);
-        long offset = ResolveOffset(pak, entry);
+        long baseOffset = ResolveOffset(pak, entry);
 
-        byte[] data;
-        using (var s = source.OpenRead(offset, entry.Size))
+        if (entry.Compression == "None")
         {
-            data = new byte[s.Length];
-            s.ReadExactly(data);
+            byte[] data;
+            using (var s = source.OpenRead(baseOffset, entry.Size))
+            {
+                data = new byte[s.Length];
+                s.ReadExactly(data);
+            }
+            return new MemoryStream(data, writable: false);
         }
-        byte[] decompressed = PakCompression.Decompress(entry.Compression, data, entry.UncompressedSize);
+
+        // Oodle/unknown methods surface their structured errors before block
+        // handling (a compressed entry without a block list is a parse problem,
+        // not a dependency one).
+        if (entry.Compression == "Oodle")
+            throw new MissingDependencyException(
+                "Entry uses Oodle compression - the Oodle DLL is not bundled (see ASSET_FRAMEWORK.md). Raw export of the compressed bytes remains available.");
+        if (entry.Compression.StartsWith("Unknown", StringComparison.Ordinal))
+            throw new UnsupportedAssetException($"Unknown compression method '{entry.Compression}'.");
+
+        // Compressed entries are self-describing: their data starts with the
+        // record (including the block list we already parsed from the index);
+        // the payloads sit at the block ranges. v5+ block starts are relative
+        // to the entry offset; v4 block starts are absolute.
+        if (entry.Blocks is not { Count: > 0 })
+            throw new UnsupportedAssetException($"Entry '{entry.Path}' is compressed but carries no block list.");
+
+        var payload = new MemoryStream();
+        foreach (var (start, end) in entry.Blocks)
+        {
+            long blockFilePos = pak.Header.Version >= 5 ? baseOffset + start : start;
+            long blockLen = end - start;
+            if (blockFilePos < 0 || blockFilePos + blockLen > source.Length)
+                throw new CorruptAssetException($"PAK block for '{entry.Path}' lies outside the file.");
+            byte[] block;
+            using (var s = source.OpenRead(blockFilePos, blockLen))
+            {
+                block = new byte[s.Length];
+                s.ReadExactly(block);
+            }
+            payload.Write(block);
+        }
+
+        byte[] decompressed = PakCompression.Decompress(entry.Compression, payload.ToArray(), entry.UncompressedSize);
         return new MemoryStream(decompressed, writable: false);
     }
 

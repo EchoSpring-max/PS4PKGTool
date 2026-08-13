@@ -4,6 +4,9 @@ namespace PS4PKGTool.Assets.Unreal;
 
 /// <summary>
 /// Neutral reference to one PAK entry. Offsets are relative to the pak file.
+/// Compressed entries are self-describing: their data starts with a copy of
+/// the record (including the block list); the block ranges locate the
+/// compressed payloads relative to the entry offset (v5+) or absolute (v4).
 /// </summary>
 public sealed record PakEntryRef(
     string Path,
@@ -11,7 +14,8 @@ public sealed record PakEntryRef(
     long Size,
     long UncompressedSize,
     string Compression,   // "None", "Zlib", "Gzip", "LZ4", "Oodle", "Unknown"
-    bool Encrypted);
+    bool Encrypted,
+    IReadOnlyList<(long Start, long End)>? Blocks = null);
 
 /// <summary>
 /// Unreal parsing seam. The framework depends only on this interface; the

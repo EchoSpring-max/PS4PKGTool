@@ -40,7 +40,9 @@ public class Phase4UnrealPakTests
     /// <summary>
     /// Builds a version-4 pak in the VERIFIED real layout: mount point string,
     /// entry data (absolute offsets), index with byte-length-prefixed paths,
-    /// 53-byte FPakEntry records, 44-byte trailer.
+    /// FPakEntry records with compression blocks, 44-byte trailer.
+    /// Compressed entries are self-describing: their data starts with the
+    /// record (block start = record size) followed by the payload.
     /// </summary>
     private static byte[] BuildSyntheticPak(params (string path, byte[] stored, long uncompressed, uint method)[] entries)
     {
@@ -58,16 +60,26 @@ public class Phase4UnrealPakTests
             index.Write(new byte[20]);               // SHA1 hash (unchecked)
             if (method != 0)
             {
-                WriteI32(index, 0);                  // compression blocks (none)
+                // One block covering the payload after the record.
+                // v4 record: 8+8+8+4+20 (fields) + 4+16 (blocks) + 1+4 (flags/blocksize) = 73.
+                // v4 block positions are ABSOLUTE file offsets (v5+ are entry-relative).
+                const int recordSize = 73;
+                WriteI32(index, 1);
+                WriteI64(index, offset + recordSize);
+                WriteI64(index, offset + recordSize + stored.Length);
             }
             index.WriteByte(0);                      // flags
             WriteU32(index, 0);                      // compression block size
-            offset += stored.Length;
+            offset += method != 0 ? 73 + stored.Length : stored.Length; // stub + payload
         }
         byte[] indexBytes = index.ToArray();
 
         var file = new MemoryStream();
-        foreach (var (_, stored, _, _) in entries) file.Write(stored);
+        foreach (var (_, stored, _, method) in entries)
+        {
+            if (method != 0) file.Write(new byte[73]); // self-describing record stub
+            file.Write(stored);
+        }
         file.Write(indexBytes);
         WriteU32(file, UnrealPak.MagicUe4);
         WriteI32(file, 4);
@@ -176,6 +188,68 @@ public class Phase4UnrealPakTests
         var children = await _service.GetChildrenAsync(pak, detection, 0);
         Assert.AreEqual(1, children.Count);
         Assert.IsInstanceOfType<PakEntrySource>(children[0]);
+    }
+
+    [TestMethod]
+    public void ExtractTextureFromBeeSimulatorPak()
+    {
+        const string beePak = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\bee\bebee-ps4.pak";
+        if (!File.Exists(beePak)) { Assert.Inconclusive("Bee Simulator pak not present."); return; }
+        var dir = @"C:\Users\User\AppData\Local\Temp\p4t_spike_ue\bee";
+        var source = new FileAssetSource(beePak, "PKG entry");
+        var backend = new UnrealPakBackend();
+        var entries = backend.ListEntries(source);
+        Console.WriteLine($"bee pak entries: {entries.Count}");
+
+        // Small texture candidates.
+        var textures = entries.Where(e => e.Path.Contains(".uasset") && e.UncompressedSize > 0 && e.UncompressedSize < 200_000
+            && (Path.GetFileName(e.Path).StartsWith("T_") || e.Path.Contains("/Textures/"))).ToList();
+        Console.WriteLine($"candidate textures: {textures.Count}");
+        foreach (var e in textures.Take(5))
+            Console.WriteLine($"  {e.Path} raw={e.UncompressedSize}");
+
+        var pick = textures.FirstOrDefault();
+        if (pick == null) { Assert.Inconclusive("No small texture found."); return; }
+        var name = Path.GetFileName(pick.Path);
+        try
+        {
+            using var s = backend.OpenEntryStream(source, pick);
+            var buf = new byte[s.Length];
+            s.ReadExactly(buf);
+            File.WriteAllBytes(Path.Combine(dir, name), buf);
+            Console.WriteLine($"extracted {name} ({buf.Length})");
+            // Header check: standard UE4 has the magic at offset 0.
+            Console.WriteLine($"first 16 bytes: {BitConverter.ToString(buf, 0, 16)} magic@0={BitConverter.ToUInt32(buf, 0):X8}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAILED {name} comp={pick.Compression} stored={pick.Size} off={pick.Offset}: {ex.Message}");
+            using var raw = source.OpenRead(pick.Offset, Math.Min(pick.Size, 128));
+            var head = new byte[raw.Length];
+            raw.ReadExactly(head);
+            Console.WriteLine($"entry head: {BitConverter.ToString(head)}");
+        }
+        var uexp = entries.FirstOrDefault(e => e.Path == pick.Path.Replace(".uasset", ".uexp"));
+        if (uexp != null)
+        {
+            using var s = backend.OpenEntryStream(source, uexp);
+            var buf = new byte[s.Length];
+            s.ReadExactly(buf);
+            File.WriteAllBytes(Path.Combine(dir, Path.GetFileName(uexp.Path)), buf);
+            Console.WriteLine($"extracted {Path.GetFileName(uexp.Path)} ({buf.Length})");
+        }
+        else
+        {
+            var ubulk = entries.FirstOrDefault(e => e.Path == pick.Path.Replace(".uasset", ".ubulk"));
+            if (ubulk != null)
+            {
+                using var s = backend.OpenEntryStream(source, ubulk);
+                var buf = new byte[s.Length];
+                s.ReadExactly(buf);
+                File.WriteAllBytes(Path.Combine(dir, Path.GetFileName(ubulk.Path)), buf);
+                Console.WriteLine($"extracted {Path.GetFileName(ubulk.Path)} ({buf.Length})");
+            }
+        }
     }
 
     [TestMethod]

@@ -10,13 +10,15 @@ using System.Threading.Tasks;
 namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 {
     /// <summary>
-    /// shadPS4 compatibility lookup. The database is the official
-    /// shadps4-compatibility/shadps4-game-compatibility GitHub repo -
-    /// each game is a GitHub Issue titled "CUSAxxxxx - Title", labeled
-    /// with its status (status-playable/ingame/menus/boots/nothing).
-    /// This class downloads the issues once (manual fetch), caches a
-    /// { CUSA → status } map in AppData\shadps4.json, and looks up
-    /// statuses by Title ID.
+    /// shadPS4 compatibility lookup (Windows only). The database is the
+    /// official shadps4-compatibility/shadps4-game-compatibility GitHub
+    /// repo - each game/OS combo is a GitHub Issue titled
+    /// "CUSAxxxxx - Title", labeled with its status
+    /// (status-playable/ingame/menus/boots/nothing) and its operating
+    /// system (os-windows/os-linux/os-macOS). Only os-windows reports
+    /// are kept. This class downloads the issues once (manual fetch),
+    /// caches a { CUSA → status } map in AppData\shadps4.json, and
+    /// looks up statuses by Title ID.
     /// </summary>
     public static class Shadps4Compat
     {
@@ -101,6 +103,23 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                         foreach (var issue in issues)
                         {
+                            // Windows-only compatibility: the repo tags each
+                            // report with its operating system (os-windows /
+                            // os-linux / os-macOS). Only os-windows reports
+                            // count here - a game reported solely on Linux or
+                            // macOS must not show a Windows status.
+                            bool isWindows = false;
+                            foreach (var lbl in issue.labels)
+                            {
+                                string labelName = (string)(lbl.name ?? "");
+                                if (labelName.Equals("os-windows", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isWindows = true;
+                                    break;
+                                }
+                            }
+                            if (!isWindows) continue;
+
                             string title = (string)(issue.title ?? "");
                             var m = CusaRegex.Match(title);
                             if (m.Success)

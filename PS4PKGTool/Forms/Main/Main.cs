@@ -2108,7 +2108,7 @@ namespace PS4PKGTool
                     dt.Columns.Add("Directory");
                     dt.Columns.Add("Backported");
                     dt.Columns.Add("Latest Update");
-                    dt.Columns.Add("ShadPS4");
+                    dt.Columns.Add("ShadPS4 (Windows)");
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
                 // Detach DataTable from DGV while adding rows on background thread to prevent STA exceptions
@@ -2421,7 +2421,7 @@ namespace PS4PKGTool
                 dttemp.Columns.Add("Directory");
                 dttemp.Columns.Add("Backported");
                 dttemp.Columns.Add("Latest Update");
-                dttemp.Columns.Add("ShadPS4");
+                dttemp.Columns.Add("ShadPS4 (Windows)");
 
                 // verify scanned ps4 pkg and count it
                 foreach (var item in PkgFileList)
@@ -2675,7 +2675,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) cols.Add(("Directory", 0));
             if (appSettings_.pkgBackportColumn) cols.Add(("Backported", 0));
             if (appSettings_.AutoFetchUpdate) cols.Add(("Latest Update", 0));
-            if (appSettings_.Shadps4Check) cols.Add(("ShadPS4", 0));
+            if (appSettings_.Shadps4Check) cols.Add(("ShadPS4 (Windows)", 0));
             return cols;
         }
 
@@ -2695,7 +2695,7 @@ namespace PS4PKGTool
             if (appSettings_.pkgDirectoryColumn) data.Add(Cell("Directory"));
             if (appSettings_.pkgBackportColumn) data.Add(Cell("Backported"));
             if (appSettings_.AutoFetchUpdate) data.Add(Cell("Latest Update"));
-            if (appSettings_.Shadps4Check) data.Add(Cell("ShadPS4"));
+            if (appSettings_.Shadps4Check) data.Add(Cell("ShadPS4 (Windows)"));
             return data.ToArray();
         }
 
@@ -3062,8 +3062,8 @@ namespace PS4PKGTool
         }
 
         /// <summary>
-        /// Fills the "ShadPS4" column from the local compatibility cache
-        /// (by Title ID, column-name based - index-safe). No-op when the
+        /// Fills the "ShadPS4 (Windows)" column from the local compatibility
+        /// cache (by Title ID, column-name based - index-safe). No-op when the
         /// check is disabled or the cache is missing.
         /// </summary>
         private static void ApplyShadps4Status(DataTable dt)
@@ -3071,14 +3071,14 @@ namespace PS4PKGTool
             try
             {
                 if (!appSettings_.Shadps4Check) return;
-                if (dt == null || !dt.Columns.Contains("ShadPS4") || !dt.Columns.Contains("Title ID")) return;
+                if (dt == null || !dt.Columns.Contains("ShadPS4 (Windows)") || !dt.Columns.Contains("Title ID")) return;
                 foreach (DataRow row in dt.Rows)
                 {
                     string tid = row["Title ID"]?.ToString() ?? "";
                     if (string.IsNullOrEmpty(tid)) continue;
                     string status = Shadps4Compat.Lookup(tid);
                     if (!string.IsNullOrEmpty(status))
-                        row["ShadPS4"] = status;
+                        row["ShadPS4 (Windows)"] = status;
                 }
             }
             catch (Exception ex) { Logger.LogWarning("Failed to apply shadPS4 status: " + ex.Message); }
@@ -6665,7 +6665,7 @@ namespace PS4PKGTool
 
             // shadPS4 column: colored dot + status text (column-name based, index-safe)
             if (e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count
-                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4"
+                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4 (Windows)"
                 && e.Value != null && e.Value.ToString() != "")
             {
                 string status = e.Value.ToString();

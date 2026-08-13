@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
 {
@@ -52,11 +53,15 @@ namespace PS4PKGTool.Utilities.Shadps4
             Shadps4Component component = release.Feed == Shadps4FeedKind.QtLauncher
                 ? Shadps4Component.QtLauncher
                 : Shadps4Component.Core;
+            Logger.LogInformation($"Shadps4Setup: installing {release.AssetName} ({release.Feed}, commit {release.Commit})");
 
             // Same build already installed - never duplicate or overwrite.
             if (store.FindExe(component, release.BuildId) != null)
+            {
+                Logger.LogInformation($"Shadps4Setup: build {release.BuildId} already installed - skipping.");
                 return new Shadps4SetupResult(Shadps4SetupStatus.AlreadyInstalled,
                     $"Build {release.BuildId} is already installed.");
+            }
 
             string root = store.RootPath;
             string workDir = Path.Combine(root, ".work");
@@ -70,8 +75,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                     ? FreeSpaceOverride(root)
                     : FreeSpace(root);
                 if (release.SizeBytes > 0 && free < release.SizeBytes + SpaceMarginBytes)
+                {
+                    Logger.LogWarning($"Shadps4Setup: not enough space to download ({HelperBytes(release.SizeBytes + SpaceMarginBytes)} needed, {HelperBytes(free)} free)");
                     return new Shadps4SetupResult(Shadps4SetupStatus.InsufficientSpace,
                         $"Not enough free space to download {release.AssetName} (needs ~{HelperBytes(release.SizeBytes + SpaceMarginBytes)}, has {HelperBytes(free)}).");
+                }
 
                 // 2) streamed download to .part, then rename.
                 progress?.Report($"Downloading {release.AssetName}...");
@@ -85,7 +93,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                     release.AssetUrl, zipPath, release.SizeBytes > 0 ? release.SizeBytes : null,
                     release.AssetDigestSha256, bytes, ct).ConfigureAwait(false);
                 if (dlError != null)
+                {
+                    Logger.LogWarning($"Shadps4Setup: download failed: {dlError}");
                     return new Shadps4SetupResult(Shadps4SetupStatus.DownloadFailed, dlError);
+                }
+                Logger.LogInformation($"Shadps4Setup: downloaded {release.AssetName}");
 
                 // 3) validate the ZIP and estimate the extracted size.
                 progress?.Report("Validating archive...");
@@ -97,6 +109,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 catch (Exception ex)
                 {
+                    Logger.LogWarning($"Shadps4Setup: archive invalid or truncated: {ex.Message}");
                     return new Shadps4SetupResult(Shadps4SetupStatus.VerificationFailed,
                         $"The downloaded archive is invalid or truncated: {ex.Message}");
                 }
@@ -104,8 +117,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                 // 4) free space for the extraction.
                 free = FreeSpaceOverride != null ? FreeSpaceOverride(root) : FreeSpace(root);
                 if (free < uncompressed + SpaceMarginBytes)
+                {
+                    Logger.LogWarning($"Shadps4Setup: not enough space to extract ({HelperBytes(uncompressed + SpaceMarginBytes)} needed, {HelperBytes(free)} free)");
                     return new Shadps4SetupResult(Shadps4SetupStatus.InsufficientSpace,
                         $"Not enough free space to extract {release.AssetName} (needs ~{HelperBytes(uncompressed + SpaceMarginBytes)}, has {HelperBytes(free)}).");
+                }
 
                 // 5) extract to staging (same volume as the final dir).
                 progress?.Report("Extracting...");
@@ -116,6 +132,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 catch (Exception ex)
                 {
+                    Logger.LogWarning($"Shadps4Setup: extraction failed: {ex.Message}");
                     return new Shadps4SetupResult(Shadps4SetupStatus.ExtractionFailed,
                         $"Extraction failed: {ex.Message}");
                 }
@@ -129,8 +146,10 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 catch (InvalidOperationException ex)
                 {
+                    Logger.LogWarning($"Shadps4Setup: commit rejected: {ex.Message}");
                     return new Shadps4SetupResult(Shadps4SetupStatus.VerificationFailed, ex.Message);
                 }
+                Logger.LogInformation($"Shadps4Setup: installed build {build.BuildId} at {build.DirectoryPath}");
 
                 return new Shadps4SetupResult(Shadps4SetupStatus.Success,
                     $"Installed {release.AssetName} as build {build.BuildId}.", build);
@@ -138,17 +157,20 @@ namespace PS4PKGTool.Utilities.Shadps4
             catch (OperationCanceledException)
             {
                 CleanupWork(workDir, staging);
+                Logger.LogWarning("Shadps4Setup: cancelled - work dir and staging cleaned.");
                 return new Shadps4SetupResult(Shadps4SetupStatus.Cancelled, "Installation cancelled.");
             }
             catch (IOException ex) when ((uint)ex.HResult == 0x80070070) // ERROR_DISK_FULL
             {
                 CleanupWork(workDir, staging);
+                Logger.LogError("Shadps4Setup: disk full - " + ex.Message);
                 return new Shadps4SetupResult(Shadps4SetupStatus.InsufficientSpace,
                     $"Disk full during installation: {ex.Message}");
             }
             catch (Exception ex)
             {
                 CleanupWork(workDir, staging);
+                Logger.LogError("Shadps4Setup failed: " + ex);
                 return new Shadps4SetupResult(Shadps4SetupStatus.Failed, ex.Message);
             }
             finally

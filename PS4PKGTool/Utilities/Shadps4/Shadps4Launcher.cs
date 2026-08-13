@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
 {
@@ -74,28 +75,45 @@ namespace PS4PKGTool.Utilities.Shadps4
         /// <summary>Launches an installed title by CUSA ID.</summary>
         public (Shadps4LaunchStatus Status, string Message) LaunchInstalledTitle(Shadps4Environment env, string titleId)
         {
+            Logger.LogInformation($"Shadps4Launch: title {titleId} via {env.CoreExePath}");
             if (!CusaId.IsMatch(titleId ?? ""))
+            {
+                Logger.LogWarning($"Shadps4Launch: invalid title id '{titleId}'");
                 return (Shadps4LaunchStatus.InvalidTitleId, $"'{titleId}' is not a valid CUSA Title ID.");
+            }
 
             string exe = env.CoreExePath ?? "";
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
+            {
+                Logger.LogWarning($"Shadps4Launch: core executable missing ({exe})");
                 return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found. Configure it in Program Settings.");
+            }
 
             if (FindInstalledEboot(env, titleId) == null)
+            {
+                Logger.LogWarning($"Shadps4Launch: {titleId} not found in any configured library");
                 return (Shadps4LaunchStatus.GameNotFound, $"Game {titleId} is not installed in any configured shadPS4 library.");
-
+            }
+            Logger.LogInformation($"Shadps4Launch: game found, booting {titleId}...");
             return Start(exe, BuildTitleArguments(titleId));
         }
 
         /// <summary>Boots a specific executable (extracted game) directly.</summary>
         public (Shadps4LaunchStatus Status, string Message) LaunchExecutable(Shadps4Environment env, string executablePath)
         {
+            Logger.LogInformation($"Shadps4Launch: executable {executablePath} via {env.CoreExePath}");
             string exe = env.CoreExePath ?? "";
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
+            {
+                Logger.LogWarning($"Shadps4Launch: core executable missing ({exe})");
                 return (Shadps4LaunchStatus.ExecutableMissing, "shadPS4 core executable not found. Configure it in Program Settings.");
+            }
 
             if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            {
+                Logger.LogWarning($"Shadps4Launch: target executable missing ({executablePath})");
                 return (Shadps4LaunchStatus.ExecutableNotFound, $"Executable not found: {executablePath}");
+            }
 
             return Start(exe, BuildExecutableArguments(executablePath));
         }
@@ -186,11 +204,14 @@ namespace PS4PKGTool.Utilities.Shadps4
         {
             try
             {
-                Process.Start(BuildProcessStartInfo(exe, arguments));
+                var psi = BuildProcessStartInfo(exe, arguments);
+                Logger.LogInformation($"Shadps4Launch: starting {exe} {string.Join(" ", arguments)} (cwd: {psi.WorkingDirectory})");
+                Process.Start(psi);
                 return (Shadps4LaunchStatus.Started, "shadPS4 launched.");
             }
             catch (Exception ex)
             {
+                Logger.LogError("Shadps4Launch: Process.Start failed: " + ex);
                 return (Shadps4LaunchStatus.StartFailed, ex.Message);
             }
         }

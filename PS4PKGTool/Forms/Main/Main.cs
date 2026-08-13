@@ -3564,8 +3564,11 @@ namespace PS4PKGTool
             string category = row[PkgColumns.Category]?.ToString() ?? "";
             bool isGame = category.Contains(PKGCategory.GAME);
             bool isPatch = category.Contains(PKGCategory.PATCH);
+            string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+            Logger.LogInformation($"Shadps4InstallUI: install requested for {titleId} (category '{category}', isPatch={isPatch})");
             if (!isGame && !isPatch)
             {
+                Logger.LogWarning("Shadps4InstallUI: rejected - not a base game or patch");
                 ShowWarning("Select a base game or update (patch) PKG. DLC/addon installation is not supported yet.", false);
                 return;
             }
@@ -3573,6 +3576,7 @@ namespace PS4PKGTool
             string pkgPath = GetRowPkgPath(row);
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
             {
+                Logger.LogWarning($"Shadps4InstallUI: PKG missing on disk: {pkgPath}");
                 ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
                 return;
             }
@@ -3701,8 +3705,10 @@ namespace PS4PKGTool
                 {
                     this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
                 });
+                Logger.LogInformation($"Shadps4InstallUI: starting background install into {library} (replace={replace})");
                 var result = svc.Install(pkgPath, titleId, library, replace, progress, CancellationToken.None,
                     mergeIntoExisting: isPatch);
+                Logger.LogInformation($"Shadps4InstallUI: install finished: {result.Status} - {result.Message}");
 
                 this.Invoke((MethodInvoker)delegate
                 {
@@ -3716,6 +3722,7 @@ namespace PS4PKGTool
                             ShowWarning(result.Message, false);
                             break;
                         default:
+                            Logger.LogError("Shadps4InstallUI: install failed: " + result.Message);
                             ShowError(result.Message, false);
                             break;
                     }

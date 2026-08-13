@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
 {
@@ -69,14 +70,16 @@ namespace PS4PKGTool.Utilities.Shadps4
             IProgress<string>? progress = null, CancellationToken ct = default,
             bool mergeIntoExisting = false)
         {
+            Logger.LogInformation($"Shadps4Install: {pkgPath}");
+            Logger.LogInformation($"Shadps4Install: target = {Path.Combine(libraryDir, titleId)} (replace={replaceExisting}, merge={mergeIntoExisting})");
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
-                return new Shadps4InstallResult(Shadps4InstallStatus.PkgMissing, $"PKG not found: {pkgPath}");
+                return Fail(Shadps4InstallStatus.PkgMissing, $"PKG not found: {pkgPath}");
             if (string.IsNullOrWhiteSpace(libraryDir) || !Directory.Exists(libraryDir))
-                return new Shadps4InstallResult(Shadps4InstallStatus.LibraryMissing, $"shadPS4 library not found: {libraryDir}");
+                return Fail(Shadps4InstallStatus.LibraryMissing, $"shadPS4 library not found: {libraryDir}");
 
             string finalDir = Path.Combine(libraryDir, titleId);
             if (Directory.Exists(finalDir) && !replaceExisting && !mergeIntoExisting)
-                return new Shadps4InstallResult(Shadps4InstallStatus.ExistingInstall,
+                return Fail(Shadps4InstallStatus.ExistingInstall,
                     $"Game {titleId} is already installed in {libraryDir}.");
 
             // Free-space check BEFORE writing anything.
@@ -84,8 +87,9 @@ namespace PS4PKGTool.Utilities.Shadps4
                 ? FreeSpaceOverride(libraryDir)
                 : new DriveInfo(Path.GetPathRoot(Path.GetFullPath(libraryDir))!).AvailableFreeSpace;
             long estimate = EstimatedExtractedSize(pkgPath);
+            Logger.LogInformation($"Shadps4Install: free={HelperBytes(free)}, estimate={HelperBytes(estimate)}");
             if (free < estimate + SpaceMarginBytes)
-                return new Shadps4InstallResult(Shadps4InstallStatus.InsufficientSpace,
+                return Fail(Shadps4InstallStatus.InsufficientSpace,
                     $"Not enough free space in {libraryDir}: needs ~{HelperBytes(estimate + SpaceMarginBytes)}, has {HelperBytes(free)}.");
 
             string staging = Path.Combine(libraryDir, $".ps4pkgtool-{titleId}.tmp");
@@ -93,67 +97,86 @@ namespace PS4PKGTool.Utilities.Shadps4
             {
                 if (Directory.Exists(staging))
                 {
+                    Logger.LogWarning($"Shadps4Install: removing leftover staging {staging}");
                     Directory.Delete(staging, true); // leftovers from a previous interrupted run
                 }
                 Directory.CreateDirectory(staging);
 
                 if (ct.IsCancellationRequested)
-                    return new Shadps4InstallResult(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
+                    return Fail(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
 
                 progress?.Report("Extracting PKG...");
-                bool extracted = ExtractOverride != null
-                    ? ExtractOverride(pkgPath, staging, ct)
-                    : ExtractWithOrbis(pkgPath, staging, ct);
+                Logger.LogInformation("Shadps4Install: extracting via orbis-pub-cmd img_extract...");
+                string extractDetail = "";
+                bool extracted;
+                if (ExtractOverride != null)
+                {
+                    extracted = ExtractOverride(pkgPath, staging, ct);
+                }
+                else
+                {
+                    (extracted, extractDetail) = ExtractWithOrbis(pkgPath, staging, ct);
+                }
                 if (!extracted)
-                    return new Shadps4InstallResult(Shadps4InstallStatus.ExtractionFailed,
-                        "PKG extraction failed. See the log for details.");
+                {
+                    string detail = string.IsNullOrWhiteSpace(extractDetail)
+                        ? "orbis-pub-cmd img_extract failed (see log)."
+                        : extractDetail;
+                    return Fail(Shadps4InstallStatus.ExtractionFailed,
+                        "PKG extraction failed: " + detail);
+                }
 
                 if (ct.IsCancellationRequested)
-                    return new Shadps4InstallResult(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
+                    return Fail(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
 
                 // shadPS4 libraries hold DUMP-LAYOUT game folders (eboot.bin and
                 // sce_sys at the folder root), not the PKG Image0/Sc0 tree the
                 // extractor produces - flatten before validating/finalizing.
                 progress?.Report("Arranging game files...");
+                Logger.LogInformation("Shadps4Install: flattening to dump layout...");
                 FlattenToDumpLayout(staging);
 
                 progress?.Report("Validating extracted game...");
                 string? eboot = Shadps4Launcher.FindEboot(staging, depth: 3);
                 if (eboot == null || !Directory.Exists(Path.Combine(staging, "sce_sys")))
-                    return new Shadps4InstallResult(Shadps4InstallStatus.ValidationFailed,
+                    return Fail(Shadps4InstallStatus.ValidationFailed,
                         "The extracted PKG does not contain a valid game layout (eboot.bin / sce_sys missing).");
+                Logger.LogInformation($"Shadps4Install: validated eboot at {eboot}");
 
                 progress?.Report("Finalizing installation...");
                 if (mergeIntoExisting && Directory.Exists(finalDir))
                 {
                     // Update path: merge the patch over the existing dump.
+                    Logger.LogInformation($"Shadps4Install: merging patch into {finalDir}");
                     MergeOverwrite(staging, finalDir);
-                    return new Shadps4InstallResult(Shadps4InstallStatus.Success,
-                        $"Updated {titleId} in {finalDir}.", finalDir);
+                    return Success($"Updated {titleId} in {finalDir}.", finalDir);
                 }
                 if (Directory.Exists(finalDir))
                 {
+                    Logger.LogInformation($"Shadps4Install: replacing existing install {finalDir}");
                     Directory.Delete(finalDir, true);
                 }
                 Directory.Move(staging, finalDir);
 
-                return new Shadps4InstallResult(Shadps4InstallStatus.Success,
-                    $"Installed {titleId} into {finalDir}.", finalDir);
+                return Success($"Installed {titleId} into {finalDir}.", finalDir);
             }
             catch (OperationCanceledException)
             {
                 Cleanup(staging);
+                Logger.LogWarning("Shadps4Install: cancelled - staging cleaned.");
                 return new Shadps4InstallResult(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
             }
             catch (IOException ex) when ((uint)ex.HResult == 0x80070070) // ERROR_DISK_FULL
             {
                 Cleanup(staging);
+                Logger.LogError("Shadps4Install: disk full - " + ex.Message);
                 return new Shadps4InstallResult(Shadps4InstallStatus.InsufficientSpace,
                     $"Disk full during extraction: {ex.Message}");
             }
             catch (Exception ex)
             {
                 Cleanup(staging);
+                Logger.LogError("Shadps4Install failed: " + ex);
                 return new Shadps4InstallResult(Shadps4InstallStatus.Failed, ex.Message);
             }
             finally
@@ -177,9 +200,18 @@ namespace PS4PKGTool.Utilities.Shadps4
         {
             if (!Directory.Exists(destinationDir)) Directory.CreateDirectory(destinationDir);
             progress?.Report("Extracting PKG...");
-            bool ok = ExtractOverride != null
-                ? ExtractOverride(pkgPath, destinationDir, ct)
-                : ExtractWithOrbis(pkgPath, destinationDir, ct);
+            bool ok;
+            if (ExtractOverride != null)
+            {
+                ok = ExtractOverride(pkgPath, destinationDir, ct);
+            }
+            else
+            {
+                var (extracted, detail) = ExtractWithOrbis(pkgPath, destinationDir, ct);
+                ok = extracted;
+                if (!ok)
+                    Logger.LogWarning("Shadps4Install: ExtractToFolder failed: " + detail);
+            }
             if (!ok || ct.IsCancellationRequested) return null;
             FlattenToDumpLayout(destinationDir);
             return Shadps4Launcher.FindEboot(destinationDir, depth: 3);
@@ -333,15 +365,32 @@ namespace PS4PKGTool.Utilities.Shadps4
             }
         }
 
+        private Shadps4InstallResult Fail(Shadps4InstallStatus status, string message)
+        {
+            Logger.LogWarning($"Shadps4Install: {message}");
+            return new Shadps4InstallResult(status, message);
+        }
+
+        private static Shadps4InstallResult Success(string message, string finalDir)
+        {
+            Logger.LogInformation($"Shadps4Install: {message}");
+            return new Shadps4InstallResult(Shadps4InstallStatus.Success, message, finalDir);
+        }
+
         /// <summary>
         /// Real extraction: orbis-pub-cmd bare img_extract (whole image), with the
         /// same ASCII-rename + short-temp-root pattern as the app's existing
-        /// full-PKG extraction.
+        /// full-PKG extraction. Captures BOTH stdout and stderr and returns a
+        /// short detail string so a failure shows the real orbis error instead
+        /// of pointing at an empty log.
         /// </summary>
-        private bool ExtractWithOrbis(string pkgPath, string destinationDir, CancellationToken ct)
+        private (bool Ok, string Detail) ExtractWithOrbis(string pkgPath, string destinationDir, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(OrbisExePath) || !File.Exists(OrbisExePath))
-                return false;
+            {
+                Logger.LogError($"Shadps4Install: orbis-pub-cmd not found at {OrbisExePath}");
+                return (false, "orbis-pub-cmd.exe was not found at " + OrbisExePath);
+            }
 
             string tempRoot = Path.Combine(Path.GetTempPath(), "p4t_x_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempRoot);
@@ -360,6 +409,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                     FileName = OrbisExePath,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     CreateNoWindow = true,
                 };
                 psi.ArgumentList.Add("img_extract");
@@ -370,19 +420,29 @@ namespace PS4PKGTool.Utilities.Shadps4
 
                 using var extract = new Process { StartInfo = psi };
                 extract.Start();
-                Task<string> readTask = extract.StandardOutput.ReadToEndAsync();
+                Logger.LogInformation($"Shadps4Install: orbis started (pid {extract.Id}), extracting {Path.GetFileName(pkgPath)}...");
+                Task<string> stdoutTask = extract.StandardOutput.ReadToEndAsync();
+                Task<string> stderrTask = extract.StandardError.ReadToEndAsync();
                 while (!extract.WaitForExit(1000))
                 {
                     if (ct.IsCancellationRequested)
                     {
                         try { extract.Kill(); extract.WaitForExit(); } catch { }
-                        return false;
+                        Logger.LogWarning("Shadps4Install: orbis killed by cancellation.");
+                        return (false, "cancelled");
                     }
                 }
-                _ = readTask.Result;
+                string stdout = stdoutTask.Result;
+                string stderr = stderrTask.Result;
 
                 if (extract.ExitCode != 0)
-                    return false;
+                {
+                    Logger.LogError($"Shadps4Install: orbis img_extract exited {extract.ExitCode}.");
+                    Logger.LogError("Shadps4Install: orbis stdout: " + Tail(stdout));
+                    Logger.LogError("Shadps4Install: orbis stderr: " + Tail(stderr));
+                    return (false, $"orbis-pub-cmd img_extract exited {extract.ExitCode}. {Tail(stderr)}".Trim());
+                }
+                Logger.LogInformation("Shadps4Install: orbis img_extract completed.");
 
                 // Move the extracted entries into the destination.
                 foreach (string entry in Directory.GetFileSystemEntries(tempOut))
@@ -393,11 +453,12 @@ namespace PS4PKGTool.Utilities.Shadps4
                     else
                         File.Move(entry, dest);
                 }
-                return true;
+                return (true, "");
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                Logger.LogError("Shadps4Install: orbis extraction threw: " + ex);
+                return (false, ex.Message);
             }
             finally
             {
@@ -411,6 +472,13 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 try { if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true); } catch { }
             }
+        }
+
+        /// <summary>Last ~800 characters of a captured process output (single log line).</summary>
+        private static string Tail(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "(no output)";
+            return text.Length <= 800 ? text : "..." + text.Substring(text.Length - 800);
         }
 
         private static void Cleanup(string dir)

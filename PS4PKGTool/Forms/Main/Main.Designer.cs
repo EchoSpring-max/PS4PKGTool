@@ -122,6 +122,11 @@ namespace PS4PKGTool
             RpiCheckPkgInstalledtoolStripMenuItem2 = new ToolStripMenuItem();
             RpiSendPkgtoolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem21 = new ToolStripMenuItem();
+            toolStripSeparatorShadps4 = new ToolStripSeparator();
+            toolStripMenuItemShadps4 = new ToolStripMenuItem();
+            toolStripMenuItemShadps4Launch = new ToolStripMenuItem();
+            toolStripMenuItemShadps4Install = new ToolStripMenuItem();
+            toolStripMenuItemShadps4Configure = new ToolStripMenuItem();
             RpiUninstallBasePKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallPatchPKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallDlcPKGToolStripMenuItem2 = new ToolStripMenuItem();
@@ -267,6 +272,8 @@ namespace PS4PKGTool
             tabPageTable = new TabPage();
             PKGGridView = new DarkUI.Controls.DarkDataGridView();
             tbSearchGame = new DarkUI.Controls.DarkSearchBox();
+            cmbCompatFilter = new DarkUI.Controls.DarkComboBox();
+            darkLabelCompatFilter = new DarkUI.Controls.DarkLabel();
             darkLabel2 = new DarkUI.Controls.DarkLabel();
             tabPageGroup = new TabPage();
             groupedListView = new DarkUI.Controls.DarkGroupedListView();
@@ -538,7 +545,7 @@ namespace PS4PKGTool
             contextMenuPKGGridView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuPKGGridView.Font = new System.Drawing.Font("Segoe UI", 9F);
             contextMenuPKGGridView.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21 });
+            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21, toolStripSeparatorShadps4, toolStripMenuItemShadps4 });
             contextMenuPKGGridView.Name = "DarkContextMenuStrip1";
             contextMenuPKGGridView.Size = new System.Drawing.Size(248, 458);
             // 
@@ -1188,6 +1195,45 @@ namespace PS4PKGTool
             toolStripMenuItem21.ShowShortcutKeys = false;
             toolStripMenuItem21.Size = new System.Drawing.Size(247, 22);
             toolStripMenuItem21.Text = "Uninstall PKG from PS4";
+            //
+            // toolStripMenuItemShadps4
+            //
+            toolStripMenuItemShadps4.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4.DropDownItems.AddRange(new ToolStripItem[] {
+            toolStripMenuItemShadps4Launch,
+            toolStripMenuItemShadps4Install,
+            toolStripMenuItemShadps4Configure});
+            toolStripMenuItemShadps4.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4.Name = "toolStripMenuItemShadps4";
+            toolStripMenuItemShadps4.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4.Text = "shadPS4";
+            //
+            // toolStripMenuItemShadps4Launch
+            //
+            toolStripMenuItemShadps4Launch.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4Launch.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4Launch.Name = "toolStripMenuItemShadps4Launch";
+            toolStripMenuItemShadps4Launch.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4Launch.Text = "Launch";
+            toolStripMenuItemShadps4Launch.Click += toolStripMenuItemShadps4Launch_Click;
+            //
+            // toolStripMenuItemShadps4Install
+            //
+            toolStripMenuItemShadps4Install.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4Install.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4Install.Name = "toolStripMenuItemShadps4Install";
+            toolStripMenuItemShadps4Install.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4Install.Text = "Install Game to shadPS4 Library";
+            toolStripMenuItemShadps4Install.Click += toolStripMenuItemShadps4Install_Click;
+            //
+            // toolStripMenuItemShadps4Configure
+            //
+            toolStripMenuItemShadps4Configure.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4Configure.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4Configure.Name = "toolStripMenuItemShadps4Configure";
+            toolStripMenuItemShadps4Configure.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4Configure.Text = "Configure shadPS4...";
+            toolStripMenuItemShadps4Configure.Click += toolStripMenuItemShadps4Configure_Click;
             // 
             // RpiUninstallBasePKGToolStripMenuItem2
             // 
@@ -2482,6 +2528,8 @@ namespace PS4PKGTool
             tabPageTable.Controls.Add(PKGGridView);
             tabPageTable.Controls.Add(tbSearchGame);
             tabPageTable.Controls.Add(darkLabel2);
+            tabPageTable.Controls.Add(cmbCompatFilter);
+            tabPageTable.Controls.Add(darkLabelCompatFilter);
             tabPageTable.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageTable.Location = new System.Drawing.Point(4, 32);
             tabPageTable.Name = "tabPageTable";
@@ -2533,6 +2581,27 @@ namespace PS4PKGTool
             darkLabel2.Size = new System.Drawing.Size(36, 15);
             darkLabel2.TabIndex = 88;
             darkLabel2.Text = "Filter:";
+            //
+            // cmbCompatFilter
+            //
+            cmbCompatFilter.Font = new System.Drawing.Font("Segoe UI", 9F);
+            cmbCompatFilter.Items.AddRange(new object[] { "All", "Playable", "In-Game", "Menus", "Boots", "Nothing", "Unknown" });
+            cmbCompatFilter.Location = new System.Drawing.Point(465, 3);
+            cmbCompatFilter.Name = "cmbCompatFilter";
+            cmbCompatFilter.Size = new System.Drawing.Size(130, 24);
+            cmbCompatFilter.TabIndex = 90;
+            cmbCompatFilter.SelectedIndex = 0;
+            cmbCompatFilter.SelectedIndexChanged += cmbCompatFilter_SelectedIndexChanged;
+            //
+            // darkLabelCompatFilter
+            //
+            darkLabelCompatFilter.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelCompatFilter.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabelCompatFilter.Location = new System.Drawing.Point(405, 7);
+            darkLabelCompatFilter.Name = "darkLabelCompatFilter";
+            darkLabelCompatFilter.Size = new System.Drawing.Size(55, 15);
+            darkLabelCompatFilter.TabIndex = 91;
+            darkLabelCompatFilter.Text = "Compat:";
             // 
             // tabPageGroup
             // 
@@ -3869,6 +3938,8 @@ namespace PS4PKGTool
         private ToolStripMenuItem toolStripMenuItem160;
         private ToolStripMenuItem renameAllPkg6ToolStripMenuItem1;
         private ToolStripSplitButton ToolStripSplitButtonTotalPKG;
+        private DarkUI.Controls.DarkComboBox cmbCompatFilter;
+        private DarkUI.Controls.DarkLabel darkLabelCompatFilter;
         public ToolStripStatusLabel toolStripStatusLabel2;
         private ToolStripStatusLabel toolStripStatusLabel3;
         private ToolStripStatusLabel toolStripStatusLabel4;
@@ -3903,6 +3974,11 @@ namespace PS4PKGTool
         private ToolStripMenuItem RpiCheckPkgInstalledtoolStripMenuItem1;
         private ToolStripMenuItem uninstallPKGFromPS4ToolStripMenuItem;
         private ToolStripMenuItem toolStripMenuItem21;
+        private ToolStripSeparator toolStripSeparatorShadps4;
+        private ToolStripMenuItem toolStripMenuItemShadps4;
+        private ToolStripMenuItem toolStripMenuItemShadps4Launch;
+        private ToolStripMenuItem toolStripMenuItemShadps4Install;
+        private ToolStripMenuItem toolStripMenuItemShadps4Configure;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem1;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem2;
         private ToolStripMenuItem renameSelectedPkg10ToolStripMenuItem2;

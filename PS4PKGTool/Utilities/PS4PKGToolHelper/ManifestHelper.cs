@@ -143,24 +143,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         /// </summary>
         public static DataTable BuildDataTableFromManifest(List<ManifestEntry> entries)
         {
-            var dt = new DataTable();
-            dt.Columns.Add("Filename");
-            dt.Columns.Add("Title");
-            dt.Columns.Add("Title ID");
-            dt.Columns.Add("Content ID");
-            dt.Columns.Add("Region", typeof(byte[]));
-            dt.Columns.Add("System Version");
-            dt.Columns.Add("Version [App Version]");
-            dt.Columns.Add("PKG Type");
-            dt.Columns.Add("Category");
-            dt.Columns.Add("Size");
-            dt.Columns.Add("PSVR");
-            dt.Columns.Add("PS4 Pro Enhanced");
-            dt.Columns.Add("PS5 BC");
-            dt.Columns.Add("Directory");
-            dt.Columns.Add("Backported");
-            dt.Columns.Add("Latest Update");
-            dt.Columns.Add("ShadPS4");
+            var dt = PkgColumns.CreateSchema();
 
             if (entries == null || entries.Count == 0)
                 return dt;

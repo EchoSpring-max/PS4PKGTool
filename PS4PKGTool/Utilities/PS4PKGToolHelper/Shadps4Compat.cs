@@ -198,6 +198,21 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             _ => "windows",
         };
 
+        /// <summary>
+        /// Semantic sort rank for the compatibility column (Playable best,
+        /// unknown worst). Alphabetical order would put "Boots" above
+        /// "In-Game" - this fixes that.
+        /// </summary>
+        public static int StatusRank(string status) => status switch
+        {
+            "Playable" => 5,
+            "In-Game" => 4,
+            "Menus" => 3,
+            "Boots" => 2,
+            "Nothing" => 1,
+            _ => 0,
+        };
+
         /// <summary>Status color for the grid cell (readable on the dark theme).</summary>
         public static Color StatusColor(string status) => status switch
         {

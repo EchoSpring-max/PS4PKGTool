@@ -45,6 +45,10 @@ namespace PS4PKGTool.Utilities.Settings
         public bool Shadps4Check { get; set; } = false;
         /// <summary>OS whose compatibility statuses are shown: windows | linux | macos.</summary>
         public string Shadps4Os { get; set; } = "windows";
+        /// <summary>User-selected shadPS4 core executable (CLI entry point).</summary>
+        public string Shadps4CoreExePath { get; set; } = "";
+        /// <summary>User-selected shadPS4 Qt launcher executable (GUI-oriented actions).</summary>
+        public string Shadps4LauncherExePath { get; set; } = "";
 
 
         #endregion columnVisibility

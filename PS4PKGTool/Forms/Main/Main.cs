@@ -13,6 +13,7 @@ using PS4PKGTool.Util;
 using PS4PKGTool.Util.Constants;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
+using PS4PKGTool.Utilities.Shadps4;
 using PS4PKGTool.Utilities.TrophyMetadata;
 using System;
 using System.Collections.Concurrent;
@@ -2091,24 +2092,7 @@ namespace PS4PKGTool
                 DataTable dt = PKGGridView.DataSource as DataTable;
                 if (dt == null)
                 {
-                    dt = new DataTable();
-                    dt.Columns.Add("Filename");
-                    dt.Columns.Add("Title");
-                    dt.Columns.Add("Title ID");
-                    dt.Columns.Add("Content ID");
-                    dt.Columns.Add("Region", typeof(byte[]));
-                    dt.Columns.Add("System Version");
-                    dt.Columns.Add("Version [App Version]");
-                    dt.Columns.Add("PKG Type");
-                    dt.Columns.Add("Category");
-                    dt.Columns.Add("Size");
-                    dt.Columns.Add("PSVR");
-                    dt.Columns.Add("PS4 Pro Enhanced");
-                    dt.Columns.Add("PS5 BC");
-                    dt.Columns.Add("Directory");
-                    dt.Columns.Add("Backported");
-                    dt.Columns.Add("Latest Update");
-                    dt.Columns.Add("ShadPS4");
+                    dt = PkgColumns.CreateSchema();
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
                 // Detach DataTable from DGV while adding rows on background thread to prevent STA exceptions
@@ -2404,24 +2388,7 @@ namespace PS4PKGTool
                 PkgFileList = PkgFileList.Distinct().ToList();
 
                 // datatable for gridview control
-                DataTable dttemp = new DataTable();
-                dttemp.Columns.Add("Filename");
-                dttemp.Columns.Add("Title");
-                dttemp.Columns.Add("Title ID");
-                dttemp.Columns.Add("Content ID");
-                dttemp.Columns.Add("Region", typeof(byte[]));
-                dttemp.Columns.Add("System Version");
-                dttemp.Columns.Add("Version [App Version]");
-                dttemp.Columns.Add("PKG Type");
-                dttemp.Columns.Add("Category");
-                dttemp.Columns.Add("Size");
-                dttemp.Columns.Add("PSVR");
-                dttemp.Columns.Add("PS4 Pro Enhanced");
-                dttemp.Columns.Add("PS5 BC");
-                dttemp.Columns.Add("Directory");
-                dttemp.Columns.Add("Backported");
-                dttemp.Columns.Add("Latest Update");
-                dttemp.Columns.Add("ShadPS4");
+                DataTable dttemp = PkgColumns.CreateSchema();
 
                 // verify scanned ps4 pkg and count it
                 foreach (var item in PkgFileList)
@@ -3071,14 +3038,14 @@ namespace PS4PKGTool
             try
             {
                 if (!appSettings_.Shadps4Check) return;
-                if (dt == null || !dt.Columns.Contains("ShadPS4") || !dt.Columns.Contains("Title ID")) return;
+                if (dt == null || !dt.Columns.Contains(PkgColumns.Shadps4) || !dt.Columns.Contains(PkgColumns.TitleId)) return;
                 foreach (DataRow row in dt.Rows)
                 {
-                    string tid = row["Title ID"]?.ToString() ?? "";
+                    string tid = row[PkgColumns.TitleId]?.ToString() ?? "";
                     if (string.IsNullOrEmpty(tid)) continue;
                     string status = Shadps4Compat.Lookup(tid, appSettings_.Shadps4Os);
                     if (!string.IsNullOrEmpty(status))
-                        row["ShadPS4"] = status;
+                        row[PkgColumns.Shadps4] = status;
                 }
             }
             catch (Exception ex) { Logger.LogWarning("Failed to apply shadPS4 status: " + ex.Message); }
@@ -3279,8 +3246,21 @@ namespace PS4PKGTool
                     PKGGridView.Columns[16].Visible = appSettings_.Shadps4Check;
                 // The header reflects the OS the statuses are shown for
                 // (internal column name stays "ShadPS4" for all OSes).
-                if (appSettings_.Shadps4Check && PKGGridView.Columns.Contains("ShadPS4"))
-                    PKGGridView.Columns["ShadPS4"].HeaderText = $"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})";
+                if (appSettings_.Shadps4Check && PKGGridView.Columns.Contains(PkgColumns.Shadps4))
+                    PKGGridView.Columns[PkgColumns.Shadps4].HeaderText = $"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})";
+                // The compat filter needs the column's data to exist (it is
+                // presentation-independent, but filtering an all-empty column
+                // is confusing - so the control follows the same setting).
+                if (cmbCompatFilter != null)
+                {
+                    cmbCompatFilter.Enabled = appSettings_.Shadps4Check;
+                    if (!appSettings_.Shadps4Check && cmbCompatFilter.SelectedIndex != 0)
+                    {
+                        cmbCompatFilter.SelectedIndex = 0;
+                        _compatFilter = "";
+                        ApplyFilters();
+                    }
+                }
             }
             catch (Exception ex) { Logger.LogWarning("Error updating column visibility: " + ex.Message); }
         }
@@ -3358,35 +3338,332 @@ namespace PS4PKGTool
 
         private void GridViewFilterPKG_Click(object sender, EventArgs e)
         {
+            // Records the type selection; the effective filter is built by
+            // ApplyFilters() so type/compat/search COMPOSE instead of
+            // overwriting each other.
             string text = sender.ToString();
             if (text.Contains(PKGCategory.GAME))
-            {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", PKGCategory.GAME);
-            }
+                _typeFilter = PKGCategory.GAME;
             else if (text.Contains(PKGCategory.PATCH))
-            {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", PKGCategory.PATCH);
-            }
+                _typeFilter = PKGCategory.PATCH;
             else if (text.Contains(PKGCategory.ADDON))
-            {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", PKGCategory.ADDON);
-            }
+                _typeFilter = PKGCategory.ADDON;
             else if (text.Contains(PKGCategory.APP))
-            {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", PKGCategory.APP);
-            }
+                _typeFilter = PKGCategory.APP;
             else if (text.Contains(PKGCategory.UNKNOWN))
-            {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", "Unknown");
-            }
+                _typeFilter = "Unknown";
             else if (text.Contains("all"))
+                _typeFilter = "";
+            ApplyFilters();
+        }
+
+        /// <summary>
+        /// The ONE place the grid's RowFilter is assembled: PKG type filter
+        /// AND compatibility filter AND search filter. Column visibility does
+        /// not matter here - the DataTable columns exist regardless of the
+        /// DataGridView presentation state.
+        /// </summary>
+        private void ApplyFilters()
+        {
+            try
             {
-                (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Category] LIKE '%{0}%'", "");
+                var dt = PKGGridView.DataSource as DataTable;
+                if (dt == null) return;
+                dt.DefaultView.RowFilter = PkgFilter.BuildExpression(
+                    _typeFilter,
+                    _compatFilter,
+                    tbSearchGame.SearchText);
+                PopulateGroupedView(); // GLV mirrors the filtered DefaultView
             }
-            PopulateGroupedView(); // keep the GLV in sync with the active DGV filter
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error applying filter: {ex.Message}");
+                ShowError($"Error applying filter: {ex.Message}", true);
+            }
+        }
+
+        private void cmbCompatFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _compatFilter = cmbCompatFilter.SelectedIndex <= 0
+                ? ""
+                : (cmbCompatFilter.SelectedItem?.ToString() ?? "");
+            ApplyFilters();
         }
 
         #endregion PKGGridViewFiltering
+
+        #region Shadps4Integration
+
+        private Shadps4Environment GetShadps4Environment()
+            => Shadps4Detector.Detect(appSettings_.Shadps4CoreExePath, appSettings_.Shadps4LauncherExePath);
+
+        private DataRow? GetSelectedGridRow()
+        {
+            if (PKGGridView.CurrentRow?.DataBoundItem is DataRowView drv)
+                return drv.Row;
+            return null;
+        }
+
+        private static string GetRowPkgPath(DataRow row)
+        {
+            string dir = row[PkgColumns.Directory]?.ToString() ?? "";
+            string file = row[PkgColumns.Filename]?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(file)) return "";
+            return string.IsNullOrWhiteSpace(dir) ? file : Path.Combine(dir, file);
+        }
+
+        private void toolStripMenuItemShadps4Configure_Click(object sender, EventArgs e)
+        {
+            OpenProgramSettings();
+        }
+
+        private void toolStripMenuItemShadps4Launch_Click(object sender, EventArgs e)
+        {
+            var row = GetSelectedGridRow();
+            if (row == null) { ShowWarning("Select a PKG in the grid first.", false); return; }
+
+            string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+            var env = GetShadps4Environment();
+            if (!env.IsUsable)
+            {
+                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 core executable.", false);
+                OpenProgramSettings();
+                return;
+            }
+
+            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(env, titleId);
+            switch (status)
+            {
+                case Shadps4LaunchStatus.Started:
+                    ShowInformation(message, false);
+                    break;
+                case Shadps4LaunchStatus.GameNotFound:
+                    var choice = MessageBox.Show(
+                        $"{message}\n\nExtract the selected PKG to a folder and boot it from there instead?",
+                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (choice == DialogResult.Yes)
+                        ExtractAndLaunchShadps4(row, env);
+                    else
+                        ShowWarning(message, false);
+                    break;
+                default:
+                    ShowWarning(message, false);
+                    break;
+            }
+        }
+
+        private void toolStripMenuItemShadps4Install_Click(object sender, EventArgs e)
+        {
+            var row = GetSelectedGridRow();
+            if (row == null) { ShowWarning("Select a PKG in the grid first.", false); return; }
+
+            string category = row[PkgColumns.Category]?.ToString() ?? "";
+            if (!category.Contains(PKGCategory.GAME))
+            {
+                ShowWarning("Select a base game PKG - update and DLC installation is not supported yet.", false);
+                return;
+            }
+
+            var env = GetShadps4Environment();
+            if (!env.IsUsable)
+            {
+                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 core executable.", false);
+                OpenProgramSettings();
+                return;
+            }
+            if (env.InstallDirectories.Count == 0)
+            {
+                ShowWarning("shadPS4 has no game libraries configured. Add one in shadPS4 (Settings -> GUI -> game folders).", false);
+                return;
+            }
+
+            string pkgPath = GetRowPkgPath(row);
+            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
+            {
+                ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
+                return;
+            }
+
+            InstallToShadps4Library(row, env, pkgPath);
+        }
+
+        /// <summary>
+        /// Transactional install into a shadPS4 library (staging folder inside
+        /// the library, validation, same-volume rename). Existing installations
+        /// are never overwritten without explicit approval; a running shadPS4
+        /// triggers an extra warning for replacement installs.
+        /// </summary>
+        private void InstallToShadps4Library(DataRow row, Shadps4Environment env, string pkgPath)
+        {
+            string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+
+            string library;
+            if (env.InstallDirectories.Count == 1)
+            {
+                library = env.InstallDirectories[0];
+            }
+            else
+            {
+                using var fbd = new FolderBrowserDialog
+                {
+                    Description = "Choose the shadPS4 game library to install into",
+                    SelectedPath = env.InstallDirectories[0],
+                };
+                if (fbd.ShowDialog() != DialogResult.OK) return;
+                library = fbd.SelectedPath;
+            }
+
+            string finalDir = Path.Combine(library, titleId);
+            bool replace = false;
+            if (Directory.Exists(finalDir))
+            {
+                string installedVer = ParamSfoReader.ReadAppVersion(Path.Combine(finalDir, "sce_sys", "param.sfo")) ?? "unknown";
+                string selectedVer = row[PkgColumns.AppVersion]?.ToString() ?? "unknown";
+
+                if (Shadps4Launcher.IsEmulatorRunning())
+                {
+                    var warn = MessageBox.Show(
+                        "shadPS4 is currently running.\n\nModifying an installed game while the emulator is using it may fail or leave inconsistent files.\n\nContinue?",
+                        "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (warn != DialogResult.Yes) return;
+                }
+
+                var replaceChoice = MessageBox.Show(
+                    $"Game already installed\n\nInstalled version: {installedVer}\nSelected PKG: {selectedVer}\n\nReplace the existing installation?",
+                    "shadPS4", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (replaceChoice != DialogResult.Yes) return;
+                replace = true;
+            }
+
+            var bg = new BackgroundWorker();
+            bg.DoWork += (_, _) =>
+            {
+                var svc = new Shadps4InstallService
+                {
+                    OrbisExePath = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
+                };
+                var progress = new Progress<string>(s =>
+                {
+                    this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
+                });
+                var result = svc.Install(pkgPath, titleId, library, replace, progress, CancellationToken.None);
+
+                this.Invoke((MethodInvoker)delegate
+                {
+                    switch (result.Status)
+                    {
+                        case Shadps4InstallStatus.Success:
+                            ShowInformation(result.Message, false);
+                            break;
+                        case Shadps4InstallStatus.ExistingInstall:
+                        case Shadps4InstallStatus.Cancelled:
+                            ShowWarning(result.Message, false);
+                            break;
+                        default:
+                            ShowError(result.Message, false);
+                            break;
+                    }
+                });
+            };
+            bg.RunWorkerCompleted += (_, _) =>
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Visible = false;
+                toolStripStatusLabel2.Text = "...";
+                this.Enabled = true;
+            };
+            this.Enabled = false;
+            toolStripStatusLabel2.Text = "Installing game to shadPS4 library...";
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.Visible = true;
+            bg.RunWorkerAsync();
+        }
+
+        /// <summary>
+        /// Extract &amp; Launch: extracts the PKG to a user-chosen folder
+        /// (never %TEMP% - full games are too large) and boots the discovered
+        /// eboot.bin directly.
+        /// </summary>
+        private void ExtractAndLaunchShadps4(DataRow row, Shadps4Environment env)
+        {
+            string pkgPath = GetRowPkgPath(row);
+            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
+            {
+                ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
+                return;
+            }
+
+            using var fbd = new FolderBrowserDialog
+            {
+                Description = "Choose the folder to extract the game into (shadPS4 boots it from there)",
+                ShowNewFolderButton = true,
+            };
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            string destination = fbd.SelectedPath;
+
+            // Fail early when the destination volume clearly cannot hold the game.
+            try
+            {
+                long free = Shadps4InstallService.FreeSpace(destination);
+                long estimate = Shadps4InstallService.EstimatedExtractedSize(pkgPath);
+                if (free < estimate + Shadps4InstallService.SpaceMarginBytes)
+                {
+                    ShowWarning($"Not enough free space in {destination} for the extracted game (needs roughly {Helper.RoundBytes(estimate + Shadps4InstallService.SpaceMarginBytes)}, has {Helper.RoundBytes(free)}).", false);
+                    return;
+                }
+            }
+            catch { } // drive info unavailable - let the extraction surface the real error
+
+            var bg = new BackgroundWorker();
+            bg.DoWork += (_, _) =>
+            {
+                string? eboot = null;
+                try
+                {
+                    var svc = new Shadps4InstallService
+                    {
+                        OrbisExePath = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
+                    };
+                    var progress = new Progress<string>(s =>
+                    {
+                        this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
+                    });
+                    eboot = svc.ExtractToFolder(pkgPath, destination, progress, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Extract & Launch failed: " + ex.Message);
+                }
+
+                this.Invoke((MethodInvoker)delegate
+                {
+                    if (eboot == null)
+                    {
+                        ShowError("Extraction failed or the game layout could not be validated (no eboot.bin found).", false);
+                        return;
+                    }
+                    var (status, message) = new Shadps4Launcher().LaunchExecutable(env, eboot);
+                    if (status == Shadps4LaunchStatus.Started)
+                        ShowInformation($"Game extracted to {destination} and launched in shadPS4.", false);
+                    else
+                        ShowWarning($"Extracted to {destination}, but launch failed: {message}", false);
+                });
+            };
+            bg.RunWorkerCompleted += (_, _) =>
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Visible = false;
+                toolStripStatusLabel2.Text = "...";
+                this.Enabled = true;
+            };
+            this.Enabled = false;
+            toolStripStatusLabel2.Text = "Extracting game...";
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.Visible = true;
+            bg.RunWorkerAsync();
+        }
+
+        #endregion Shadps4Integration
 
         #region PKGBasicOperation_Copy_Rename_Delete_ViewExplorer
         #region PKG_Copy_delete_View
@@ -6671,7 +6948,7 @@ namespace PS4PKGTool
 
             // shadPS4 column: colored dot + status text (column-name based, index-safe)
             if (e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count
-                && PKGGridView.Columns[e.ColumnIndex].Name == "ShadPS4"
+                && PKGGridView.Columns[e.ColumnIndex].Name == PkgColumns.Shadps4
                 && e.Value != null && e.Value.ToString() != "")
             {
                 string status = e.Value.ToString();
@@ -6784,22 +7061,24 @@ namespace PS4PKGTool
 
                 // Size / System Version / Version - numerical sort
                 // Title ID - alphanumeric (CUSA00010 after CUSA00002)
-                if (colName == "Size" || colName == "System Version" || colName == "Version [App Version]"
-                    || colName == "Title ID")
+                // ShadPS4 - semantic rank (Playable > In-Game > Menus > Boots > Nothing > unknown)
+                if (colName == PkgColumns.Size || colName == PkgColumns.SystemVersion || colName == PkgColumns.AppVersion
+                    || colName == PkgColumns.TitleId || colName == PkgColumns.Shadps4)
                 {
                     SortOrder numPrev = _colSortDir.GetValueOrDefault(colName, SortOrder.None);
                     SortOrder numNext = numPrev == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
                     _colSortDir[colName] = numNext;
                     Func<DataRow, double> key = colName switch
                     {
-                        "Size" => r => ParseSizeToBytes(r["Size"]?.ToString()),
-                        "System Version" => r => ParseVersion(r["System Version"]?.ToString() ?? ""),
-                        _ => r => ParseAppVersion(r["Version [App Version]"]?.ToString() ?? "")
+                        PkgColumns.Size => r => ParseSizeToBytes(r[PkgColumns.Size]?.ToString()),
+                        PkgColumns.SystemVersion => r => ParseVersion(r[PkgColumns.SystemVersion]?.ToString() ?? ""),
+                        PkgColumns.Shadps4 => r => Shadps4Compat.StatusRank(r[PkgColumns.Shadps4]?.ToString() ?? ""),
+                        _ => r => ParseAppVersion(r[PkgColumns.AppVersion]?.ToString() ?? "")
                     };
                     var sorted = dataTable.Rows.Cast<DataRow>().ToList();
-                    if (colName == "Title ID")
+                    if (colName == PkgColumns.TitleId)
                         sorted.Sort((a, b) => NaturalCompare(
-                            a["Title ID"]?.ToString() ?? "", b["Title ID"]?.ToString() ?? ""));
+                            a[PkgColumns.TitleId]?.ToString() ?? "", b[PkgColumns.TitleId]?.ToString() ?? ""));
                     else
                         sorted = sorted.OrderBy(r => key(r)).ToList();
                     if (numNext == SortOrder.Descending) sorted.Reverse();
@@ -7031,21 +7310,7 @@ namespace PS4PKGTool
 
         private void TbSearchGame_TextChanged(object sender, EventArgs e)
         {
-            try
-            {
-                var dt = PKGGridView.DataSource as DataTable;
-                if (dt == null) return;
-                string text = tbSearchGame.SearchText.Replace("'", "''"); // escape single quotes for LIKE
-                dt.DefaultView.RowFilter = string.IsNullOrEmpty(text)
-                    ? string.Empty
-                    : $"[Filename] LIKE '%{text}%' OR [Title] LIKE '%{text}%' OR [Title ID] LIKE '%{text}%' OR [Content ID] LIKE '%{text}%'";
-                PopulateGroupedView(); // GLV mirrors the search result set
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error applying filter: {ex.Message}");
-                ShowError($"Error applying filter: {ex.Message}", true);
-            }
+            ApplyFilters();
         }
 
         private static int IconFor(string path)
@@ -7218,6 +7483,11 @@ namespace PS4PKGTool
         private string? _containerTempDir;
         private readonly List<Assets.Abstractions.IAssetSource> _containerChildren = new();
         private static readonly Assets.AssetInspectionService _assetService = Assets.GenericAssetRegistryBuilder.Build();
+
+        // Grid filter state: the effective RowFilter is always built by
+        // ApplyFilters() from these three sources (never set directly).
+        private string _typeFilter = "";
+        private string _compatFilter = "";
 
         private Assets.Models.TextureData _previewTexture; // prepared on the worker thread
         private string _previewText;         // prepared on the worker thread

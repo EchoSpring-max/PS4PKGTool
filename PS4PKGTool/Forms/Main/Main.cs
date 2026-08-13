@@ -3474,20 +3474,6 @@ namespace PS4PKGTool
                 return;
             }
 
-            // No known shadPS4 compatibility status for this game: warn before
-            // installing, for both base games and patches.
-            string compat = row[PkgColumns.Shadps4]?.ToString() ?? "";
-            if (string.IsNullOrWhiteSpace(compat))
-            {
-                string title = row[PkgColumns.Title]?.ToString() ?? "";
-                string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
-                var choice = AppMessageBox.Show("shadPS4",
-                    $"No shadPS4 compatibility status is known for {title} ({titleId}).\n\n" +
-                    "The game may not run in the emulator. Continue with the installation?",
-                    AppMessageType.Warning, AppMessageButtons.YesNo);
-                if (choice != DialogResult.Yes) return;
-            }
-
             string pkgPath = GetRowPkgPath(row);
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
             {
@@ -3512,6 +3498,23 @@ namespace PS4PKGTool
         private void InstallToShadps4Library(DataRow row, string pkgPath, bool isPatch)
         {
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+            string title = row[PkgColumns.Title]?.ToString() ?? "";
+            // Tracks whether a Yes/No dialog already approved the install, so
+            // the final confirmation is only asked when nothing else did.
+            bool confirmed = false;
+
+            // No known shadPS4 compatibility status: warn (this dialog doubles
+            // as the install confirmation for this path).
+            string compat = row[PkgColumns.Shadps4]?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(compat))
+            {
+                var compatChoice = AppMessageBox.Show("shadPS4",
+                    $"No shadPS4 compatibility status is known for {title} ({titleId}).\n\n" +
+                    "The game may not run in the emulator. Continue with the installation?",
+                    AppMessageType.Warning, AppMessageButtons.YesNo);
+                if (compatChoice != DialogResult.Yes) return;
+                confirmed = true;
+            }
 
             // Install straight into the configured directory - the folder
             // dialog appears only when none is configured (or the configured
@@ -3542,6 +3545,7 @@ namespace PS4PKGTool
                     "Install the patch anyway?",
                     AppMessageType.Warning, AppMessageButtons.YesNo);
                 if (warnBase != DialogResult.Yes) return;
+                confirmed = true;
             }
 
             bool replace = false;
@@ -3566,6 +3570,7 @@ namespace PS4PKGTool
                         $"Game already installed\n\nInstalled version: {installedVer}\nThis patch: {selectedVer}\n\nThe patch will be merged into the existing installation. Continue?",
                         AppMessageType.Info, AppMessageButtons.YesNo);
                     if (mergeChoice != DialogResult.Yes) return;
+                    confirmed = true;
                 }
                 else
                 {
@@ -3574,7 +3579,19 @@ namespace PS4PKGTool
                         AppMessageType.Info, AppMessageButtons.YesNo);
                     if (replaceChoice != DialogResult.Yes) return;
                     replace = true;
+                    confirmed = true;
                 }
+            }
+
+            // Ask anyway when no earlier dialog approved the install (e.g. a
+            // game with a known compatibility status installing into a fresh
+            // folder - the common case still deserves a confirmation).
+            if (!confirmed)
+            {
+                var go = AppMessageBox.Show("shadPS4",
+                    $"Install {title} ({titleId}) into\n{library}?",
+                    AppMessageType.Info, AppMessageButtons.YesNo);
+                if (go != DialogResult.Yes) return;
             }
 
             var bg = new BackgroundWorker();

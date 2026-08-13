@@ -14,6 +14,7 @@ public static class GenericAssetRegistryBuilder
     public static AssetInspectionService Build()
     {
         var detectors = new AssetDetectorRegistry();
+        detectors.Register(new UnrealPakDetector());   // before MagicDetector: paks start with entry data
         detectors.Register(new MagicDetector());
         detectors.Register(new UnitySerializedFileDetector());
         detectors.Register(new TextDetector());
@@ -29,6 +30,7 @@ public static class GenericAssetRegistryBuilder
         handlers.Register(new Atrac9Handler(), Atrac9Handler.FormatId);
         handlers.Register(new UnityBundleHandler(), UnityBundleHandler.FormatId);
         handlers.Register(new UnitySerializedFileHandler(), UnitySerializedFileHandler.FormatId);
+        handlers.Register(new UnrealPakHandler(), UnrealPakHandler.FormatId);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.WavFormat), AudioMetadataHandler.WavFormat);
         handlers.Register(new AudioMetadataHandler(AudioMetadataHandler.OggFormat), AudioMetadataHandler.OggFormat);
         handlers.Register(new TextFileHandler(), TextFileHandler.FormatId);

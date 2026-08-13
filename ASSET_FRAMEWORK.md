@@ -197,7 +197,7 @@ Only after A-G pass do engine integrations begin.
 | 3c | IUnityAssetBackend seam + AssetStudioBackend + UnitySerializedFileHandler (detect/inspect/browse/preview) | DONE - 7/7 tests (synthetic inline fixture + fake backend seam + real sample) |
 | 3d | resS companion extraction + texture contact sheet preview (app-visible) | DONE - 4 new tests |
 | 3e | PNG texture export: UnityTextureExporter (IAssetExporter, single child + whole-file bulk) + Export Textures button | DONE - 6 new tests |
-| 4 | Unreal (CUE4Parse) | pending |
+| 4a | Unreal PAK container: self-written parser (verified against real CODE VEIN UE4 patch pak, v4, stripped header, mount point + byte-length index strings + FPakEntry records per CUE4Parse), IUnrealAssetBackend seam, browse/preview/decompress (None/Zlib/Gzip/LZ4; Oodle + AES = graceful). CUE4Parse stays a future swap. | DONE - 5 new tests |
 | 5 | Hard PS4: full GNF decode, PSARC, ATRAC9 decode | pending |
 | 6 | Asset workspace UI | pending |
 | 7 | 3D viewport (OpenTK) | pending |

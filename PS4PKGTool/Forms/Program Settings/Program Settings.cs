@@ -451,27 +451,31 @@ namespace PS4PKGTool
         }
 
         /// <summary>
-        /// Re-runs environment detection and shows the resolved paths. Never
-        /// throws - detection problems must not break the settings form.
+        /// Re-runs environment detection and shows the resolved paths plus any
+        /// detection warnings. Never throws - detection problems must not
+        /// break the settings form.
         /// </summary>
         private void RefreshShadps4Detection()
         {
             try
             {
-                var env = Shadps4Detector.Detect(
+                var env = Shadps4EnvironmentResolver.Resolve(
                     tbShadps4CoreExe.Text.Trim(),
                     tbShadps4LauncherExe.Text.Trim());
 
                 var lines = new List<string>
                 {
-                    $"Detection: {env.UserDirectoryMode}{(env.DetectionConfidence == Shadps4DetectionConfidence.Low ? " (low confidence)" : "")}",
+                    $"Status: {(env.IsValid ? "Configuration detected successfully" : "shadPS4 not configured or not found")}",
+                    $"Mode: {env.UserDirectoryMode}{(env.DetectionConfidence == Shadps4DetectionConfidence.Low ? " (low confidence)" : "")}",
+                    $"Core: {Shorten(env.CoreExePath)}",
+                    $"Launcher: {Shorten(env.LauncherExePath)}",
+                    $"User dir: {Shorten(env.UserDirectory)}",
+                    $"Config: {Shorten(env.ConfigPath)}",
+                    $"Libraries: {(env.InstallDirectories.Count == 0 ? "(none configured in shadPS4)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}",
+                    $"Saves: {Shorten(env.SaveDataDirectory)}   Add-ons: {Shorten(env.AddonInstallDirectory)}",
                 };
-                lines.Add($"User dir: {Shorten(env.UserDirectory)}");
-                lines.Add($"Config: {Shorten(env.ConfigPath)}");
-                lines.Add($"Libraries: {(env.InstallDirectories.Count == 0 ? "(none configured in shadPS4)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}");
-                lines.Add($"Saves: {Shorten(env.SaveDataDirectory)}   Add-ons: {Shorten(env.AddonDirectory)}");
-                if (env.UserDirectoryMode == Shadps4UserDirectoryMode.Ambiguous)
-                    lines.Add("Ambiguous: " + string.Join(" | ", env.CandidateConfigPaths.Select(Shorten)));
+                foreach (var warning in env.Warnings)
+                    lines.Add("⚠ " + warning);
 
                 darkLabelShadps4Detect.Text = string.Join(Environment.NewLine, lines);
             }

@@ -153,7 +153,7 @@ namespace PS4PKGTool
             settingsTab.Name = "settingsTab";
             settingsTab.Padding = new System.Drawing.Point(0, 0);
             settingsTab.SelectedIndex = 0;
-            settingsTab.Size = new System.Drawing.Size(640, 649);
+            settingsTab.Size = new System.Drawing.Size(640, 756);
             settingsTab.TabIndex = 0;
             // 
             // tabGeneral
@@ -372,7 +372,7 @@ namespace PS4PKGTool
             tabAppearance.Controls.Add(grpShadps4);
             tabAppearance.Location = new System.Drawing.Point(4, 32);
             tabAppearance.Name = "tabAppearance";
-            tabAppearance.Size = new System.Drawing.Size(632, 613);
+            tabAppearance.Size = new System.Drawing.Size(632, 720);
             tabAppearance.TabIndex = 1;
             tabAppearance.Text = "Appearance";
             // 
@@ -766,7 +766,7 @@ namespace PS4PKGTool
             grpShadps4.Location = new System.Drawing.Point(12, 406);
             grpShadps4.Name = "grpShadps4";
             grpShadps4.SectionHeader = "shadPS4 Compatibility";
-            grpShadps4.Size = new System.Drawing.Size(605, 193);
+            grpShadps4.Size = new System.Drawing.Size(605, 300);
             grpShadps4.TabIndex = 3;
             // 
             // cbShadps4Check
@@ -893,7 +893,7 @@ namespace PS4PKGTool
             darkLabelShadps4Detect.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 142);
             darkLabelShadps4Detect.Name = "darkLabelShadps4Detect";
-            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 44);
+            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 150);
             darkLabelShadps4Detect.TabIndex = 12;
             darkLabelShadps4Detect.Text = "Detection: not configured";
             // 
@@ -1297,7 +1297,7 @@ namespace PS4PKGTool
             // btnSaveClose
             // 
             btnSaveClose.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnSaveClose.Location = new System.Drawing.Point(12, 666);
+            btnSaveClose.Location = new System.Drawing.Point(12, 773);
             btnSaveClose.Name = "btnSaveClose";
             btnSaveClose.Size = new System.Drawing.Size(640, 49);
             btnSaveClose.TabIndex = 1;
@@ -1365,7 +1365,7 @@ namespace PS4PKGTool
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(664, 726);
+            ClientSize = new System.Drawing.Size(664, 833);
             Controls.Add(settingsTab);
             Controls.Add(btnSaveClose);
             Font = new System.Drawing.Font("Segoe UI", 9F);

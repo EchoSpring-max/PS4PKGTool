@@ -26,8 +26,10 @@ namespace PS4PKGTool.Utilities.Shadps4
 
     /// <summary>
     /// Resolved view of a shadPS4 installation. Nothing here is persisted -
-    /// it is re-derived from the configured exe paths and the filesystem
-    /// every time it is needed (shadPS4's own layout has changed before).
+    /// it is re-derived from the configured exe path and the filesystem every
+    /// time it is needed (shadPS4's own layout has changed before, so cached
+    /// stale paths are deliberately avoided). PS4PKGTool reads shadPS4's
+    /// config; it never rewrites it.
     /// </summary>
     public sealed class Shadps4Environment
     {
@@ -49,17 +51,26 @@ namespace PS4PKGTool.Utilities.Shadps4
         public string? SaveDataDirectory { get; init; }
 
         /// <summary>Add-on/DLC directory (general.addon_install_dir, default &lt;user&gt;\addcont).</summary>
-        public string? AddonDirectory { get; init; }
+        public string? AddonInstallDirectory { get; init; }
 
         public Shadps4DetectionConfidence DetectionConfidence { get; init; } = Shadps4DetectionConfidence.None;
 
         /// <summary>All candidate config files that were considered (for the Ambiguous display).</summary>
         public IReadOnlyList<string> CandidateConfigPaths { get; init; } = Array.Empty<string>();
 
+        /// <summary>Human-readable detection notes (stale folders, missing dirs, malformed configs...).</summary>
+        public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+
+        /// <summary>True when a known configuration was resolved (mode is Portable/AppData/Custom).</summary>
+        public bool IsValid =>
+            UserDirectoryMode is Shadps4UserDirectoryMode.Portable
+                or Shadps4UserDirectoryMode.AppData
+                or Shadps4UserDirectoryMode.Custom;
+
         /// <summary>True when the environment is usable for launch/install operations.</summary>
         public bool IsUsable =>
-            !string.IsNullOrEmpty(CoreExePath)
-            && UserDirectoryMode is not (Shadps4UserDirectoryMode.Unknown or Shadps4UserDirectoryMode.Ambiguous)
+            IsValid
+            && !string.IsNullOrEmpty(CoreExePath)
             && System.IO.File.Exists(CoreExePath);
     }
 }

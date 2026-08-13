@@ -23,6 +23,12 @@ namespace PS4PKGTool
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            // Global exception logging: unhandled failures write the full stack
+            // to crash.log next to the exe instead of dying silently.
+            Application.ThreadException += (s, e) => LogCrash(e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                LogCrash(e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString()));
+
             EnsureSettingsFileExists();
 
             appSettings_ = LoadSettings(SettingFilePath);
@@ -33,6 +39,16 @@ namespace PS4PKGTool
                 ThemeManager.Apply(ThemeManager.Presets[themeIdx]);
 
             ChooseStartupForm();
+        }
+
+        private static void LogCrash(Exception ex)
+        {
+            try
+            {
+                string log = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash.log");
+                System.IO.File.WriteAllText(log, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{ex}");
+            }
+            catch { }
         }
 
         private static void EnsureSettingsFileExists()

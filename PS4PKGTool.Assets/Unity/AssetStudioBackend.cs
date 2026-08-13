@@ -27,8 +27,26 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
     {
         var sf = GetParse(source);
         return sf.Objects
-            .Select(o => new UnityObjectRef(UnitySerializedFile.ClassIdToName(o.ClassId), o.ClassId, o.PathId, o.Offset, o.Size))
+            .Select(o =>
+            {
+                // Textures carry their real name in the object data - read it so
+                // the asset list shows e.g. "UI_LoadingPage", not "Texture2D".
+                string name = o.ClassId == 28
+                    ? ReadTextureName(source, sf, o) ?? UnitySerializedFile.ClassIdToName(o.ClassId)
+                    : UnitySerializedFile.ClassIdToName(o.ClassId);
+                return new UnityObjectRef(name, o.ClassId, o.PathId, o.Offset, o.Size);
+            })
             .ToList();
+    }
+
+    private static string? ReadTextureName(IAssetSource source, UnitySerializedFile sf, UnitySerializedFile.ObjectInfo obj)
+    {
+        try
+        {
+            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian);
+            return string.IsNullOrEmpty(info.Name) ? null : info.Name;
+        }
+        catch { return null; }
     }
 
     public UnityTextureInfo? ReadTexture2D(IAssetSource source, UnityObjectRef obj)

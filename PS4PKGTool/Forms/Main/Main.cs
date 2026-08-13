@@ -7385,6 +7385,7 @@ namespace PS4PKGTool
         private void RenderPreviewResult(string fname, string sizeStr)
         {
             assetListView.Visible = false;
+            btnAssetBack.Visible = _containerSource != null && _containerDetection != null;
             if (_previewTexture != null)
             {
                 picPreview.Visible = true;
@@ -7414,6 +7415,17 @@ namespace PS4PKGTool
             {
                 ShowWarning("Preview failed: entry could not be extracted.", false);
             }
+        }
+
+        /// <summary>Re-shows the cached asset list after a child preview (no re-extraction).</summary>
+        private void btnAssetBack_Click(object sender, EventArgs e)
+        {
+            btnAssetBack.Visible = false;
+            assetListView.Visible = true;
+            picPreview.Visible = false;
+            txtPreview.Visible = false;
+            txtHexPreview.Visible = false;
+            lblFileViewerInfo.Text = $"{_containerSource?.Name}: {_containerChildren.Count} entries (double-click to preview)";
         }
 
         /// <summary>Populates the asset workspace list with the container's children.</summary>
@@ -7467,6 +7479,7 @@ namespace PS4PKGTool
                 assetListView.Items.Clear();
                 assetListView.Visible = false;
             }
+            if (btnAssetBack != null) btnAssetBack.Visible = false;
             if (_containerTempDir != null)
             {
                 try { Directory.Delete(_containerTempDir, true); } catch { }
@@ -7548,6 +7561,9 @@ namespace PS4PKGTool
                 toolStripStatusLabel2.Text = "...";
                 _previewWorker = null;
                 if (version != _previewVersion) return;
+                // Always offer the way back while browsing a container, even
+                // when the child preview failed (e.g. an unsupported entry).
+                btnAssetBack.Visible = _containerSource != null;
                 if (_previewError != null)
                 {
                     ShowError("Preview failed: " + _previewError, false);

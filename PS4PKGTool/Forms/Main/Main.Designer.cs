@@ -318,6 +318,7 @@ namespace PS4PKGTool
             sectionFileViewer = new DarkUI.Controls.DarkSectionPanel();
             fileViewerBody = new Panel();
             assetListView = new DarkUI.Controls.DarkListView();
+            btnAssetBack = new DarkUI.Controls.DarkButton();
             picPreview = new PictureBox();
             txtPreview = new DarkUI.Controls.DarkRichTextBox();
             txtHexPreview = new DarkUI.Controls.DarkRichTextBox();
@@ -416,7 +417,6 @@ namespace PS4PKGTool
             sectionFileViewer.SuspendLayout();
             fileViewerBody.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picPreview).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)assetListView).BeginInit();
             _tabLog.SuspendLayout();
             contextMenuGLV.SuspendLayout();
             tabPage5.SuspendLayout();
@@ -3141,6 +3141,7 @@ namespace PS4PKGTool
             // 
             // sectionFileViewer
             // 
+            sectionFileViewer.Controls.Add(btnAssetBack);
             sectionFileViewer.Controls.Add(fileViewerBody);
             sectionFileViewer.Controls.Add(lblFileViewerInfo);
             sectionFileViewer.Location = new System.Drawing.Point(236, 0);
@@ -3235,6 +3236,19 @@ namespace PS4PKGTool
             lblFileViewerInfo.TabIndex = 1;
             lblFileViewerInfo.Text = "Select a file to preview it.";
             lblFileViewerInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // btnAssetBack
+            //
+            btnAssetBack.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnAssetBack.Font = new System.Drawing.Font("Segoe UI", 8F);
+            btnAssetBack.Location = new System.Drawing.Point(157, 30);
+            btnAssetBack.Margin = new Padding(3, 2, 3, 2);
+            btnAssetBack.Name = "btnAssetBack";
+            btnAssetBack.Size = new System.Drawing.Size(70, 24);
+            btnAssetBack.TabIndex = 3;
+            btnAssetBack.Text = "Back to list";
+            btnAssetBack.Visible = false;
+            btnAssetBack.Click += btnAssetBack_Click;
             // 
             // _tabLog
             // 
@@ -3745,7 +3759,6 @@ namespace PS4PKGTool
             sectionFileViewer.ResumeLayout(false);
             fileViewerBody.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picPreview).EndInit();
-            ((System.ComponentModel.ISupportInitialize)assetListView).EndInit();
             _tabLog.ResumeLayout(false);
             _tabLog.PerformLayout();
             contextMenuGLV.ResumeLayout(false);
@@ -3961,6 +3974,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkRichTextBox txtHexPreview;
         private PictureBox picPreview;
         private DarkUI.Controls.DarkListView assetListView;
+        private DarkUI.Controls.DarkButton btnAssetBack;
         private DarkUI.Controls.DarkTreeView PKGTreeView;
         private DarkUI.Controls.DarkListView listView1;
         private ColumnHeader columnHeader7;

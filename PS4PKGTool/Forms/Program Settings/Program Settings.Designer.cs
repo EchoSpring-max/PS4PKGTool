@@ -29,19 +29,6 @@ namespace PS4PKGTool
             cmbTheme = new DarkUI.Controls.DarkComboBox();
             btnOpenAppData = new DarkUI.Controls.DarkButton();
             tabAppearance = new System.Windows.Forms.TabPage();
-            tabColumns = new System.Windows.Forms.TabPage();
-            grpColumns = new DarkUI.Controls.DarkSectionPanel();
-            PKGname = new DarkUI.Controls.DarkCheckBox();
-            TitleId = new DarkUI.Controls.DarkCheckBox();
-            ContentId = new DarkUI.Controls.DarkCheckBox();
-            Region = new DarkUI.Controls.DarkCheckBox();
-            SystemFirmware = new DarkUI.Controls.DarkCheckBox();
-            Version = new DarkUI.Controls.DarkCheckBox();
-            PkgType = new DarkUI.Controls.DarkCheckBox();
-            Category = new DarkUI.Controls.DarkCheckBox();
-            Size = new DarkUI.Controls.DarkCheckBox();
-            Location = new DarkUI.Controls.DarkCheckBox();
-            cbBackported = new DarkUI.Controls.DarkCheckBox();
             grpColors = new DarkUI.Controls.DarkSectionPanel();
             PKGColorLabeling = new DarkUI.Controls.DarkCheckBox();
             darkLabelGamePkgColorLabel = new DarkUI.Controls.DarkLabel();
@@ -57,6 +44,19 @@ namespace PS4PKGTool
             btnAppPkgForeColor = new DarkUI.Controls.DarkButton();
             btnAppPkgBackColor = new DarkUI.Controls.DarkButton();
             btnResetPkgLabelColor = new DarkUI.Controls.DarkButton();
+            tabColumns = new System.Windows.Forms.TabPage();
+            grpColumns = new DarkUI.Controls.DarkSectionPanel();
+            PKGname = new DarkUI.Controls.DarkCheckBox();
+            TitleId = new DarkUI.Controls.DarkCheckBox();
+            ContentId = new DarkUI.Controls.DarkCheckBox();
+            Region = new DarkUI.Controls.DarkCheckBox();
+            SystemFirmware = new DarkUI.Controls.DarkCheckBox();
+            Version = new DarkUI.Controls.DarkCheckBox();
+            PkgType = new DarkUI.Controls.DarkCheckBox();
+            Category = new DarkUI.Controls.DarkCheckBox();
+            Size = new DarkUI.Controls.DarkCheckBox();
+            Location = new DarkUI.Controls.DarkCheckBox();
+            cbBackported = new DarkUI.Controls.DarkCheckBox();
             tabLibrary = new System.Windows.Forms.TabPage();
             grpPS5BC = new DarkUI.Controls.DarkSectionPanel();
             cbPs5BcCheck = new DarkUI.Controls.DarkCheckBox();
@@ -74,15 +74,24 @@ namespace PS4PKGTool
             darkLabelShadps4Core = new DarkUI.Controls.DarkLabel();
             tbShadps4CoreExe = new DarkUI.Controls.DarkTextBox();
             btnBrowseShadps4Core = new DarkUI.Controls.DarkButton();
+            darkLabelShadps4InstallDir = new DarkUI.Controls.DarkLabel();
+            tbShadps4InstallDirectory = new DarkUI.Controls.DarkTextBox();
+            btnBrowseShadps4InstallDirectory = new DarkUI.Controls.DarkButton();
             darkLabelShadps4Detect = new DarkUI.Controls.DarkLabel();
-            tabTrophies = new System.Windows.Forms.TabPage();
-            grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
-            lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
-            btnBuildTrophyCache = new DarkUI.Controls.DarkButton();
-            btnCancelTrophyCache = new DarkUI.Controls.DarkButton();
-            btnClearTrophyCache = new DarkUI.Controls.DarkButton();
-            pbTrophyCacheProgress = new System.Windows.Forms.ProgressBar();
-            lblTrophyCacheStatus = new DarkUI.Controls.DarkLabel();
+            tabRPI = new System.Windows.Forms.TabPage();
+            grpNetwork = new DarkUI.Controls.DarkSectionPanel();
+            darkLabel1 = new DarkUI.Controls.DarkLabel();
+            darkComboBoxServerIP = new DarkUI.Controls.DarkComboBox();
+            darkLabel2 = new DarkUI.Controls.DarkLabel();
+            tbPS4IP = new DarkUI.Controls.DarkTextBox();
+            btnPingPs4 = new DarkUI.Controls.DarkButton();
+            grpTools = new DarkUI.Controls.DarkSectionPanel();
+            darkLabel3 = new DarkUI.Controls.DarkLabel();
+            darkLabelNodejsInstalled = new DarkUI.Controls.DarkLabel();
+            btnInstallNodejs = new DarkUI.Controls.DarkButton();
+            darkLabel4 = new DarkUI.Controls.DarkLabel();
+            darkLabelserveModuleInstalled = new DarkUI.Controls.DarkLabel();
+            btnInstalleServerModule = new DarkUI.Controls.DarkButton();
             tabRename = new System.Windows.Forms.TabPage();
             grpRename = new DarkUI.Controls.DarkSectionPanel();
             darkLabel12 = new DarkUI.Controls.DarkLabel();
@@ -98,20 +107,14 @@ namespace PS4PKGTool
             btnPlaceSysVer = new DarkUI.Controls.DarkButton();
             darkButton1 = new DarkUI.Controls.DarkButton();
             darkLabelNamingPatternExample = new DarkUI.Controls.DarkLabel();
-            tabRPI = new System.Windows.Forms.TabPage();
-            grpNetwork = new DarkUI.Controls.DarkSectionPanel();
-            darkLabel1 = new DarkUI.Controls.DarkLabel();
-            darkComboBoxServerIP = new DarkUI.Controls.DarkComboBox();
-            darkLabel2 = new DarkUI.Controls.DarkLabel();
-            tbPS4IP = new DarkUI.Controls.DarkTextBox();
-            btnPingPs4 = new DarkUI.Controls.DarkButton();
-            grpTools = new DarkUI.Controls.DarkSectionPanel();
-            darkLabel3 = new DarkUI.Controls.DarkLabel();
-            darkLabelNodejsInstalled = new DarkUI.Controls.DarkLabel();
-            btnInstallNodejs = new DarkUI.Controls.DarkButton();
-            darkLabel4 = new DarkUI.Controls.DarkLabel();
-            darkLabelserveModuleInstalled = new DarkUI.Controls.DarkLabel();
-            btnInstalleServerModule = new DarkUI.Controls.DarkButton();
+            tabTrophies = new System.Windows.Forms.TabPage();
+            grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
+            lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
+            btnBuildTrophyCache = new DarkUI.Controls.DarkButton();
+            btnCancelTrophyCache = new DarkUI.Controls.DarkButton();
+            btnClearTrophyCache = new DarkUI.Controls.DarkButton();
+            pbTrophyCacheProgress = new System.Windows.Forms.ProgressBar();
+            lblTrophyCacheStatus = new DarkUI.Controls.DarkLabel();
             btnSaveClose = new DarkUI.Controls.DarkButton();
             flatTabControl1 = new DarkUI.Controls.DarkTabControl();
             darkLabel6 = new DarkUI.Controls.DarkLabel();
@@ -126,17 +129,20 @@ namespace PS4PKGTool
             grpDownloads.SuspendLayout();
             grpStartup.SuspendLayout();
             tabAppearance.SuspendLayout();
-            grpColumns.SuspendLayout();
             grpColors.SuspendLayout();
+            tabColumns.SuspendLayout();
+            grpColumns.SuspendLayout();
+            tabLibrary.SuspendLayout();
             grpPS5BC.SuspendLayout();
+            tabShadps4.SuspendLayout();
             grpShadps4.SuspendLayout();
-            tabTrophies.SuspendLayout();
-            grpTrophyCache.SuspendLayout();
-            tabRename.SuspendLayout();
-            grpRename.SuspendLayout();
             tabRPI.SuspendLayout();
             grpNetwork.SuspendLayout();
             grpTools.SuspendLayout();
+            tabRename.SuspendLayout();
+            grpRename.SuspendLayout();
+            tabTrophies.SuspendLayout();
+            grpTrophyCache.SuspendLayout();
             SuspendLayout();
             // 
             // settingsTab
@@ -153,6 +159,7 @@ namespace PS4PKGTool
             settingsTab.Font = new System.Drawing.Font("Segoe UI", 9F);
             settingsTab.ItemSize = new System.Drawing.Size(150, 28);
             settingsTab.Location = new System.Drawing.Point(12, 11);
+            settingsTab.Multiline = true;
             settingsTab.Name = "settingsTab";
             settingsTab.Padding = new System.Drawing.Point(0, 0);
             settingsTab.SelectedIndex = 0;
@@ -165,9 +172,9 @@ namespace PS4PKGTool
             tabGeneral.Controls.Add(grpDirectories);
             tabGeneral.Controls.Add(grpDownloads);
             tabGeneral.Controls.Add(grpStartup);
-            tabGeneral.Location = new System.Drawing.Point(4, 32);
+            tabGeneral.Location = new System.Drawing.Point(4, 60);
             tabGeneral.Name = "tabGeneral";
-            tabGeneral.Size = new System.Drawing.Size(632, 516);
+            tabGeneral.Size = new System.Drawing.Size(632, 488);
             tabGeneral.TabIndex = 0;
             tabGeneral.Text = "General";
             // 
@@ -367,7 +374,7 @@ namespace PS4PKGTool
             btnOpenAppData.Click += btnOpenAppData_Click;
             // 
             // tabAppearance
-            //
+            // 
             tabAppearance.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabAppearance.Controls.Add(grpColors);
             tabAppearance.Location = new System.Drawing.Point(4, 32);
@@ -375,168 +382,6 @@ namespace PS4PKGTool
             tabAppearance.Size = new System.Drawing.Size(632, 516);
             tabAppearance.TabIndex = 1;
             tabAppearance.Text = "Appearance";
-            //
-            // tabColumns
-            //
-            tabColumns.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabColumns.Controls.Add(grpColumns);
-            tabColumns.Location = new System.Drawing.Point(4, 32);
-            tabColumns.Name = "tabColumns";
-            tabColumns.Size = new System.Drawing.Size(632, 516);
-            tabColumns.TabIndex = 2;
-            tabColumns.Text = "Columns";
-            //
-            // grpColumns
-            //
-            grpColumns.Controls.Add(PKGname);
-            grpColumns.Controls.Add(TitleId);
-            grpColumns.Controls.Add(ContentId);
-            grpColumns.Controls.Add(Region);
-            grpColumns.Controls.Add(SystemFirmware);
-            grpColumns.Controls.Add(Version);
-            grpColumns.Controls.Add(PkgType);
-            grpColumns.Controls.Add(Category);
-            grpColumns.Controls.Add(Size);
-            grpColumns.Controls.Add(Location);
-            grpColumns.Controls.Add(cbBackported);
-            grpColumns.Location = new System.Drawing.Point(12, 16);
-            grpColumns.Name = "grpColumns";
-            grpColumns.SectionHeader = "Column Visibility";
-            grpColumns.Size = new System.Drawing.Size(605, 110);
-            grpColumns.TabIndex = 0;
-            // 
-            // PKGname
-            // 
-            PKGname.AutoSize = true;
-            PKGname.Checked = true;
-            PKGname.CheckState = System.Windows.Forms.CheckState.Checked;
-            PKGname.Enabled = false;
-            PKGname.Font = new System.Drawing.Font("Segoe UI", 9F);
-            PKGname.Location = new System.Drawing.Point(22, 33);
-            PKGname.Name = "PKGname";
-            PKGname.Size = new System.Drawing.Size(74, 19);
-            PKGname.TabIndex = 0;
-            PKGname.Text = "Filename";
-            // 
-            // TitleId
-            // 
-            TitleId.AutoSize = true;
-            TitleId.Checked = true;
-            TitleId.CheckState = System.Windows.Forms.CheckState.Checked;
-            TitleId.Font = new System.Drawing.Font("Segoe UI", 9F);
-            TitleId.Location = new System.Drawing.Point(176, 33);
-            TitleId.Name = "TitleId";
-            TitleId.Size = new System.Drawing.Size(63, 19);
-            TitleId.TabIndex = 1;
-            TitleId.Text = "Title ID";
-            // 
-            // ContentId
-            // 
-            ContentId.AutoSize = true;
-            ContentId.Checked = true;
-            ContentId.CheckState = System.Windows.Forms.CheckState.Checked;
-            ContentId.Font = new System.Drawing.Font("Segoe UI", 9F);
-            ContentId.Location = new System.Drawing.Point(319, 33);
-            ContentId.Name = "ContentId";
-            ContentId.Size = new System.Drawing.Size(83, 19);
-            ContentId.TabIndex = 2;
-            ContentId.Text = "Content ID";
-            // 
-            // Region
-            // 
-            Region.AutoSize = true;
-            Region.Checked = true;
-            Region.CheckState = System.Windows.Forms.CheckState.Checked;
-            Region.Font = new System.Drawing.Font("Segoe UI", 9F);
-            Region.Location = new System.Drawing.Point(482, 33);
-            Region.Name = "Region";
-            Region.Size = new System.Drawing.Size(63, 19);
-            Region.TabIndex = 3;
-            Region.Text = "Region";
-            // 
-            // SystemFirmware
-            // 
-            SystemFirmware.AutoSize = true;
-            SystemFirmware.Checked = true;
-            SystemFirmware.CheckState = System.Windows.Forms.CheckState.Checked;
-            SystemFirmware.Font = new System.Drawing.Font("Segoe UI", 9F);
-            SystemFirmware.Location = new System.Drawing.Point(22, 57);
-            SystemFirmware.Name = "SystemFirmware";
-            SystemFirmware.Size = new System.Drawing.Size(105, 19);
-            SystemFirmware.TabIndex = 4;
-            SystemFirmware.Text = "System Version";
-            // 
-            // Version
-            // 
-            Version.AutoSize = true;
-            Version.Checked = true;
-            Version.CheckState = System.Windows.Forms.CheckState.Checked;
-            Version.Font = new System.Drawing.Font("Segoe UI", 9F);
-            Version.Location = new System.Drawing.Point(176, 57);
-            Version.Name = "Version";
-            Version.Size = new System.Drawing.Size(116, 19);
-            Version.TabIndex = 5;
-            Version.Text = "Version [App Ver]";
-            // 
-            // PkgType
-            // 
-            PkgType.AutoSize = true;
-            PkgType.Checked = true;
-            PkgType.CheckState = System.Windows.Forms.CheckState.Checked;
-            PkgType.Font = new System.Drawing.Font("Segoe UI", 9F);
-            PkgType.Location = new System.Drawing.Point(319, 57);
-            PkgType.Name = "PkgType";
-            PkgType.Size = new System.Drawing.Size(75, 19);
-            PkgType.TabIndex = 6;
-            PkgType.Text = "PKG Type";
-            // 
-            // Category
-            // 
-            Category.AutoSize = true;
-            Category.Checked = true;
-            Category.CheckState = System.Windows.Forms.CheckState.Checked;
-            Category.Font = new System.Drawing.Font("Segoe UI", 9F);
-            Category.Location = new System.Drawing.Point(484, 57);
-            Category.Name = "Category";
-            Category.Size = new System.Drawing.Size(74, 19);
-            Category.TabIndex = 7;
-            Category.Text = "Category";
-            // 
-            // Size
-            // 
-            Size.AutoSize = true;
-            Size.Checked = true;
-            Size.CheckState = System.Windows.Forms.CheckState.Checked;
-            Size.Font = new System.Drawing.Font("Segoe UI", 9F);
-            Size.Location = new System.Drawing.Point(22, 81);
-            Size.Name = "Size";
-            Size.Size = new System.Drawing.Size(46, 19);
-            Size.TabIndex = 8;
-            Size.Text = "Size";
-            // 
-            // Location
-            // 
-            Location.AutoSize = true;
-            Location.Checked = true;
-            Location.CheckState = System.Windows.Forms.CheckState.Checked;
-            Location.Font = new System.Drawing.Font("Segoe UI", 9F);
-            Location.Location = new System.Drawing.Point(176, 81);
-            Location.Name = "Location";
-            Location.Size = new System.Drawing.Size(74, 19);
-            Location.TabIndex = 9;
-            Location.Text = "Directory";
-            // 
-            // cbBackported
-            // 
-            cbBackported.AutoSize = true;
-            cbBackported.Checked = true;
-            cbBackported.CheckState = System.Windows.Forms.CheckState.Checked;
-            cbBackported.Font = new System.Drawing.Font("Segoe UI", 9F);
-            cbBackported.Location = new System.Drawing.Point(319, 81);
-            cbBackported.Name = "cbBackported";
-            cbBackported.Size = new System.Drawing.Size(86, 19);
-            cbBackported.TabIndex = 10;
-            cbBackported.Text = "Backported";
             // 
             // grpColors
             // 
@@ -705,8 +550,170 @@ namespace PS4PKGTool
             btnResetPkgLabelColor.Text = "Reset all";
             btnResetPkgLabelColor.Click += SetPKGLabelColor_Click;
             // 
+            // tabColumns
+            // 
+            tabColumns.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabColumns.Controls.Add(grpColumns);
+            tabColumns.Location = new System.Drawing.Point(4, 60);
+            tabColumns.Name = "tabColumns";
+            tabColumns.Size = new System.Drawing.Size(632, 488);
+            tabColumns.TabIndex = 2;
+            tabColumns.Text = "Columns";
+            // 
+            // grpColumns
+            // 
+            grpColumns.Controls.Add(PKGname);
+            grpColumns.Controls.Add(TitleId);
+            grpColumns.Controls.Add(ContentId);
+            grpColumns.Controls.Add(Region);
+            grpColumns.Controls.Add(SystemFirmware);
+            grpColumns.Controls.Add(Version);
+            grpColumns.Controls.Add(PkgType);
+            grpColumns.Controls.Add(Category);
+            grpColumns.Controls.Add(Size);
+            grpColumns.Controls.Add(Location);
+            grpColumns.Controls.Add(cbBackported);
+            grpColumns.Location = new System.Drawing.Point(12, 16);
+            grpColumns.Name = "grpColumns";
+            grpColumns.SectionHeader = "Column Visibility";
+            grpColumns.Size = new System.Drawing.Size(605, 110);
+            grpColumns.TabIndex = 0;
+            // 
+            // PKGname
+            // 
+            PKGname.AutoSize = true;
+            PKGname.Checked = true;
+            PKGname.CheckState = System.Windows.Forms.CheckState.Checked;
+            PKGname.Enabled = false;
+            PKGname.Font = new System.Drawing.Font("Segoe UI", 9F);
+            PKGname.Location = new System.Drawing.Point(22, 33);
+            PKGname.Name = "PKGname";
+            PKGname.Size = new System.Drawing.Size(74, 19);
+            PKGname.TabIndex = 0;
+            PKGname.Text = "Filename";
+            // 
+            // TitleId
+            // 
+            TitleId.AutoSize = true;
+            TitleId.Checked = true;
+            TitleId.CheckState = System.Windows.Forms.CheckState.Checked;
+            TitleId.Font = new System.Drawing.Font("Segoe UI", 9F);
+            TitleId.Location = new System.Drawing.Point(176, 33);
+            TitleId.Name = "TitleId";
+            TitleId.Size = new System.Drawing.Size(63, 19);
+            TitleId.TabIndex = 1;
+            TitleId.Text = "Title ID";
+            // 
+            // ContentId
+            // 
+            ContentId.AutoSize = true;
+            ContentId.Checked = true;
+            ContentId.CheckState = System.Windows.Forms.CheckState.Checked;
+            ContentId.Font = new System.Drawing.Font("Segoe UI", 9F);
+            ContentId.Location = new System.Drawing.Point(319, 33);
+            ContentId.Name = "ContentId";
+            ContentId.Size = new System.Drawing.Size(83, 19);
+            ContentId.TabIndex = 2;
+            ContentId.Text = "Content ID";
+            // 
+            // Region
+            // 
+            Region.AutoSize = true;
+            Region.Checked = true;
+            Region.CheckState = System.Windows.Forms.CheckState.Checked;
+            Region.Font = new System.Drawing.Font("Segoe UI", 9F);
+            Region.Location = new System.Drawing.Point(482, 33);
+            Region.Name = "Region";
+            Region.Size = new System.Drawing.Size(63, 19);
+            Region.TabIndex = 3;
+            Region.Text = "Region";
+            // 
+            // SystemFirmware
+            // 
+            SystemFirmware.AutoSize = true;
+            SystemFirmware.Checked = true;
+            SystemFirmware.CheckState = System.Windows.Forms.CheckState.Checked;
+            SystemFirmware.Font = new System.Drawing.Font("Segoe UI", 9F);
+            SystemFirmware.Location = new System.Drawing.Point(22, 57);
+            SystemFirmware.Name = "SystemFirmware";
+            SystemFirmware.Size = new System.Drawing.Size(105, 19);
+            SystemFirmware.TabIndex = 4;
+            SystemFirmware.Text = "System Version";
+            // 
+            // Version
+            // 
+            Version.AutoSize = true;
+            Version.Checked = true;
+            Version.CheckState = System.Windows.Forms.CheckState.Checked;
+            Version.Font = new System.Drawing.Font("Segoe UI", 9F);
+            Version.Location = new System.Drawing.Point(176, 57);
+            Version.Name = "Version";
+            Version.Size = new System.Drawing.Size(116, 19);
+            Version.TabIndex = 5;
+            Version.Text = "Version [App Ver]";
+            // 
+            // PkgType
+            // 
+            PkgType.AutoSize = true;
+            PkgType.Checked = true;
+            PkgType.CheckState = System.Windows.Forms.CheckState.Checked;
+            PkgType.Font = new System.Drawing.Font("Segoe UI", 9F);
+            PkgType.Location = new System.Drawing.Point(319, 57);
+            PkgType.Name = "PkgType";
+            PkgType.Size = new System.Drawing.Size(75, 19);
+            PkgType.TabIndex = 6;
+            PkgType.Text = "PKG Type";
+            // 
+            // Category
+            // 
+            Category.AutoSize = true;
+            Category.Checked = true;
+            Category.CheckState = System.Windows.Forms.CheckState.Checked;
+            Category.Font = new System.Drawing.Font("Segoe UI", 9F);
+            Category.Location = new System.Drawing.Point(482, 57);
+            Category.Name = "Category";
+            Category.Size = new System.Drawing.Size(74, 19);
+            Category.TabIndex = 7;
+            Category.Text = "Category";
+            // 
+            // Size
+            // 
+            Size.AutoSize = true;
+            Size.Checked = true;
+            Size.CheckState = System.Windows.Forms.CheckState.Checked;
+            Size.Font = new System.Drawing.Font("Segoe UI", 9F);
+            Size.Location = new System.Drawing.Point(22, 81);
+            Size.Name = "Size";
+            Size.Size = new System.Drawing.Size(46, 19);
+            Size.TabIndex = 8;
+            Size.Text = "Size";
+            // 
+            // Location
+            // 
+            Location.AutoSize = true;
+            Location.Checked = true;
+            Location.CheckState = System.Windows.Forms.CheckState.Checked;
+            Location.Font = new System.Drawing.Font("Segoe UI", 9F);
+            Location.Location = new System.Drawing.Point(176, 81);
+            Location.Name = "Location";
+            Location.Size = new System.Drawing.Size(74, 19);
+            Location.TabIndex = 9;
+            Location.Text = "Directory";
+            // 
+            // cbBackported
+            // 
+            cbBackported.AutoSize = true;
+            cbBackported.Checked = true;
+            cbBackported.CheckState = System.Windows.Forms.CheckState.Checked;
+            cbBackported.Font = new System.Drawing.Font("Segoe UI", 9F);
+            cbBackported.Location = new System.Drawing.Point(319, 81);
+            cbBackported.Name = "cbBackported";
+            cbBackported.Size = new System.Drawing.Size(86, 19);
+            cbBackported.TabIndex = 10;
+            cbBackported.Text = "Backported";
+            // 
             // tabLibrary
-            //
+            // 
             tabLibrary.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabLibrary.Controls.Add(grpPS5BC);
             tabLibrary.Location = new System.Drawing.Point(4, 32);
@@ -714,9 +721,9 @@ namespace PS4PKGTool
             tabLibrary.Size = new System.Drawing.Size(632, 516);
             tabLibrary.TabIndex = 3;
             tabLibrary.Text = "Library";
-            //
+            // 
             // grpPS5BC
-            //
+            // 
             grpPS5BC.Controls.Add(cbPs5BcCheck);
             grpPS5BC.Controls.Add(btnDownloadPS5BCJson);
             grpPS5BC.Controls.Add(darkLabel9);
@@ -769,17 +776,17 @@ namespace PS4PKGTool
             labelPs5BcJsonDownloadDate.Text = "..";
             // 
             // tabShadps4
-            //
+            // 
             tabShadps4.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabShadps4.Controls.Add(grpShadps4);
-            tabShadps4.Location = new System.Drawing.Point(4, 32);
+            tabShadps4.Location = new System.Drawing.Point(4, 60);
             tabShadps4.Name = "tabShadps4";
-            tabShadps4.Size = new System.Drawing.Size(632, 516);
+            tabShadps4.Size = new System.Drawing.Size(632, 488);
             tabShadps4.TabIndex = 4;
             tabShadps4.Text = "shadPS4";
-            //
+            // 
             // grpShadps4
-            //
+            // 
             grpShadps4.Controls.Add(cbShadps4Check);
             grpShadps4.Controls.Add(btnDownloadShadps4Json);
             grpShadps4.Controls.Add(darkLabelShadps4);
@@ -789,6 +796,9 @@ namespace PS4PKGTool
             grpShadps4.Controls.Add(darkLabelShadps4Core);
             grpShadps4.Controls.Add(tbShadps4CoreExe);
             grpShadps4.Controls.Add(btnBrowseShadps4Core);
+            grpShadps4.Controls.Add(darkLabelShadps4InstallDir);
+            grpShadps4.Controls.Add(tbShadps4InstallDirectory);
+            grpShadps4.Controls.Add(btnBrowseShadps4InstallDirectory);
             grpShadps4.Controls.Add(darkLabelShadps4Detect);
             grpShadps4.Location = new System.Drawing.Point(12, 12);
             grpShadps4.Name = "grpShadps4";
@@ -836,9 +846,9 @@ namespace PS4PKGTool
             labelShadps4JsonDate.Size = new System.Drawing.Size(220, 18);
             labelShadps4JsonDate.TabIndex = 3;
             labelShadps4JsonDate.Text = "..";
-            //
+            // 
             // darkLabelShadps4Os
-            //
+            // 
             darkLabelShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelShadps4Os.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabelShadps4Os.Location = new System.Drawing.Point(255, 33);
@@ -846,18 +856,18 @@ namespace PS4PKGTool
             darkLabelShadps4Os.Size = new System.Drawing.Size(28, 15);
             darkLabelShadps4Os.TabIndex = 4;
             darkLabelShadps4Os.Text = "OS:";
-            //
+            // 
             // cmbShadps4Os
-            //
+            // 
             cmbShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
             cmbShadps4Os.Items.AddRange(new object[] { "Windows", "Linux", "macOS" });
             cmbShadps4Os.Location = new System.Drawing.Point(290, 30);
             cmbShadps4Os.Name = "cmbShadps4Os";
             cmbShadps4Os.Size = new System.Drawing.Size(120, 24);
             cmbShadps4Os.TabIndex = 5;
-            //
+            // 
             // darkLabelShadps4Core
-            //
+            // 
             darkLabelShadps4Core.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelShadps4Core.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabelShadps4Core.Location = new System.Drawing.Point(15, 88);
@@ -865,18 +875,18 @@ namespace PS4PKGTool
             darkLabelShadps4Core.Size = new System.Drawing.Size(130, 15);
             darkLabelShadps4Core.TabIndex = 6;
             darkLabelShadps4Core.Text = "Selected executable:";
-            //
+            // 
             // tbShadps4CoreExe
-            //
+            // 
             tbShadps4CoreExe.Font = new System.Drawing.Font("Segoe UI", 9F);
             tbShadps4CoreExe.Location = new System.Drawing.Point(145, 84);
             tbShadps4CoreExe.Name = "tbShadps4CoreExe";
             tbShadps4CoreExe.ReadOnly = true;
             tbShadps4CoreExe.Size = new System.Drawing.Size(345, 23);
             tbShadps4CoreExe.TabIndex = 7;
-            //
+            // 
             // btnBrowseShadps4Core
-            //
+            // 
             btnBrowseShadps4Core.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnBrowseShadps4Core.Location = new System.Drawing.Point(495, 82);
             btnBrowseShadps4Core.Name = "btnBrowseShadps4Core";
@@ -885,105 +895,199 @@ namespace PS4PKGTool
             btnBrowseShadps4Core.Text = "Browse...";
             btnBrowseShadps4Core.Click += btnBrowseShadps4Core_Click;
             //
+            // darkLabelShadps4InstallDir
+            //
+            darkLabelShadps4InstallDir.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelShadps4InstallDir.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabelShadps4InstallDir.Location = new System.Drawing.Point(15, 118);
+            darkLabelShadps4InstallDir.Name = "darkLabelShadps4InstallDir";
+            darkLabelShadps4InstallDir.Size = new System.Drawing.Size(130, 15);
+            darkLabelShadps4InstallDir.TabIndex = 9;
+            darkLabelShadps4InstallDir.Text = "Install directory:";
+            //
+            // tbShadps4InstallDirectory
+            //
+            tbShadps4InstallDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbShadps4InstallDirectory.Location = new System.Drawing.Point(145, 114);
+            tbShadps4InstallDirectory.Name = "tbShadps4InstallDirectory";
+            tbShadps4InstallDirectory.Size = new System.Drawing.Size(345, 23);
+            tbShadps4InstallDirectory.TabIndex = 10;
+            //
+            // btnBrowseShadps4InstallDirectory
+            //
+            btnBrowseShadps4InstallDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnBrowseShadps4InstallDirectory.Location = new System.Drawing.Point(495, 112);
+            btnBrowseShadps4InstallDirectory.Name = "btnBrowseShadps4InstallDirectory";
+            btnBrowseShadps4InstallDirectory.Size = new System.Drawing.Size(95, 26);
+            btnBrowseShadps4InstallDirectory.TabIndex = 11;
+            btnBrowseShadps4InstallDirectory.Text = "Browse...";
+            btnBrowseShadps4InstallDirectory.Click += btnBrowseShadps4InstallDirectory_Click;
+            //
             // darkLabelShadps4Detect
             //
             darkLabelShadps4Detect.Font = new System.Drawing.Font("Segoe UI", 8F);
             darkLabelShadps4Detect.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 142);
+            darkLabelShadps4Detect.Location = new System.Drawing.Point(15, 172);
             darkLabelShadps4Detect.Name = "darkLabelShadps4Detect";
-            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 344);
+            darkLabelShadps4Detect.Size = new System.Drawing.Size(575, 314);
             darkLabelShadps4Detect.TabIndex = 12;
             darkLabelShadps4Detect.Text = "Detection: not configured";
             // 
-            // tabTrophies
+            // tabRPI
             // 
-            tabTrophies.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabTrophies.Controls.Add(grpTrophyCache);
-            tabTrophies.Location = new System.Drawing.Point(4, 32);
-            tabTrophies.Name = "tabTrophies";
-            tabTrophies.Size = new System.Drawing.Size(632, 516);
-            tabTrophies.TabIndex = 7;
-            tabTrophies.Text = "Trophies";
+            tabRPI.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabRPI.Controls.Add(grpNetwork);
+            tabRPI.Controls.Add(grpTools);
+            tabRPI.Location = new System.Drawing.Point(4, 60);
+            tabRPI.Name = "tabRPI";
+            tabRPI.Size = new System.Drawing.Size(632, 488);
+            tabRPI.TabIndex = 5;
+            tabRPI.Text = "Remote PKG Installer";
             // 
-            // grpTrophyCache
+            // grpNetwork
             // 
-            grpTrophyCache.Controls.Add(lblTrophyCacheDesc);
-            grpTrophyCache.Controls.Add(btnBuildTrophyCache);
-            grpTrophyCache.Controls.Add(btnCancelTrophyCache);
-            grpTrophyCache.Controls.Add(btnClearTrophyCache);
-            grpTrophyCache.Controls.Add(pbTrophyCacheProgress);
-            grpTrophyCache.Controls.Add(lblTrophyCacheStatus);
-            grpTrophyCache.Location = new System.Drawing.Point(12, 16);
-            grpTrophyCache.Name = "grpTrophyCache";
-            grpTrophyCache.SectionHeader = "Trophy Metadata Cache";
-            grpTrophyCache.Size = new System.Drawing.Size(606, 205);
-            grpTrophyCache.TabIndex = 0;
+            grpNetwork.Controls.Add(darkLabel1);
+            grpNetwork.Controls.Add(darkComboBoxServerIP);
+            grpNetwork.Controls.Add(darkLabel2);
+            grpNetwork.Controls.Add(tbPS4IP);
+            grpNetwork.Controls.Add(btnPingPs4);
+            grpNetwork.Location = new System.Drawing.Point(12, 16);
+            grpNetwork.Name = "grpNetwork";
+            grpNetwork.SectionHeader = "Network";
+            grpNetwork.Size = new System.Drawing.Size(601, 85);
+            grpNetwork.TabIndex = 0;
             // 
-            // lblTrophyCacheDesc
+            // darkLabel1
             // 
-            lblTrophyCacheDesc.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblTrophyCacheDesc.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            lblTrophyCacheDesc.Location = new System.Drawing.Point(15, 32);
-            lblTrophyCacheDesc.Name = "lblTrophyCacheDesc";
-            lblTrophyCacheDesc.Size = new System.Drawing.Size(575, 38);
-            lblTrophyCacheDesc.TabIndex = 0;
-            lblTrophyCacheDesc.Text = "Extract NP Communication IDs from PKGs in the configured directories.\r\nCached IDs enable full trophy names and descriptions when a PKG is selected.";
+            darkLabel1.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabel1.Location = new System.Drawing.Point(35, 31);
+            darkLabel1.Name = "darkLabel1";
+            darkLabel1.Size = new System.Drawing.Size(100, 20);
+            darkLabel1.TabIndex = 0;
+            darkLabel1.Text = "PC IP address:";
             // 
-            // btnBuildTrophyCache
+            // darkComboBoxServerIP
             // 
-            btnBuildTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBuildTrophyCache.Location = new System.Drawing.Point(15, 78);
-            btnBuildTrophyCache.Name = "btnBuildTrophyCache";
-            btnBuildTrophyCache.Size = new System.Drawing.Size(210, 30);
-            btnBuildTrophyCache.TabIndex = 1;
-            btnBuildTrophyCache.Text = "Build Trophy Metadata Cache";
-            btnBuildTrophyCache.Click += btnBuildTrophyCache_Click;
+            darkComboBoxServerIP.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkComboBoxServerIP.FormattingEnabled = true;
+            darkComboBoxServerIP.Location = new System.Drawing.Point(35, 51);
+            darkComboBoxServerIP.Name = "darkComboBoxServerIP";
+            darkComboBoxServerIP.Size = new System.Drawing.Size(200, 24);
+            darkComboBoxServerIP.TabIndex = 1;
             // 
-            // btnCancelTrophyCache
+            // darkLabel2
             // 
-            btnCancelTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnCancelTrophyCache.Location = new System.Drawing.Point(235, 78);
-            btnCancelTrophyCache.Name = "btnCancelTrophyCache";
-            btnCancelTrophyCache.Size = new System.Drawing.Size(105, 30);
-            btnCancelTrophyCache.TabIndex = 2;
-            btnCancelTrophyCache.Text = "Cancel";
-            btnCancelTrophyCache.Click += btnCancelTrophyCache_Click;
+            darkLabel2.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabel2.Location = new System.Drawing.Point(341, 32);
+            darkLabel2.Name = "darkLabel2";
+            darkLabel2.Size = new System.Drawing.Size(100, 20);
+            darkLabel2.TabIndex = 2;
+            darkLabel2.Text = "PS4 IP address:";
             // 
-            // btnClearTrophyCache
+            // tbPS4IP
             // 
-            btnClearTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnClearTrophyCache.Location = new System.Drawing.Point(350, 78);
-            btnClearTrophyCache.Name = "btnClearTrophyCache";
-            btnClearTrophyCache.Size = new System.Drawing.Size(120, 30);
-            btnClearTrophyCache.TabIndex = 3;
-            btnClearTrophyCache.Text = "Clear Cache";
-            btnClearTrophyCache.Click += btnClearTrophyCache_Click;
+            tbPS4IP.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbPS4IP.Location = new System.Drawing.Point(341, 52);
+            tbPS4IP.Name = "tbPS4IP";
+            tbPS4IP.Size = new System.Drawing.Size(160, 23);
+            tbPS4IP.TabIndex = 3;
+            tbPS4IP.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
-            // pbTrophyCacheProgress
+            // btnPingPs4
             // 
-            pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 120);
-            pbTrophyCacheProgress.Maximum = 1;
-            pbTrophyCacheProgress.Name = "pbTrophyCacheProgress";
-            pbTrophyCacheProgress.Size = new System.Drawing.Size(575, 20);
-            pbTrophyCacheProgress.TabIndex = 4;
+            btnPingPs4.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnPingPs4.Location = new System.Drawing.Point(511, 51);
+            btnPingPs4.Name = "btnPingPs4";
+            btnPingPs4.Size = new System.Drawing.Size(55, 24);
+            btnPingPs4.TabIndex = 4;
+            btnPingPs4.Text = "Ping";
+            btnPingPs4.Click += btnPingPs4_Click;
             // 
-            // lblTrophyCacheStatus
+            // grpTools
             // 
-            lblTrophyCacheStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblTrophyCacheStatus.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            lblTrophyCacheStatus.Location = new System.Drawing.Point(15, 150);
-            lblTrophyCacheStatus.Name = "lblTrophyCacheStatus";
-            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 42);
-            lblTrophyCacheStatus.TabIndex = 5;
-            lblTrophyCacheStatus.Text = "Cache not checked.";
+            grpTools.Controls.Add(darkLabel3);
+            grpTools.Controls.Add(darkLabelNodejsInstalled);
+            grpTools.Controls.Add(btnInstallNodejs);
+            grpTools.Controls.Add(darkLabel4);
+            grpTools.Controls.Add(darkLabelserveModuleInstalled);
+            grpTools.Controls.Add(btnInstalleServerModule);
+            grpTools.Location = new System.Drawing.Point(12, 107);
+            grpTools.Name = "grpTools";
+            grpTools.SectionHeader = "Tools";
+            grpTools.Size = new System.Drawing.Size(601, 72);
+            grpTools.TabIndex = 1;
+            // 
+            // darkLabel3
+            // 
+            darkLabel3.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel3.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabel3.Location = new System.Drawing.Point(35, 35);
+            darkLabel3.Name = "darkLabel3";
+            darkLabel3.Size = new System.Drawing.Size(70, 24);
+            darkLabel3.TabIndex = 0;
+            darkLabel3.Text = "Node.js";
+            // 
+            // darkLabelNodejsInstalled
+            // 
+            darkLabelNodejsInstalled.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelNodejsInstalled.ForeColor = System.Drawing.Color.Red;
+            darkLabelNodejsInstalled.Location = new System.Drawing.Point(105, 35);
+            darkLabelNodejsInstalled.Name = "darkLabelNodejsInstalled";
+            darkLabelNodejsInstalled.Size = new System.Drawing.Size(30, 24);
+            darkLabelNodejsInstalled.TabIndex = 1;
+            darkLabelNodejsInstalled.Text = "✘";
+            darkLabelNodejsInstalled.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // btnInstallNodejs
+            // 
+            btnInstallNodejs.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnInstallNodejs.Location = new System.Drawing.Point(140, 34);
+            btnInstallNodejs.Name = "btnInstallNodejs";
+            btnInstallNodejs.Size = new System.Drawing.Size(55, 26);
+            btnInstallNodejs.TabIndex = 2;
+            btnInstallNodejs.Text = "Install";
+            btnInstallNodejs.Click += btnInstallNodejs_Click;
+            // 
+            // darkLabel4
+            // 
+            darkLabel4.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel4.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            darkLabel4.Location = new System.Drawing.Point(341, 34);
+            darkLabel4.Name = "darkLabel4";
+            darkLabel4.Size = new System.Drawing.Size(100, 24);
+            darkLabel4.TabIndex = 3;
+            darkLabel4.Text = "http-server";
+            // 
+            // darkLabelserveModuleInstalled
+            // 
+            darkLabelserveModuleInstalled.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabelserveModuleInstalled.ForeColor = System.Drawing.Color.Red;
+            darkLabelserveModuleInstalled.Location = new System.Drawing.Point(461, 34);
+            darkLabelserveModuleInstalled.Name = "darkLabelserveModuleInstalled";
+            darkLabelserveModuleInstalled.Size = new System.Drawing.Size(30, 24);
+            darkLabelserveModuleInstalled.TabIndex = 4;
+            darkLabelserveModuleInstalled.Text = "✘";
+            darkLabelserveModuleInstalled.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // btnInstalleServerModule
+            // 
+            btnInstalleServerModule.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnInstalleServerModule.Location = new System.Drawing.Point(511, 33);
+            btnInstalleServerModule.Name = "btnInstalleServerModule";
+            btnInstalleServerModule.Size = new System.Drawing.Size(55, 26);
+            btnInstalleServerModule.TabIndex = 5;
+            btnInstalleServerModule.Text = "Install";
+            btnInstalleServerModule.Click += btnInstallServerModule_Click;
             // 
             // tabRename
             // 
             tabRename.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabRename.Controls.Add(grpRename);
-            tabRename.Location = new System.Drawing.Point(4, 32);
+            tabRename.Location = new System.Drawing.Point(4, 60);
             tabRename.Name = "tabRename";
-            tabRename.Size = new System.Drawing.Size(632, 516);
+            tabRename.Size = new System.Drawing.Size(632, 488);
             tabRename.TabIndex = 6;
             tabRename.Text = "PKG Rename";
             // 
@@ -1144,153 +1248,87 @@ namespace PS4PKGTool
             darkLabelNamingPatternExample.Size = new System.Drawing.Size(570, 50);
             darkLabelNamingPatternExample.TabIndex = 5;
             // 
-            // tabRPI
+            // tabTrophies
             // 
-            tabRPI.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabRPI.Controls.Add(grpNetwork);
-            tabRPI.Controls.Add(grpTools);
-            tabRPI.Location = new System.Drawing.Point(4, 32);
-            tabRPI.Name = "tabRPI";
-            tabRPI.Size = new System.Drawing.Size(632, 516);
-            tabRPI.TabIndex = 5;
-            tabRPI.Text = "Remote PKG Installer";
+            tabTrophies.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabTrophies.Controls.Add(grpTrophyCache);
+            tabTrophies.Location = new System.Drawing.Point(4, 60);
+            tabTrophies.Name = "tabTrophies";
+            tabTrophies.Size = new System.Drawing.Size(632, 488);
+            tabTrophies.TabIndex = 7;
+            tabTrophies.Text = "Trophies";
             // 
-            // grpNetwork
+            // grpTrophyCache
             // 
-            grpNetwork.Controls.Add(darkLabel1);
-            grpNetwork.Controls.Add(darkComboBoxServerIP);
-            grpNetwork.Controls.Add(darkLabel2);
-            grpNetwork.Controls.Add(tbPS4IP);
-            grpNetwork.Controls.Add(btnPingPs4);
-            grpNetwork.Location = new System.Drawing.Point(12, 16);
-            grpNetwork.Name = "grpNetwork";
-            grpNetwork.SectionHeader = "Network";
-            grpNetwork.Size = new System.Drawing.Size(601, 85);
-            grpNetwork.TabIndex = 0;
+            grpTrophyCache.Controls.Add(lblTrophyCacheDesc);
+            grpTrophyCache.Controls.Add(btnBuildTrophyCache);
+            grpTrophyCache.Controls.Add(btnCancelTrophyCache);
+            grpTrophyCache.Controls.Add(btnClearTrophyCache);
+            grpTrophyCache.Controls.Add(pbTrophyCacheProgress);
+            grpTrophyCache.Controls.Add(lblTrophyCacheStatus);
+            grpTrophyCache.Location = new System.Drawing.Point(12, 16);
+            grpTrophyCache.Name = "grpTrophyCache";
+            grpTrophyCache.SectionHeader = "Trophy Metadata Cache";
+            grpTrophyCache.Size = new System.Drawing.Size(606, 205);
+            grpTrophyCache.TabIndex = 0;
             // 
-            // darkLabel1
+            // lblTrophyCacheDesc
             // 
-            darkLabel1.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel1.Location = new System.Drawing.Point(35, 31);
-            darkLabel1.Name = "darkLabel1";
-            darkLabel1.Size = new System.Drawing.Size(100, 20);
-            darkLabel1.TabIndex = 0;
-            darkLabel1.Text = "PC IP address:";
+            lblTrophyCacheDesc.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblTrophyCacheDesc.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblTrophyCacheDesc.Location = new System.Drawing.Point(15, 32);
+            lblTrophyCacheDesc.Name = "lblTrophyCacheDesc";
+            lblTrophyCacheDesc.Size = new System.Drawing.Size(575, 38);
+            lblTrophyCacheDesc.TabIndex = 0;
+            lblTrophyCacheDesc.Text = "Extract NP Communication IDs from PKGs in the configured directories.\r\nCached IDs enable full trophy names and descriptions when a PKG is selected.";
             // 
-            // darkComboBoxServerIP
+            // btnBuildTrophyCache
             // 
-            darkComboBoxServerIP.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkComboBoxServerIP.FormattingEnabled = true;
-            darkComboBoxServerIP.Location = new System.Drawing.Point(35, 51);
-            darkComboBoxServerIP.Name = "darkComboBoxServerIP";
-            darkComboBoxServerIP.Size = new System.Drawing.Size(200, 24);
-            darkComboBoxServerIP.TabIndex = 1;
+            btnBuildTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnBuildTrophyCache.Location = new System.Drawing.Point(15, 78);
+            btnBuildTrophyCache.Name = "btnBuildTrophyCache";
+            btnBuildTrophyCache.Size = new System.Drawing.Size(210, 30);
+            btnBuildTrophyCache.TabIndex = 1;
+            btnBuildTrophyCache.Text = "Build Trophy Metadata Cache";
+            btnBuildTrophyCache.Click += btnBuildTrophyCache_Click;
             // 
-            // darkLabel2
+            // btnCancelTrophyCache
             // 
-            darkLabel2.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel2.Location = new System.Drawing.Point(341, 32);
-            darkLabel2.Name = "darkLabel2";
-            darkLabel2.Size = new System.Drawing.Size(100, 20);
-            darkLabel2.TabIndex = 2;
-            darkLabel2.Text = "PS4 IP address:";
+            btnCancelTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnCancelTrophyCache.Location = new System.Drawing.Point(235, 78);
+            btnCancelTrophyCache.Name = "btnCancelTrophyCache";
+            btnCancelTrophyCache.Size = new System.Drawing.Size(105, 30);
+            btnCancelTrophyCache.TabIndex = 2;
+            btnCancelTrophyCache.Text = "Cancel";
+            btnCancelTrophyCache.Click += btnCancelTrophyCache_Click;
             // 
-            // tbPS4IP
+            // btnClearTrophyCache
             // 
-            tbPS4IP.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbPS4IP.Location = new System.Drawing.Point(341, 52);
-            tbPS4IP.Name = "tbPS4IP";
-            tbPS4IP.Size = new System.Drawing.Size(160, 23);
-            tbPS4IP.TabIndex = 3;
-            tbPS4IP.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            btnClearTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnClearTrophyCache.Location = new System.Drawing.Point(350, 78);
+            btnClearTrophyCache.Name = "btnClearTrophyCache";
+            btnClearTrophyCache.Size = new System.Drawing.Size(120, 30);
+            btnClearTrophyCache.TabIndex = 3;
+            btnClearTrophyCache.Text = "Clear Cache";
+            btnClearTrophyCache.Click += btnClearTrophyCache_Click;
             // 
-            // btnPingPs4
+            // pbTrophyCacheProgress
             // 
-            btnPingPs4.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnPingPs4.Location = new System.Drawing.Point(511, 51);
-            btnPingPs4.Name = "btnPingPs4";
-            btnPingPs4.Size = new System.Drawing.Size(55, 24);
-            btnPingPs4.TabIndex = 4;
-            btnPingPs4.Text = "Ping";
-            btnPingPs4.Click += btnPingPs4_Click;
+            pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 120);
+            pbTrophyCacheProgress.Maximum = 1;
+            pbTrophyCacheProgress.Name = "pbTrophyCacheProgress";
+            pbTrophyCacheProgress.Size = new System.Drawing.Size(575, 20);
+            pbTrophyCacheProgress.TabIndex = 4;
             // 
-            // grpTools
+            // lblTrophyCacheStatus
             // 
-            grpTools.Controls.Add(darkLabel3);
-            grpTools.Controls.Add(darkLabelNodejsInstalled);
-            grpTools.Controls.Add(btnInstallNodejs);
-            grpTools.Controls.Add(darkLabel4);
-            grpTools.Controls.Add(darkLabelserveModuleInstalled);
-            grpTools.Controls.Add(btnInstalleServerModule);
-            grpTools.Location = new System.Drawing.Point(12, 107);
-            grpTools.Name = "grpTools";
-            grpTools.SectionHeader = "Tools";
-            grpTools.Size = new System.Drawing.Size(601, 72);
-            grpTools.TabIndex = 1;
-            // 
-            // darkLabel3
-            // 
-            darkLabel3.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel3.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel3.Location = new System.Drawing.Point(35, 35);
-            darkLabel3.Name = "darkLabel3";
-            darkLabel3.Size = new System.Drawing.Size(70, 24);
-            darkLabel3.TabIndex = 0;
-            darkLabel3.Text = "Node.js";
-            // 
-            // darkLabelNodejsInstalled
-            // 
-            darkLabelNodejsInstalled.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelNodejsInstalled.ForeColor = System.Drawing.Color.Red;
-            darkLabelNodejsInstalled.Location = new System.Drawing.Point(105, 35);
-            darkLabelNodejsInstalled.Name = "darkLabelNodejsInstalled";
-            darkLabelNodejsInstalled.Size = new System.Drawing.Size(30, 24);
-            darkLabelNodejsInstalled.TabIndex = 1;
-            darkLabelNodejsInstalled.Text = "✘";
-            darkLabelNodejsInstalled.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // btnInstallNodejs
-            // 
-            btnInstallNodejs.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnInstallNodejs.Location = new System.Drawing.Point(140, 34);
-            btnInstallNodejs.Name = "btnInstallNodejs";
-            btnInstallNodejs.Size = new System.Drawing.Size(55, 26);
-            btnInstallNodejs.TabIndex = 2;
-            btnInstallNodejs.Text = "Install";
-            btnInstallNodejs.Click += btnInstallNodejs_Click;
-            // 
-            // darkLabel4
-            // 
-            darkLabel4.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel4.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel4.Location = new System.Drawing.Point(341, 34);
-            darkLabel4.Name = "darkLabel4";
-            darkLabel4.Size = new System.Drawing.Size(100, 24);
-            darkLabel4.TabIndex = 3;
-            darkLabel4.Text = "http-server";
-            // 
-            // darkLabelserveModuleInstalled
-            // 
-            darkLabelserveModuleInstalled.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelserveModuleInstalled.ForeColor = System.Drawing.Color.Red;
-            darkLabelserveModuleInstalled.Location = new System.Drawing.Point(461, 34);
-            darkLabelserveModuleInstalled.Name = "darkLabelserveModuleInstalled";
-            darkLabelserveModuleInstalled.Size = new System.Drawing.Size(30, 24);
-            darkLabelserveModuleInstalled.TabIndex = 4;
-            darkLabelserveModuleInstalled.Text = "✘";
-            darkLabelserveModuleInstalled.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // btnInstalleServerModule
-            // 
-            btnInstalleServerModule.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnInstalleServerModule.Location = new System.Drawing.Point(511, 33);
-            btnInstalleServerModule.Name = "btnInstalleServerModule";
-            btnInstalleServerModule.Size = new System.Drawing.Size(55, 26);
-            btnInstalleServerModule.TabIndex = 5;
-            btnInstalleServerModule.Text = "Install";
-            btnInstalleServerModule.Click += btnInstallServerModule_Click;
+            lblTrophyCacheStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblTrophyCacheStatus.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblTrophyCacheStatus.Location = new System.Drawing.Point(15, 150);
+            lblTrophyCacheStatus.Name = "lblTrophyCacheStatus";
+            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 42);
+            lblTrophyCacheStatus.TabIndex = 5;
+            lblTrophyCacheStatus.Text = "Cache not checked.";
             // 
             // btnSaveClose
             // 
@@ -1384,23 +1422,26 @@ namespace PS4PKGTool
             grpStartup.ResumeLayout(false);
             grpStartup.PerformLayout();
             tabAppearance.ResumeLayout(false);
-            grpColumns.ResumeLayout(false);
-            grpColumns.PerformLayout();
             grpColors.ResumeLayout(false);
             grpColors.PerformLayout();
+            tabColumns.ResumeLayout(false);
+            grpColumns.ResumeLayout(false);
+            grpColumns.PerformLayout();
+            tabLibrary.ResumeLayout(false);
             grpPS5BC.ResumeLayout(false);
             grpPS5BC.PerformLayout();
+            tabShadps4.ResumeLayout(false);
             grpShadps4.ResumeLayout(false);
             grpShadps4.PerformLayout();
-            tabTrophies.ResumeLayout(false);
-            grpTrophyCache.ResumeLayout(false);
-            tabRename.ResumeLayout(false);
-            grpRename.ResumeLayout(false);
-            grpRename.PerformLayout();
             tabRPI.ResumeLayout(false);
             grpNetwork.ResumeLayout(false);
             grpNetwork.PerformLayout();
             grpTools.ResumeLayout(false);
+            tabRename.ResumeLayout(false);
+            grpRename.ResumeLayout(false);
+            grpRename.PerformLayout();
+            tabTrophies.ResumeLayout(false);
+            grpTrophyCache.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -1431,6 +1472,9 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel darkLabelShadps4Core;
         private DarkUI.Controls.DarkTextBox tbShadps4CoreExe;
         private DarkUI.Controls.DarkButton btnBrowseShadps4Core;
+        private DarkUI.Controls.DarkLabel darkLabelShadps4InstallDir;
+        private DarkUI.Controls.DarkTextBox tbShadps4InstallDirectory;
+        private DarkUI.Controls.DarkButton btnBrowseShadps4InstallDirectory;
         private DarkUI.Controls.DarkLabel darkLabelShadps4Detect;
         private DarkUI.Controls.DarkButton btnDownloadShadps4Json;
         private DarkUI.Controls.DarkLabel darkLabelShadps4, labelShadps4JsonDate;

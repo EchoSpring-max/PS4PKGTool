@@ -650,6 +650,23 @@ public class Shadps4IntegrationTests
         Assert.IsFalse(source.Contains("Desktop"), "no hardcoded Desktop folders");
     }
 
+    [TestMethod]
+    public void Settings_Shadps4InstallDirectory_RoundTrips()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            Shadps4InstallDirectory = @"D:\Games\shadps4 library",
+        };
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.AreEqual(@"D:\Games\shadps4 library", loaded.Shadps4InstallDirectory);
+        Assert.AreEqual("", new PS4PKGTool.Utilities.Settings.AppSettings().Shadps4InstallDirectory,
+            "default is empty - no preset is invented without a shadPS4 config");
+    }
+
     // ── launcher ──
 
     [TestMethod]

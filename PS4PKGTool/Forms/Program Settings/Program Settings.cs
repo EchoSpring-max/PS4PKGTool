@@ -111,6 +111,7 @@ namespace PS4PKGTool
                     : appSettings_.Shadps4LauncherExePath;
             }
             tbShadps4CoreExe.Text = selected ?? "";
+            tbShadps4InstallDirectory.Text = appSettings_.Shadps4InstallDirectory ?? "";
             RefreshShadps4Detection();
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;
@@ -215,6 +216,7 @@ namespace PS4PKGTool
                 _ => "windows",
             };
             appSettings_.Shadps4ExecutablePath = tbShadps4CoreExe.Text.Trim();
+            appSettings_.Shadps4InstallDirectory = tbShadps4InstallDirectory.Text.Trim();
             appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
@@ -444,6 +446,21 @@ namespace PS4PKGTool
             RefreshShadps4Detection();
         }
 
+        private void btnBrowseShadps4InstallDirectory_Click(object sender, EventArgs e)
+        {
+            using var fbd = new FolderBrowserDialog
+            {
+                Description = "Select the shadPS4 game install directory",
+                ShowNewFolderButton = true,
+            };
+            string current = tbShadps4InstallDirectory.Text.Trim();
+            if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
+                fbd.SelectedPath = current;
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            tbShadps4InstallDirectory.Text = fbd.SelectedPath;
+            Logger.LogInformation($"shadPS4 install directory set to \"{fbd.SelectedPath}\"");
+        }
+
         /// <summary>
         /// Re-runs environment detection and shows the resolved paths plus any
         /// detection warnings. Never throws - detection problems must not
@@ -454,6 +471,15 @@ namespace PS4PKGTool
             try
             {
                 var env = Shadps4EnvironmentResolver.Resolve(tbShadps4CoreExe.Text.Trim());
+
+                // Auto-fill the install directory from shadPS4's own config
+                // (first enabled library) - only when the user has not set
+                // their own directory. No config -> stays empty.
+                if (string.IsNullOrWhiteSpace(tbShadps4InstallDirectory.Text)
+                    && env.InstallDirectories.Count > 0)
+                {
+                    tbShadps4InstallDirectory.Text = env.InstallDirectories[0];
+                }
 
                 var lines = new List<string>
                 {

@@ -3472,21 +3472,6 @@ namespace PS4PKGTool
                 return;
             }
 
-            var env = GetShadps4Environment();
-            // Installing into a shadPS4 library only needs the resolved config
-            // and libraries - the core executable is not involved (launching is).
-            if (!env.IsValid)
-            {
-                ShowWarning("shadPS4 is not configured - open Program Settings and select the shadPS4 executable.", false);
-                OpenProgramSettings();
-                return;
-            }
-            if (env.InstallDirectories.Count == 0)
-            {
-                ShowWarning("shadPS4 has no game libraries configured. Add one in shadPS4 (Settings -> GUI -> game folders).", false);
-                return;
-            }
-
             string pkgPath = GetRowPkgPath(row);
             if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
             {
@@ -3494,7 +3479,7 @@ namespace PS4PKGTool
                 return;
             }
 
-            InstallToShadps4Library(row, env, pkgPath);
+            InstallToShadps4Library(row, pkgPath);
         }
 
         /// <summary>
@@ -3502,26 +3487,26 @@ namespace PS4PKGTool
         /// the library, validation, same-volume rename). Existing installations
         /// are never overwritten without explicit approval; a running shadPS4
         /// triggers an extra warning for replacement installs.
+        /// The target folder comes from the user's shadPS4 install-directory
+        /// setting (auto-filled from shadPS4's own config in Program Settings)
+        /// and can be changed per install - nothing is hardcoded.
         /// </summary>
-        private void InstallToShadps4Library(DataRow row, Shadps4Environment env, string pkgPath)
+        private void InstallToShadps4Library(DataRow row, string pkgPath)
         {
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
 
-            string library;
-            if (env.InstallDirectories.Count == 1)
+            using var fbd = new FolderBrowserDialog
             {
-                library = env.InstallDirectories[0];
-            }
-            else
-            {
-                using var fbd = new FolderBrowserDialog
-                {
-                    Description = "Choose the shadPS4 game library to install into",
-                    SelectedPath = env.InstallDirectories[0],
-                };
-                if (fbd.ShowDialog() != DialogResult.OK) return;
-                library = fbd.SelectedPath;
-            }
+                Description = "Choose the shadPS4 library (game install folder) to install into",
+                ShowNewFolderButton = true,
+            };
+            // Preset only from the user's configured install directory, and
+            // only while it exists on disk. Empty/no-config -> no preset.
+            string preset = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrEmpty(preset) && Directory.Exists(preset))
+                fbd.SelectedPath = preset;
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            string library = fbd.SelectedPath;
 
             string finalDir = Path.Combine(library, titleId);
             bool replace = false;

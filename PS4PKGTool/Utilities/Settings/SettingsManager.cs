@@ -58,6 +58,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
                     writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
                     writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
+                    writer.WriteLine($"shadps4_install_directory={settings.Shadps4InstallDirectory}");
 
                 }
             }
@@ -262,6 +263,10 @@ namespace PS4PKGTool.Utilities.Settings
                             else if (line.StartsWith("shadps4_executable="))
                             {
                                 appSettings_.Shadps4ExecutablePath = line.Substring("shadps4_executable=".Length).Trim();
+                            }
+                            else if (line.StartsWith("shadps4_install_directory="))
+                            {
+                                appSettings_.Shadps4InstallDirectory = line.Substring("shadps4_install_directory=".Length).Trim();
                             }
                             else if (line.StartsWith("shadps4_core_exe="))
                             {

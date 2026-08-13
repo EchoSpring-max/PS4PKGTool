@@ -51,6 +51,13 @@ namespace PS4PKGTool.Utilities.Settings
         /// automatically, so one setting is enough.
         /// </summary>
         public string Shadps4ExecutablePath { get; set; } = "";
+        /// <summary>
+        /// Install target for "Install Game to shadPS4 Library". Auto-filled
+        /// from shadPS4's own config (first enabled game library) in Program
+        /// Settings; the user may override it. Empty = no preset (the folder
+        /// dialog opens without a preselected directory).
+        /// </summary>
+        public string Shadps4InstallDirectory { get; set; } = "";
         /// <summary>Legacy (superseded by Shadps4ExecutablePath - kept for migration).</summary>
         public string Shadps4CoreExePath { get; set; } = "";
         /// <summary>Legacy (superseded by Shadps4ExecutablePath - kept for migration).</summary>

@@ -126,6 +126,7 @@ namespace PS4PKGTool
             toolStripMenuItemShadps4 = new ToolStripMenuItem();
             toolStripMenuItemShadps4Launch = new ToolStripMenuItem();
             toolStripMenuItemShadps4Install = new ToolStripMenuItem();
+            toolStripMenuItemShadps4OpenLauncher = new ToolStripMenuItem();
             toolStripMenuItemShadps4Configure = new ToolStripMenuItem();
             RpiUninstallBasePKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallPatchPKGToolStripMenuItem2 = new ToolStripMenuItem();
@@ -1202,6 +1203,7 @@ namespace PS4PKGTool
             toolStripMenuItemShadps4.DropDownItems.AddRange(new ToolStripItem[] {
             toolStripMenuItemShadps4Launch,
             toolStripMenuItemShadps4Install,
+            toolStripMenuItemShadps4OpenLauncher,
             toolStripMenuItemShadps4Configure});
             toolStripMenuItemShadps4.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItemShadps4.Name = "toolStripMenuItemShadps4";
@@ -1234,6 +1236,15 @@ namespace PS4PKGTool
             toolStripMenuItemShadps4Configure.Size = new System.Drawing.Size(247, 22);
             toolStripMenuItemShadps4Configure.Text = "Configure shadPS4...";
             toolStripMenuItemShadps4Configure.Click += toolStripMenuItemShadps4Configure_Click;
+            //
+            // toolStripMenuItemShadps4OpenLauncher
+            //
+            toolStripMenuItemShadps4OpenLauncher.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4OpenLauncher.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4OpenLauncher.Name = "toolStripMenuItemShadps4OpenLauncher";
+            toolStripMenuItemShadps4OpenLauncher.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4OpenLauncher.Text = "Open shadPS4 Launcher";
+            toolStripMenuItemShadps4OpenLauncher.Click += toolStripMenuItemShadps4OpenLauncher_Click;
             // 
             // RpiUninstallBasePKGToolStripMenuItem2
             // 
@@ -3978,6 +3989,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem toolStripMenuItemShadps4;
         private ToolStripMenuItem toolStripMenuItemShadps4Launch;
         private ToolStripMenuItem toolStripMenuItemShadps4Install;
+        private ToolStripMenuItem toolStripMenuItemShadps4OpenLauncher;
         private ToolStripMenuItem toolStripMenuItemShadps4Configure;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem1;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem2;

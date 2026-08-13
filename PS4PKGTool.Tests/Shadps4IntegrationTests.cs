@@ -14,6 +14,10 @@ public class Shadps4IntegrationTests
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), "p4t_shadps4_test_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempRoot);
+        // LoadSettings parses into a STATIC instance - reset it so test
+        // execution order can never bleed values between tests.
+        PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_ =
+            new PS4PKGTool.Utilities.Settings.AppSettings();
     }
 
     [TestCleanup]
@@ -648,6 +652,126 @@ public class Shadps4IntegrationTests
         Assert.IsFalse(source.Contains(@"C:\Users"), "no hardcoded user profiles");
         Assert.IsFalse(source.Contains("Z:"), "no hardcoded drive letters");
         Assert.IsFalse(source.Contains("Desktop"), "no hardcoded Desktop folders");
+    }
+
+    [TestMethod]
+    public void ActiveCore_Parse_RecognizesManagedAdoptedAndNone()
+    {
+        Assert.AreEqual(Shadps4ComponentSource.Managed, Shadps4ActiveCore.Parse("managed:abc1234").Source);
+        Assert.AreEqual("abc1234", Shadps4ActiveCore.Parse("managed:abc1234").Value);
+        Assert.AreEqual(Shadps4ComponentSource.Adopted, Shadps4ActiveCore.Parse(@"adopted:C:\x\shadPS4.exe").Source);
+        Assert.AreEqual(@"C:\x\shadPS4.exe", Shadps4ActiveCore.Parse(@"adopted:C:\x\shadPS4.exe").Value);
+        Assert.AreEqual(Shadps4ComponentSource.None, Shadps4ActiveCore.Parse("").Source);
+        Assert.AreEqual(Shadps4ComponentSource.None, Shadps4ActiveCore.Parse(null).Source);
+        Assert.IsTrue(Shadps4ActiveCore.Parse(@"adopted:C:\a=b\shadPS4.exe").IsSet, "paths containing '=' still parse");
+    }
+
+    [TestMethod]
+    public void ActiveCore_ResolveAdopted_RequiresExistingFileNoFallback()
+    {
+        string existing = Path.Combine(_tempRoot, "shadPS4.exe");
+        File.WriteAllText(existing, "fake");
+
+        string? ok = Shadps4ActiveCore.ResolveExecutable(Shadps4ActiveCore.ForAdopted(existing), null, out string? okError);
+        Assert.AreEqual(existing, ok);
+        Assert.IsNull(okError);
+
+        string missing = Path.Combine(_tempRoot, "gone.exe");
+        string? notOk = Shadps4ActiveCore.ResolveExecutable(Shadps4ActiveCore.ForAdopted(missing), null, out string? missingError);
+        Assert.IsNull(notOk, "a missing adopted core must NOT fall back to any discovered core");
+        StringAssert.Contains(missingError, "no longer exists");
+    }
+
+    [TestMethod]
+    public void ActiveCore_ResolveManaged_UsesBuildStoreHook()
+    {
+        string managedExe = Path.Combine(_tempRoot, "builds", "core-x", "shadPS4.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(managedExe));
+        File.WriteAllText(managedExe, "fake");
+
+        string? path = Shadps4ActiveCore.ResolveExecutable(
+            Shadps4ActiveCore.ForManaged("x"),
+            id => id == "x" ? managedExe : null,
+            out string? error);
+
+        Assert.AreEqual(managedExe, path);
+        Assert.IsNull(error);
+
+        string? none = Shadps4ActiveCore.ResolveExecutable(Shadps4ActiveCore.ForManaged("unknown"), null, out _);
+        Assert.IsNull(none, "managed without a store hook cannot resolve");
+    }
+
+    [TestMethod]
+    public void ActiveCore_ResolveEmpty_ReportsNotConfigured()
+    {
+        string? path = Shadps4ActiveCore.ResolveExecutable("", null, out string? error);
+        Assert.IsNull(path);
+        StringAssert.Contains(error, "No shadPS4 core is active");
+    }
+
+    [TestMethod]
+    public void Settings_ActiveCore_MigratesLegacyKeysOnce()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        File.WriteAllText(file,
+            $"pkg_directories=\n" +
+            $"shadps4_core_exe=C:\\emu\\old\\shadPS4.exe\n" +
+            $"shadps4_launcher_exe=C:\\emu\\new\\shadPS4QtLauncher.exe\n" +
+            $"shadps4_executable=C:\\emu\\new\\shadPS4QtLauncher.exe\n");
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.AreEqual(@"adopted:C:\emu\old\shadPS4.exe", loaded.Shadps4ActiveCore);
+        Assert.AreEqual(@"adopted:C:\emu\new\shadPS4QtLauncher.exe", loaded.Shadps4ActiveLauncher,
+            "explicit legacy launcher wins over the single executable");
+    }
+
+    [TestMethod]
+    public void Settings_ActiveCore_LegacySingleExecutable_BecomesCoreOrLauncherByFilename()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        // Clear the legacy keys first: LoadSettings only overwrites keys present
+        // in the file, and appSettings_ is static across tests.
+        File.WriteAllText(file,
+            "shadps4_core_exe=\n" +
+            "shadps4_launcher_exe=\n" +
+            "shadps4_executable=C:\\emu\\shadPS4.exe\n");
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.AreEqual(@"adopted:C:\emu\shadPS4.exe", loaded.Shadps4ActiveCore);
+        Assert.AreEqual("", loaded.Shadps4ActiveLauncher, "a core selection does not create a launcher");
+    }
+
+    [TestMethod]
+    public void Settings_ActiveCore_NewKeysOverrideLegacy()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        File.WriteAllText(file,
+            $"shadps4_active_core=managed:abc1234\n" +
+            $"shadps4_core_exe=C:\\emu\\old\\shadPS4.exe\n");
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.AreEqual("managed:abc1234", loaded.Shadps4ActiveCore,
+            "an existing active-core value is never overwritten by legacy keys");
+    }
+
+    [TestMethod]
+    public void Settings_ActiveCoreAndLauncher_RoundTrip()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            Shadps4ActiveCore = @"adopted:C:\a=b\shadPS4.exe",
+            Shadps4ActiveLauncher = "managed:launcher-2026-08-08-a12b988",
+        };
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.AreEqual(@"adopted:C:\a=b\shadPS4.exe", loaded.Shadps4ActiveCore);
+        Assert.AreEqual("managed:launcher-2026-08-08-a12b988", loaded.Shadps4ActiveLauncher);
     }
 
     [TestMethod]

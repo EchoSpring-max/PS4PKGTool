@@ -52,6 +52,20 @@ namespace PS4PKGTool.Utilities.Settings
         /// </summary>
         public string Shadps4ExecutablePath { get; set; } = "";
         /// <summary>
+        /// The explicit launch component for games: "" (none), "managed:&lt;buildId&gt;"
+        /// (PS4PKGTool-managed build) or "adopted:&lt;path&gt;" (user-chosen existing
+        /// installation, reference only). Launch NEVER falls back to a discovered
+        /// core on disk - only this setting is authoritative.
+        /// </summary>
+        public string Shadps4ActiveCore { get; set; } = "";
+        /// <summary>
+        /// The Qt launcher used by "Open QtLauncher": same managed:/adopted:
+        /// representation as Shadps4ActiveCore. The launcher is the settings
+        /// UI (graphics/controllers/audio/cheats/patches); it is never used
+        /// as an intermediate step for direct game launch.
+        /// </summary>
+        public string Shadps4ActiveLauncher { get; set; } = "";
+        /// <summary>
         /// Install target for "Install Game to shadPS4 Library". Auto-filled
         /// from shadPS4's own config (first enabled game library) in Program
         /// Settings; the user may override it. Empty = no preset (the folder

@@ -3423,23 +3423,48 @@ namespace PS4PKGTool
             if (row == null) { ShowWarning("Select a PKG in the grid first.", false); return; }
 
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
-            var env = GetShadps4Environment();
-            if (env.DistributionType == Shadps4DistributionType.QtLauncherOnly)
+
+            // Launch uses ONLY the explicitly configured Active Core. A core
+            // discovered on disk (e.g. in a parent folder) is never selected
+            // automatically - a real incident happened when an old parent-folder
+            // core was used and the game crashed.
+            string activeCore = appSettings_.Shadps4ActiveCore ?? "";
+            string? corePath = Shadps4ActiveCore.ResolveExecutable(activeCore, null, out string? error);
+            if (corePath == null)
             {
-                ShowWarning(
-                    "This shadPS4 installation only includes the Qt launcher, no shadPS4.exe core was found near it.\n\nThe core is required to launch games directly. Place shadPS4.exe next to the launcher (or in a parent folder), or select it in Program Settings.",
-                    false);
-                OpenProgramSettings();
-                return;
-            }
-            if (!env.IsUsable)
-            {
-                ShowWarning("shadPS4 is not configured. Open Program Settings and select the shadPS4 executable.", false);
-                OpenProgramSettings();
-                return;
+                var envForCandidate = GetShadps4Environment();
+                string? candidate = envForCandidate.CoreExePath;
+                if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+                {
+                    // External candidate - explicit approval only.
+                    var adopt = AppMessageBox.Show("shadPS4",
+                        $"{error}\n\n" +
+                        $"External shadPS4 core detected:\n{candidate}\n\n" +
+                        "This core was not verified as belonging to the selected QtLauncher build.\n\n" +
+                        "Use This Core?",
+                        AppMessageType.Warning, AppMessageButtons.YesNoCancel);
+                    if (adopt != DialogResult.Yes) return;
+                    appSettings_.Shadps4ActiveCore = Shadps4ActiveCore.ForAdopted(candidate);
+                    SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+                    corePath = candidate;
+                }
+                else
+                {
+                    var setup = AppMessageBox.Show("shadPS4",
+                        $"{error}\n\nOpen Program Settings to select or install shadPS4?",
+                        AppMessageType.Warning, AppMessageButtons.YesNo);
+                    if (setup == DialogResult.Yes) OpenProgramSettings();
+                    return;
+                }
             }
 
-            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(env, titleId);
+            var env = GetShadps4Environment();
+            var launchEnv = new Shadps4Environment
+            {
+                CoreExePath = corePath,
+                InstallDirectories = env.InstallDirectories,
+            };
+            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(launchEnv, titleId);
             switch (status)
             {
                 case Shadps4LaunchStatus.Started:
@@ -3457,6 +3482,58 @@ namespace PS4PKGTool
                 default:
                     ShowWarning(message, false);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Opens the Qt launcher (the shadPS4 settings UI) without a game.
+        /// Uses ONLY the explicitly configured launcher - no silent fallback
+        /// to a discovered one.
+        /// </summary>
+        private void toolStripMenuItemShadps4OpenLauncher_Click(object sender, EventArgs e)
+        {
+            string activeLauncher = appSettings_.Shadps4ActiveLauncher ?? "";
+            string? launcherPath = Shadps4ActiveCore.ResolveExecutable(activeLauncher, null, out string? error);
+            if (launcherPath == null)
+            {
+                var env = GetShadps4Environment();
+                string? candidate = env.LauncherExePath;
+                if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+                {
+                    var adopt = AppMessageBox.Show("shadPS4",
+                        $"{error}\n\n" +
+                        $"A QtLauncher was detected:\n{candidate}\n\n" +
+                        "Use This Launcher?",
+                        AppMessageType.Warning, AppMessageButtons.YesNoCancel);
+                    if (adopt != DialogResult.Yes) return;
+                    appSettings_.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(candidate);
+                    SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+                    launcherPath = candidate;
+                }
+                else
+                {
+                    var setup = AppMessageBox.Show("shadPS4",
+                        $"{error}\n\nOpen Program Settings to select or install the Qt launcher?",
+                        AppMessageType.Warning, AppMessageButtons.YesNo);
+                    if (setup == DialogResult.Yes) OpenProgramSettings();
+                    return;
+                }
+            }
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = launcherPath,
+                    UseShellExecute = false,
+                    WorkingDirectory = Path.GetDirectoryName(launcherPath) ?? "",
+                };
+                Process.Start(psi);
+                ShowInformation("shadPS4 QtLauncher opened.", false);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to open the shadPS4 QtLauncher:\n{ex.Message}", false);
             }
         }
 

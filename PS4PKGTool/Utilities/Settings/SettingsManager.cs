@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PS4PKGTool.Utilities.Shadps4;
 
 namespace PS4PKGTool.Utilities.Settings
 {
@@ -58,6 +59,8 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
                     writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
                     writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
+                    writer.WriteLine($"shadps4_active_core={settings.Shadps4ActiveCore}");
+                    writer.WriteLine($"shadps4_active_launcher={settings.Shadps4ActiveLauncher}");
                     writer.WriteLine($"shadps4_install_directory={settings.Shadps4InstallDirectory}");
 
                 }
@@ -264,6 +267,14 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 appSettings_.Shadps4ExecutablePath = line.Substring("shadps4_executable=".Length).Trim();
                             }
+                            else if (line.StartsWith("shadps4_active_core="))
+                            {
+                                appSettings_.Shadps4ActiveCore = line.Substring("shadps4_active_core=".Length).Trim();
+                            }
+                            else if (line.StartsWith("shadps4_active_launcher="))
+                            {
+                                appSettings_.Shadps4ActiveLauncher = line.Substring("shadps4_active_launcher=".Length).Trim();
+                            }
                             else if (line.StartsWith("shadps4_install_directory="))
                             {
                                 appSettings_.Shadps4InstallDirectory = line.Substring("shadps4_install_directory=".Length).Trim();
@@ -287,7 +298,50 @@ namespace PS4PKGTool.Utilities.Settings
             }
 
             NormalizePkgDirectories(appSettings_.PkgDirectories);
+            MigrateShadps4ActiveKeys(appSettings_);
             return appSettings_;
+        }
+
+        /// <summary>
+        /// One-time migration to the explicit active-core/launcher model.
+        /// Runs only when the new keys are empty, so it never overrides a
+        /// value the user set, and the migrated value is persisted on the
+        /// next settings save (legacy keys are then never consulted again).
+        /// Rules: legacy core/launcher paths become adopted references; the
+        /// legacy single executable becomes the adopted core or launcher
+        /// depending on its filename.
+        /// </summary>
+        private static void MigrateShadps4ActiveKeys(AppSettings s)
+        {
+            if (string.IsNullOrWhiteSpace(s.Shadps4ActiveCore))
+            {
+                string core = s.Shadps4CoreExePath ?? "";
+                if (string.IsNullOrWhiteSpace(core) && IsCoreFileName(s.Shadps4ExecutablePath))
+                    core = s.Shadps4ExecutablePath;
+                if (!string.IsNullOrWhiteSpace(core))
+                    s.Shadps4ActiveCore = Shadps4ActiveCore.ForAdopted(core);
+            }
+
+            if (string.IsNullOrWhiteSpace(s.Shadps4ActiveLauncher))
+            {
+                string launcher = s.Shadps4LauncherExePath ?? "";
+                if (string.IsNullOrWhiteSpace(launcher) && IsLauncherFileName(s.Shadps4ExecutablePath))
+                    launcher = s.Shadps4ExecutablePath;
+                if (!string.IsNullOrWhiteSpace(launcher))
+                    s.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(launcher);
+            }
+        }
+
+        private static bool IsCoreFileName(string? path)
+        {
+            string name = Path.GetFileName(path ?? "");
+            return name.Equals(Shadps4EnvironmentResolver.CoreExeFileName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLauncherFileName(string? path)
+        {
+            string name = Path.GetFileName(path ?? "");
+            return name.Equals(Shadps4EnvironmentResolver.QtLauncherFileName, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

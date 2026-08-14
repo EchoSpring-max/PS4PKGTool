@@ -2613,7 +2613,14 @@ namespace PS4PKGTool
                 string groupCol = GroupByColumn;
                 groupedListView.SetGroups(
                     items,
-                    item => item.Row[groupCol]?.ToString() ?? "Other",
+                    item =>
+                    {
+                        // Empty keys (e.g. PKGs without a shadPS4 compatibility
+                        // status) render as a blank header "▼  (N)" at the very
+                        // top - name the bucket so it is understandable.
+                        string key = item.Row[groupCol]?.ToString() ?? "";
+                        return string.IsNullOrWhiteSpace(key) ? "Unknown" : key;
+                    },
                     item => BuildGlvRowData(item)
                 );
 

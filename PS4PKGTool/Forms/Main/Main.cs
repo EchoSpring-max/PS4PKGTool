@@ -3588,6 +3588,32 @@ namespace PS4PKGTool
         }
 
         /// <summary>
+        /// Searches every known game location (shadPS4's configured libraries
+        /// and the tool's own install directory) for the base game of a patch,
+        /// excluding the current install target. Returns the folder path or null.
+        /// </summary>
+        private string? FindBaseGameLocation(string titleId, string excludeDir)
+        {
+            var env = GetShadps4Environment();
+            var dirs = new List<string>(env.InstallDirectories);
+            string toolDir = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(toolDir)) dirs.Add(toolDir);
+
+            foreach (string d in dirs)
+            {
+                if (string.IsNullOrWhiteSpace(d) || !Directory.Exists(d)) continue;
+                if (string.Equals(d.TrimEnd('\\', '/'), excludeDir.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase)) continue;
+                string candidate = Path.Combine(d, titleId);
+                if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "eboot.bin")))
+                {
+                    Logger.LogInformation($"Shadps4InstallUI: base game for {titleId} found at {candidate}");
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Transactional install into a shadPS4 library (staging folder inside
         /// the library, validation, same-volume rename). Existing installations
         /// are never overwritten without explicit approval; a running shadPS4
@@ -3637,15 +3663,23 @@ namespace PS4PKGTool
             string finalDir = Path.Combine(library, titleId);
 
             // A patch without a base game cannot boot - it only updates the
-            // base's files. Warn (but do not block) when no base is detected.
+            // base's files. Warn (but do not block) when no base is detected
+            // in the target folder; if the base exists in ANOTHER library,
+            // say where so the user can install the patch there instead.
             bool hasBase = Directory.Exists(finalDir)
                 && File.Exists(Path.Combine(finalDir, "eboot.bin"));
             if (isPatch && !hasBase)
             {
-                var warnBase = AppMessageBox.Show("shadPS4",
-                    $"No base game detected for {titleId} in\n{library}\n\n" +
-                    "A patch alone cannot boot, it only updates the base game's files, which are not installed yet.\n\n" +
-                    "Install the patch anyway?",
+                string? baseLocation = FindBaseGameLocation(titleId, library);
+                string message = baseLocation != null
+                    ? $"The base game for {titleId} was found in another library:\n{baseLocation}\n\n" +
+                      "This install target has no base game, so the patch alone cannot boot.\n\n" +
+                      "Cancel and install the patch into the library that contains the base game?"
+                    : $"No base game detected for {titleId} in\n{library}\n\n" +
+                      "A patch alone cannot boot, it only updates the base game's files, which are not installed yet.\n\n" +
+                      "Install the patch anyway?";
+
+                var warnBase = AppMessageBox.Show("shadPS4", message,
                     AppMessageType.Warning, AppMessageButtons.YesNo);
                 if (warnBase != DialogResult.Yes) return;
                 confirmed = true;

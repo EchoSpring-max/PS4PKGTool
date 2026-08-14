@@ -2184,7 +2184,8 @@ namespace PS4PKGTool
                         dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
                             pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
                             pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc,
-                            pkgDirectoryName, pkgIsBackported, "NA");
+                            pkgDirectoryName, pkgIsBackported, "NA",
+                            ps4Pkg.Region, PkgColumns.ParseSystemVersionNum(pkgMinFirmware));
 
                         // Update type counts
                         switch (ps4Pkg.PKG_Type.ToString())
@@ -2334,6 +2335,7 @@ namespace PS4PKGTool
                             this.Invoke((MethodInvoker)delegate
                             {
                                 PKGGridView.DataSource = dt;
+                                HideFilterColumns();
                             });
                             return; // Skip directory scan - PostPkgLoad runs in RunWorkerCompleted
                         }
@@ -2522,7 +2524,8 @@ namespace PS4PKGTool
                     // add items to datatable
                     string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : $"{pkgSystemVersion}";
                     pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
-                    dttemp.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported, "NA");
+                    dttemp.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported, "NA",
+                        region, PkgColumns.ParseSystemVersionNum(pkgMinFirmware));
 
                     switch (ps4Pkg.PKG_Type.ToString())
                     {
@@ -2561,6 +2564,7 @@ namespace PS4PKGTool
                     PKGGridView.DataSource = dttemp;
                     for (int i = 10; i <= 12; i++) // PSVR, PS4 Pro Enhanced, PS5 BC (col 9 is Size - keep it)
                         PKGGridView.Columns[i].Visible = appSettings_.psvr_neo_ps5bc_check;
+                    HideFilterColumns();
                     foreach (DataGridViewColumn column in PKGGridView.Columns)
                         column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                     PKGGridView.ResumeLayout();
@@ -3231,6 +3235,19 @@ namespace PS4PKGTool
             }
         }
 
+        /// <summary>The two hidden filter columns (Region Name, System Version (Num)) are never shown in the grid.</summary>
+        private void HideFilterColumns()
+        {
+            try
+            {
+                if (PKGGridView.Columns.Contains(PkgColumns.RegionName))
+                    PKGGridView.Columns[PkgColumns.RegionName].Visible = false;
+                if (PKGGridView.Columns.Contains(PkgColumns.SystemVersionNum))
+                    PKGGridView.Columns[PkgColumns.SystemVersionNum].Visible = false;
+            }
+            catch { }
+        }
+
         private void UpdateDataGridViewColumnVisibility()
         {
             try
@@ -3252,6 +3269,7 @@ namespace PS4PKGTool
                 PKGGridView.Columns[15].Visible = appSettings_.AutoFetchUpdate;
                 if (PKGGridView.Columns.Count > 16)
                     PKGGridView.Columns[16].Visible = appSettings_.Shadps4Check;
+                HideFilterColumns();
                 // The header reflects the OS the statuses are shown for
                 // (internal column name stays "ShadPS4" for all OSes).
                 if (appSettings_.Shadps4Check && PKGGridView.Columns.Contains(PkgColumns.Shadps4))

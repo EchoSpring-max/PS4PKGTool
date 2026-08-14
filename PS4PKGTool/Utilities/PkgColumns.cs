@@ -28,8 +28,12 @@ namespace PS4PKGTool.Utilities
         public const string Backported = "Backported";
         public const string LatestUpdate = "Latest Update";
         public const string Shadps4 = "ShadPS4";
+        /// <summary>Hidden string column (region NAME) used by the row filter - Region itself is a byte[] icon.</summary>
+        public const string RegionName = "Region Name";
+        /// <summary>Hidden numeric column (parsed System Version) used by the "&gt;= firmware" filter.</summary>
+        public const string SystemVersionNum = "System Version (Num)";
 
-        /// <summary>Creates the main PKG grid schema (17 columns, Region is byte[]).</summary>
+        /// <summary>Creates the main PKG grid schema (19 columns, Region is byte[]; Region Name and System Version (Num) are hidden filter columns).</summary>
         public static DataTable CreateSchema()
         {
             var dt = new DataTable();
@@ -50,7 +54,17 @@ namespace PS4PKGTool.Utilities
             dt.Columns.Add(Backported);
             dt.Columns.Add(LatestUpdate);
             dt.Columns.Add(Shadps4);
+            dt.Columns.Add(RegionName);
+            dt.Columns.Add(SystemVersionNum, typeof(double));
             return dt;
+        }
+
+        /// <summary>Parses a firmware string ("5.05", "NA", ...) into a number for the hidden filter column (0 when unparseable).</summary>
+        public static double ParseSystemVersionNum(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            return double.TryParse(value.Trim(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : 0;
         }
     }
 }

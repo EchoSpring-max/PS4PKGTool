@@ -170,7 +170,9 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     entry.Ps5Bc ?? "",
                     entry.Directory ?? "",
                     entry.Backported ?? "",
-                    entry.LatestUpdate ?? ""
+                    entry.LatestUpdate ?? "",
+                    entry.Region ?? "",
+                    PkgColumns.ParseSystemVersionNum(entry.SystemVersion)
                 );
             }
 

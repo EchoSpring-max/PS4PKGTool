@@ -3274,18 +3274,12 @@ namespace PS4PKGTool
                 // (internal column name stays "ShadPS4" for all OSes).
                 if (appSettings_.Shadps4Check && PKGGridView.Columns.Contains(PkgColumns.Shadps4))
                     PKGGridView.Columns[PkgColumns.Shadps4].HeaderText = $"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})";
-                // The compat filter needs the column's data to exist (it is
-                // presentation-independent, but filtering an all-empty column
-                // is confusing - so the control follows the same setting).
-                if (cmbCompatFilter != null)
+                // The compat filter needs the column's data to exist - when the
+                // shadPS4 check is off, clear any active compat condition.
+                if (!appSettings_.Shadps4Check && _filterState.CompatStatuses.Count > 0)
                 {
-                    cmbCompatFilter.Enabled = appSettings_.Shadps4Check;
-                    if (!appSettings_.Shadps4Check && cmbCompatFilter.SelectedIndex != 0)
-                    {
-                        cmbCompatFilter.SelectedIndex = 0;
-                        _compatFilter = "";
-                        ApplyFilters();
-                    }
+                    _filterState.CompatStatuses.Clear();
+                    ApplyFilters();
                 }
             }
             catch (Exception ex) { Logger.LogWarning("Error updating column visibility: " + ex.Message); }
@@ -3368,18 +3362,17 @@ namespace PS4PKGTool
             // ApplyFilters() so type/compat/search COMPOSE instead of
             // overwriting each other.
             string text = sender.ToString();
+            _filterState.Categories.Clear();
             if (text.Contains(PKGCategory.GAME))
-                _typeFilter = PKGCategory.GAME;
+                _filterState.Categories.Add(PKGCategory.GAME);
             else if (text.Contains(PKGCategory.PATCH))
-                _typeFilter = PKGCategory.PATCH;
+                _filterState.Categories.Add(PKGCategory.PATCH);
             else if (text.Contains(PKGCategory.ADDON))
-                _typeFilter = PKGCategory.ADDON;
+                _filterState.Categories.Add(PKGCategory.ADDON);
             else if (text.Contains(PKGCategory.APP))
-                _typeFilter = PKGCategory.APP;
+                _filterState.Categories.Add(PKGCategory.APP);
             else if (text.Contains(PKGCategory.UNKNOWN))
-                _typeFilter = "Unknown";
-            else if (text.Contains("all"))
-                _typeFilter = "";
+                _filterState.Categories.Add("Unknown");
             ApplyFilters();
         }
 
@@ -3395,11 +3388,10 @@ namespace PS4PKGTool
             {
                 var dt = PKGGridView.DataSource as DataTable;
                 if (dt == null) return;
-                dt.DefaultView.RowFilter = PkgFilter.BuildExpression(
-                    _typeFilter,
-                    _compatFilter,
-                    tbSearchGame.SearchText);
+                _filterState.SearchText = tbSearchGame?.SearchText ?? "";
+                dt.DefaultView.RowFilter = PkgFilter.BuildExpression(_filterState);
                 PopulateGroupedView(); // GLV mirrors the filtered DefaultView
+                RefreshFilterBar();
             }
             catch (Exception ex)
             {
@@ -3408,11 +3400,119 @@ namespace PS4PKGTool
             }
         }
 
-        private void cmbCompatFilter_SelectedIndexChanged(object sender, EventArgs e)
+        // ── filter bar ──
+
+        private void btnFilterCategory_Click(object sender, EventArgs e)
         {
-            _compatFilter = cmbCompatFilter.SelectedIndex <= 0
-                ? ""
-                : (cmbCompatFilter.SelectedItem?.ToString() ?? "");
+            new Controls.FilterCheckPopup(
+                new[] { PKGCategory.GAME, PKGCategory.PATCH, PKGCategory.ADDON, PKGCategory.APP, "Unknown" },
+                _filterState.Categories,
+                sel => { _filterState.Categories.Clear(); _filterState.Categories.AddRange(sel); ApplyFilters(); })
+                .Show(btnFilterCategory, new System.Drawing.Point(0, btnFilterCategory.Height));
+        }
+
+        private void btnFilterRegion_Click(object sender, EventArgs e)
+        {
+            new Controls.FilterCheckPopup(
+                PkgFilter.RegionOptions,
+                _filterState.Regions,
+                sel => { _filterState.Regions.Clear(); _filterState.Regions.AddRange(sel); ApplyFilters(); })
+                .Show(btnFilterRegion, new System.Drawing.Point(0, btnFilterRegion.Height));
+        }
+
+        private void btnFilterType_Click(object sender, EventArgs e)
+        {
+            new Controls.FilterCheckPopup(
+                new[] { "Official", "Fake", "Addon_Unlocker" },
+                _filterState.PkgTypes,
+                sel => { _filterState.PkgTypes.Clear(); _filterState.PkgTypes.AddRange(sel); ApplyFilters(); })
+                .Show(btnFilterType, new System.Drawing.Point(0, btnFilterType.Height));
+        }
+
+        private void btnFilterCompat_Click(object sender, EventArgs e)
+        {
+            new Controls.FilterCheckPopup(
+                PkgFilter.CompatOptions,
+                _filterState.CompatStatuses,
+                sel => { _filterState.CompatStatuses.Clear(); _filterState.CompatStatuses.AddRange(sel); ApplyFilters(); })
+                .Show(btnFilterCompat, new System.Drawing.Point(0, btnFilterCompat.Height));
+        }
+
+        private void tbFilterSysVer_TextChanged(object sender, EventArgs e)
+        {
+            if (double.TryParse(tbFilterSysVer.Text.Trim(),
+                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v))
+            {
+                _filterState.MinSystemVersion = v;
+            }
+            else
+            {
+                _filterState.MinSystemVersion = null;
+            }
+            ApplyFilters();
+        }
+
+        /// <summary>Rebuilds the active-filter chips and the match counter after a filter change.</summary>
+        private void RefreshFilterBar()
+        {
+            try
+            {
+                flowChips.Controls.Clear();
+
+                void AddChip(string label, Action remove)
+                {
+                    var chip = new DarkUI.Controls.DarkButton
+                    {
+                        Text = label + "  ×",
+                        Height = 22,
+                        AutoSize = true,
+                        Padding = new Padding(6, 0, 6, 0),
+                    };
+                    chip.Click += (_, _) => { remove(); ApplyFilters(); };
+                    flowChips.Controls.Add(chip);
+                }
+
+                foreach (string c in _filterState.Categories)
+                    AddChip(c, () => _filterState.Categories.Remove(c));
+                foreach (string r in _filterState.Regions)
+                    AddChip(r, () => _filterState.Regions.Remove(r));
+                if (_filterState.MinSystemVersion is double min)
+                    AddChip($"≥ {min:0.##}", () => { _filterState.MinSystemVersion = null; tbFilterSysVer.Text = ""; });
+                foreach (string t in _filterState.PkgTypes)
+                    AddChip(t, () => _filterState.PkgTypes.Remove(t));
+                foreach (string s in _filterState.CompatStatuses)
+                    AddChip(s, () => _filterState.CompatStatuses.Remove(s));
+                if (!string.IsNullOrWhiteSpace(_filterState.SearchText))
+                    AddChip($"\"{_filterState.SearchText.Trim()}\"", () => { tbSearchGame.Text = ""; tbSearchGame.SearchText = ""; });
+
+                if (PKGGridView.DataSource is DataTable dt)
+                {
+                    int visible = dt.DefaultView.Count;
+                    int total = dt.Rows.Count;
+                    lblFilterCount.Text = visible == total ? "" : $"matches {visible} / {total}";
+                    // GLV tab indicator (option 2): the filter applies to the
+                    // grouped view too - say so there.
+                    bool active = !_filterState.IsEmpty;
+                    lblGlvFilterHint.Text = active ? $"filtered: {visible} / {total}" : "";
+                    btnGlvFilterClear.Visible = active;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Filter bar refresh failed: " + ex.Message);
+            }
+        }
+
+        private void btnGlvFilterClear_Click(object sender, EventArgs e)
+        {
+            _filterState.Categories.Clear();
+            _filterState.Regions.Clear();
+            _filterState.MinSystemVersion = null;
+            _filterState.PkgTypes.Clear();
+            _filterState.CompatStatuses.Clear();
+            tbFilterSysVer.Text = "";
+            tbSearchGame.Text = "";
+            tbSearchGame.SearchText = "";
             ApplyFilters();
         }
 
@@ -7691,8 +7791,7 @@ namespace PS4PKGTool
 
         // Grid filter state: the effective RowFilter is always built by
         // ApplyFilters() from these three sources (never set directly).
-        private string _typeFilter = "";
-        private string _compatFilter = "";
+        private readonly PkgFilterState _filterState = new();
 
         private Assets.Models.TextureData _previewTexture; // prepared on the worker thread
         private string _previewText;         // prepared on the worker thread

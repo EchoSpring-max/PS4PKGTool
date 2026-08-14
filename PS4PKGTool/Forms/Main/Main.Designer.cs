@@ -274,9 +274,17 @@ namespace PS4PKGTool
             tabPageTable = new TabPage();
             PKGGridView = new DarkUI.Controls.DarkDataGridView();
             tbSearchGame = new DarkUI.Controls.DarkSearchBox();
-            darkLabel2 = new DarkUI.Controls.DarkLabel();
-            cmbCompatFilter = new DarkUI.Controls.DarkComboBox();
-            darkLabelCompatFilter = new DarkUI.Controls.DarkLabel();
+            pnlFilterBar = new System.Windows.Forms.Panel();
+            btnFilterCategory = new DarkUI.Controls.DarkButton();
+            btnFilterRegion = new DarkUI.Controls.DarkButton();
+            lblFilterSysVer = new DarkUI.Controls.DarkLabel();
+            tbFilterSysVer = new DarkUI.Controls.DarkTextBox();
+            btnFilterType = new DarkUI.Controls.DarkButton();
+            btnFilterCompat = new DarkUI.Controls.DarkButton();
+            flowChips = new System.Windows.Forms.FlowLayoutPanel();
+            lblFilterCount = new DarkUI.Controls.DarkLabel();
+            lblGlvFilterHint = new DarkUI.Controls.DarkLabel();
+            btnGlvFilterClear = new DarkUI.Controls.DarkButton();
             tabPageGroup = new TabPage();
             groupedListView = new DarkUI.Controls.DarkGroupedListView();
             btnGroupExpand = new DarkUI.Controls.DarkButton();
@@ -2551,19 +2559,113 @@ namespace PS4PKGTool
             // 
             tabPageTable.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabPageTable.Controls.Add(PKGGridView);
-            tabPageTable.Controls.Add(tbSearchGame);
-            tabPageTable.Controls.Add(darkLabel2);
-            tabPageTable.Controls.Add(cmbCompatFilter);
-            tabPageTable.Controls.Add(darkLabelCompatFilter);
+            tabPageTable.Controls.Add(pnlFilterBar);
             tabPageTable.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageTable.Location = new System.Drawing.Point(4, 32);
             tabPageTable.Name = "tabPageTable";
             tabPageTable.Size = new System.Drawing.Size(668, 514);
             tabPageTable.TabIndex = 0;
             tabPageTable.Text = "Table";
-            // 
+            //
+            // pnlFilterBar
+            //
+            pnlFilterBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            pnlFilterBar.BackColor = System.Drawing.Color.FromArgb(45, 47, 49);
+            pnlFilterBar.Controls.Add(btnFilterCategory);
+            pnlFilterBar.Controls.Add(btnFilterRegion);
+            pnlFilterBar.Controls.Add(lblFilterSysVer);
+            pnlFilterBar.Controls.Add(tbFilterSysVer);
+            pnlFilterBar.Controls.Add(btnFilterType);
+            pnlFilterBar.Controls.Add(btnFilterCompat);
+            pnlFilterBar.Controls.Add(tbSearchGame);
+            pnlFilterBar.Controls.Add(flowChips);
+            pnlFilterBar.Controls.Add(lblFilterCount);
+            pnlFilterBar.Location = new System.Drawing.Point(0, 0);
+            pnlFilterBar.Name = "pnlFilterBar";
+            pnlFilterBar.Size = new System.Drawing.Size(668, 62);
+            pnlFilterBar.TabIndex = 92;
+            //
+            // btnFilterCategory
+            //
+            btnFilterCategory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnFilterCategory.Location = new System.Drawing.Point(4, 5);
+            btnFilterCategory.Name = "btnFilterCategory";
+            btnFilterCategory.Size = new System.Drawing.Size(95, 24);
+            btnFilterCategory.TabIndex = 0;
+            btnFilterCategory.Text = "Category ▾";
+            btnFilterCategory.Click += btnFilterCategory_Click;
+            //
+            // btnFilterRegion
+            //
+            btnFilterRegion.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnFilterRegion.Location = new System.Drawing.Point(103, 5);
+            btnFilterRegion.Name = "btnFilterRegion";
+            btnFilterRegion.Size = new System.Drawing.Size(85, 24);
+            btnFilterRegion.TabIndex = 1;
+            btnFilterRegion.Text = "Region ▾";
+            btnFilterRegion.Click += btnFilterRegion_Click;
+            //
+            // lblFilterSysVer
+            //
+            lblFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblFilterSysVer.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblFilterSysVer.Location = new System.Drawing.Point(192, 9);
+            lblFilterSysVer.Name = "lblFilterSysVer";
+            lblFilterSysVer.Size = new System.Drawing.Size(42, 15);
+            lblFilterSysVer.TabIndex = 2;
+            lblFilterSysVer.Text = "SysVer ≥";
+            //
+            // tbFilterSysVer
+            //
+            tbFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbFilterSysVer.Location = new System.Drawing.Point(236, 5);
+            tbFilterSysVer.Name = "tbFilterSysVer";
+            tbFilterSysVer.Size = new System.Drawing.Size(60, 23);
+            tbFilterSysVer.TabIndex = 3;
+            tbFilterSysVer.TextChanged += tbFilterSysVer_TextChanged;
+            //
+            // btnFilterType
+            //
+            btnFilterType.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnFilterType.Location = new System.Drawing.Point(300, 5);
+            btnFilterType.Name = "btnFilterType";
+            btnFilterType.Size = new System.Drawing.Size(80, 24);
+            btnFilterType.TabIndex = 4;
+            btnFilterType.Text = "Type ▾";
+            btnFilterType.Click += btnFilterType_Click;
+            //
+            // btnFilterCompat
+            //
+            btnFilterCompat.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnFilterCompat.Location = new System.Drawing.Point(384, 5);
+            btnFilterCompat.Name = "btnFilterCompat";
+            btnFilterCompat.Size = new System.Drawing.Size(95, 24);
+            btnFilterCompat.TabIndex = 5;
+            btnFilterCompat.Text = "ShadPS4 ▾";
+            btnFilterCompat.Click += btnFilterCompat_Click;
+            //
+            // flowChips
+            //
+            flowChips.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            flowChips.AutoScroll = true;
+            flowChips.BackColor = System.Drawing.Color.Transparent;
+            flowChips.Location = new System.Drawing.Point(4, 34);
+            flowChips.Name = "flowChips";
+            flowChips.Size = new System.Drawing.Size(540, 24);
+            flowChips.TabIndex = 6;
+            //
+            // lblFilterCount
+            //
+            lblFilterCount.Font = new System.Drawing.Font("Segoe UI", 8F);
+            lblFilterCount.ForeColor = System.Drawing.Color.Silver;
+            lblFilterCount.Location = new System.Drawing.Point(548, 37);
+            lblFilterCount.Name = "lblFilterCount";
+            lblFilterCount.Size = new System.Drawing.Size(116, 15);
+            lblFilterCount.TabIndex = 7;
+            lblFilterCount.Text = "";
+            //
             // PKGGridView
-            // 
+            //
             PKGGridView.AllowDrop = true;
             PKGGridView.AllowUserToAddRows = false;
             PKGGridView.AllowUserToDeleteRows = false;
@@ -2572,12 +2674,12 @@ namespace PS4PKGTool
             PKGGridView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             PKGGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             PKGGridView.ContextMenuStrip = contextMenuPKGGridView;
-            PKGGridView.Location = new System.Drawing.Point(2, 30);
+            PKGGridView.Location = new System.Drawing.Point(2, 64);
             PKGGridView.Name = "PKGGridView";
             PKGGridView.ReadOnly = true;
             PKGGridView.RowTemplate.Height = 23;
             PKGGridView.ScrollBars = ScrollBars.Vertical;
-            PKGGridView.Size = new System.Drawing.Size(666, 484);
+            PKGGridView.Size = new System.Drawing.Size(666, 450);
             PKGGridView.TabIndex = 75;
             PKGGridView.CellFormatting += PKGListGridView_CellFormatting;
             PKGGridView.ColumnHeaderMouseClick += PKGListGridView_ColumnHeaderMouseClick;
@@ -2589,43 +2691,13 @@ namespace PS4PKGTool
             // 
             tbSearchGame.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbSearchGame.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbSearchGame.Location = new System.Drawing.Point(48, 2);
+            tbSearchGame.Location = new System.Drawing.Point(483, 4);
             tbSearchGame.Margin = new Padding(3, 2, 3, 2);
             tbSearchGame.Name = "tbSearchGame";
-            tbSearchGame.Placeholder = "[Filename]/[Title]/[Title ID]/[Content ID]";
-            tbSearchGame.Size = new System.Drawing.Size(350, 26);
+            tbSearchGame.Placeholder = "[Filename]/[Title]/[ID]";
+            tbSearchGame.Size = new System.Drawing.Size(181, 24);
             tbSearchGame.TabIndex = 86;
             tbSearchGame.SearchTextChanged += TbSearchGame_TextChanged;
-            // 
-            // darkLabel2
-            // 
-            darkLabel2.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel2.Location = new System.Drawing.Point(4, 8);
-            darkLabel2.Name = "darkLabel2";
-            darkLabel2.Size = new System.Drawing.Size(36, 15);
-            darkLabel2.TabIndex = 88;
-            darkLabel2.Text = "Filter:";
-            // 
-            // cmbCompatFilter
-            // 
-            cmbCompatFilter.Font = new System.Drawing.Font("Segoe UI", 9F);
-            cmbCompatFilter.Items.AddRange(new object[] { "All", "Playable", "In-Game", "Menus", "Boots", "Nothing", "Unknown" });
-            cmbCompatFilter.Location = new System.Drawing.Point(465, 3);
-            cmbCompatFilter.Name = "cmbCompatFilter";
-            cmbCompatFilter.Size = new System.Drawing.Size(130, 24);
-            cmbCompatFilter.TabIndex = 90;
-            cmbCompatFilter.SelectedIndexChanged += cmbCompatFilter_SelectedIndexChanged;
-            // 
-            // darkLabelCompatFilter
-            // 
-            darkLabelCompatFilter.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelCompatFilter.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelCompatFilter.Location = new System.Drawing.Point(405, 8);
-            darkLabelCompatFilter.Name = "darkLabelCompatFilter";
-            darkLabelCompatFilter.Size = new System.Drawing.Size(55, 15);
-            darkLabelCompatFilter.TabIndex = 91;
-            darkLabelCompatFilter.Text = "Compat:";
             // 
             // tabPageGroup
             // 
@@ -2635,6 +2707,8 @@ namespace PS4PKGTool
             tabPageGroup.Controls.Add(cbGroupBy);
             tabPageGroup.Controls.Add(darkLabelGroupBy);
             tabPageGroup.Controls.Add(darkLabelGroupCount);
+            tabPageGroup.Controls.Add(lblGlvFilterHint);
+            tabPageGroup.Controls.Add(btnGlvFilterClear);
             tabPageGroup.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageGroup.Location = new System.Drawing.Point(4, 32);
             tabPageGroup.Name = "tabPageGroup";
@@ -2691,6 +2765,27 @@ namespace PS4PKGTool
             darkLabelGroupCount.Name = "darkLabelGroupCount";
             darkLabelGroupCount.Size = new System.Drawing.Size(60, 15);
             darkLabelGroupCount.TabIndex = 107;
+            //
+            // lblGlvFilterHint
+            //
+            lblGlvFilterHint.Font = new System.Drawing.Font("Segoe UI", 8F);
+            lblGlvFilterHint.ForeColor = System.Drawing.Color.FromArgb(230, 180, 60);
+            lblGlvFilterHint.Location = new System.Drawing.Point(320, 7);
+            lblGlvFilterHint.Name = "lblGlvFilterHint";
+            lblGlvFilterHint.Size = new System.Drawing.Size(200, 15);
+            lblGlvFilterHint.TabIndex = 108;
+            lblGlvFilterHint.Text = "";
+            //
+            // btnGlvFilterClear
+            //
+            btnGlvFilterClear.Font = new System.Drawing.Font("Segoe UI", 8F);
+            btnGlvFilterClear.Location = new System.Drawing.Point(524, 4);
+            btnGlvFilterClear.Name = "btnGlvFilterClear";
+            btnGlvFilterClear.Size = new System.Drawing.Size(48, 22);
+            btnGlvFilterClear.TabIndex = 109;
+            btnGlvFilterClear.Text = "Clear";
+            btnGlvFilterClear.Visible = false;
+            btnGlvFilterClear.Click += btnGlvFilterClear_Click;
             // 
             // darkSectionPanel9
             // 
@@ -3958,8 +4053,17 @@ namespace PS4PKGTool
         private ToolStripMenuItem toolStripMenuItem160;
         private ToolStripMenuItem renameAllPkg6ToolStripMenuItem1;
         private ToolStripSplitButton ToolStripSplitButtonTotalPKG;
-        private DarkUI.Controls.DarkComboBox cmbCompatFilter;
-        private DarkUI.Controls.DarkLabel darkLabelCompatFilter;
+        private System.Windows.Forms.Panel pnlFilterBar;
+        private DarkUI.Controls.DarkButton btnFilterCategory;
+        private DarkUI.Controls.DarkButton btnFilterRegion;
+        private DarkUI.Controls.DarkLabel lblFilterSysVer;
+        private DarkUI.Controls.DarkTextBox tbFilterSysVer;
+        private DarkUI.Controls.DarkButton btnFilterType;
+        private DarkUI.Controls.DarkButton btnFilterCompat;
+        private System.Windows.Forms.FlowLayoutPanel flowChips;
+        private DarkUI.Controls.DarkLabel lblFilterCount;
+        private DarkUI.Controls.DarkLabel lblGlvFilterHint;
+        private DarkUI.Controls.DarkButton btnGlvFilterClear;
         public ToolStripStatusLabel toolStripStatusLabel2;
         private ToolStripStatusLabel toolStripStatusLabel3;
         private ToolStripStatusLabel toolStripStatusLabel4;

@@ -433,6 +433,7 @@ namespace PS4PKGTool
             Logger.LogInformation("App started.");
             try
             {
+                RecoverOrphanedOrbisTempDirs();
                 WindowState = FormWindowState.Maximized;
                 this.Text = "PS4 PKG Tool " + ApplicationVersion;
                 await Task.Run(() =>
@@ -5161,8 +5162,16 @@ namespace PS4PKGTool
                 origPath = PKG.SelectedPKGFilename;
                 string dir = GetOrbisTempDirFor(origPath);
                 tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                File.Move(origPath, tempPath);
-                renamed = true;
+                try
+                {
+                    OrbisTempRecovery.MoveIntoOrbisTemp(origPath, dir, tempPath);
+                    renamed = true;
+                }
+                catch
+                {
+                    OrbisTempRecovery.DeleteOrbisTempDirSafe(tempPath); // a failed move must not leak the temp dir
+                    throw;
+                }
                 string safePkgPath = tempPath;
 
                 try
@@ -5490,8 +5499,16 @@ namespace PS4PKGTool
                         string dir = GetOrbisTempDirFor(origPath);
                         string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                         bool renamed = false;
-                        File.Move(origPath, tempPath);
-                        renamed = true;
+                        try
+                        {
+                            OrbisTempRecovery.MoveIntoOrbisTemp(origPath, dir, tempPath);
+                            renamed = true;
+                        }
+                        catch
+                        {
+                            OrbisTempRecovery.DeleteOrbisTempDirSafe(tempPath); // a failed move must not leak the temp dir
+                            throw;
+                        }
                         string pkgPath = tempPath;
 
                         try
@@ -5704,8 +5721,16 @@ namespace PS4PKGTool
                     string renameDir = GetOrbisTempDirFor(in_path);
                     string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                     bool wasRenamed = false;
-                    File.Move(in_path, renameTmp);
-                    wasRenamed = true;
+                    try
+                    {
+                        OrbisTempRecovery.MoveIntoOrbisTemp(in_path, renameDir, renameTmp);
+                        wasRenamed = true;
+                    }
+                    catch
+                    {
+                        OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
+                        throw;
+                    }
                     string safeIn = renameTmp;
 
                     // Create ASCII-safe temp output path (orbis-pub-cmd garbles non-ANSI paths)
@@ -5851,8 +5876,16 @@ namespace PS4PKGTool
             string renameDir = GetOrbisTempDirFor(inPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool wasRenamed = false;
-            File.Move(inPath, renameTmp);
-            wasRenamed = true;
+            try
+            {
+                OrbisTempRecovery.MoveIntoOrbisTemp(inPath, renameDir, renameTmp);
+                wasRenamed = true;
+            }
+            catch
+            {
+                OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
+                throw;
+            }
             string safeIn = renameTmp;
 
             try
@@ -6087,16 +6120,42 @@ namespace PS4PKGTool
         /// <summary>
         /// Deletes the temp dir created by GetOrbisTempDirFor (only the "p4t_v_" ones).
         /// No-op when the file was renamed in place (its parent is a real directory).
+        /// Never deletes a temp dir that still holds a PKG (data-loss guard).
         /// </summary>
         private static void DeleteOrbisTempDir(string tempFilePath)
+            => OrbisTempRecovery.DeleteOrbisTempDirSafe(tempFilePath);
+
+        /// <summary>
+        /// Startup recovery for crashed orbis temp-rename operations: restores
+        /// PKGs left in "p4t_v_" temp dirs to their original locations (via
+        /// the original_path.txt sidecar) and removes empty leftover temp dirs.
+        /// Scans the configured PKG directories and their drive roots.
+        /// </summary>
+        private void RecoverOrphanedOrbisTempDirs()
         {
             try
             {
-                string d = Path.GetDirectoryName(tempFilePath);
-                if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_v_"))
-                    Directory.Delete(d, true);
+                var roots = new List<string>(appSettings_.PkgDirectories ?? new List<string>());
+                foreach (string d in appSettings_.PkgDirectories ?? new List<string>())
+                    if (!string.IsNullOrWhiteSpace(d)) roots.Add(Path.GetPathRoot(d));
+
+                var result = OrbisTempRecovery.Recover(roots);
+                if (result.Restored > 0 || result.EmptyDirsRemoved > 0)
+                    Logger.LogInformation($"Orbis temp recovery: {result.Restored} PKG(s) restored, {result.EmptyDirsRemoved} leftover temp folder(s) removed.");
+                if (result.Unresolvable.Count > 0)
+                {
+                    Logger.LogWarning("Orbis temp leftovers could not be restored automatically: " + string.Join(" | ", result.Unresolvable));
+                    ShowWarning(
+                        $"Found {result.Unresolvable.Count} leftover temp folder(s) from a crashed operation:\n\n" +
+                        string.Join("\n", result.Unresolvable) +
+                        "\n\nCheck them and move any PKGs back manually if needed.",
+                        false);
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Orbis temp recovery failed: " + ex.Message);
+            }
         }
 
         /// <summary>
@@ -6305,7 +6364,7 @@ namespace PS4PKGTool
 
             try
             {
-                File.Move(origPath, renameTmp);
+                OrbisTempRecovery.MoveIntoOrbisTemp(origPath, renameDir, renameTmp);
                 renamed = true;
                 tempDir = CreateOrbisTempDir("c"); // short ASCII temp root (see CreateOrbisTempDir)
                 string orbisPubCmdErrorMessage = "";
@@ -8005,7 +8064,15 @@ namespace PS4PKGTool
             // extracting a single entry path into tempDir.
             string dir = GetOrbisTempDirFor(pkgPath);
             string renameTmp = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-            File.Move(pkgPath, renameTmp);
+            try
+            {
+                OrbisTempRecovery.MoveIntoOrbisTemp(pkgPath, dir, renameTmp);
+            }
+            catch
+            {
+                OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
+                throw;
+            }
             try
             {
                 var psi = new ProcessStartInfo

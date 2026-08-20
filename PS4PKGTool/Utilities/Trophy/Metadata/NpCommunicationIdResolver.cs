@@ -55,10 +55,19 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
             if (info.Length > 16 * 1024 * 1024)
                 return null;
             byte[] bytes = File.ReadAllBytes(path);
+            return ResolveFromBytes(bytes);
+        }
+
+        /// <summary>Scans raw npbind.dat / nptitle.dat / param.sfo bytes for
+        /// the NPWRxxxxx_00 token (no temp file needed).</summary>
+        public string? ResolveFromBytes(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0)
+                return null;
             string? ascii = FindId(Encoding.ASCII.GetString(bytes));
             string? unicode = bytes.Length >= 2 ? FindId(Encoding.Unicode.GetString(bytes)) : null;
             if (ascii != null && unicode != null && ascii != unicode)
-                throw new InvalidDataException($"Conflicting NP Communication IDs were found inside {path}.");
+                throw new InvalidDataException($"Conflicting NP Communication IDs were found inside the data.");
             return ascii ?? unicode;
         }
 

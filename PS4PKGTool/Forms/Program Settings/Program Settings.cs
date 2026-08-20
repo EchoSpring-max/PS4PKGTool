@@ -682,11 +682,6 @@ namespace PS4PKGTool
                 ShowWarning("Add at least one PKG directory before building the trophy metadata cache.", false);
                 return;
             }
-            if (!File.Exists(OrbisPubCmd))
-            {
-                ShowError("Missing orbis-pub-cmd.exe in AppData.", true);
-                return;
-            }
 
             trophyCacheCancellation?.Dispose();
             trophyCacheCancellation = new CancellationTokenSource();
@@ -713,7 +708,6 @@ namespace PS4PKGTool
                 TrophyCacheBuildResult result = await builder.BuildAsync(
                     directories,
                     darkCheckBoxRecursive.Checked,
-                    OrbisPubCmd,
                     TrophyCachePath,
                     progress,
                     trophyCacheCancellation.Token);

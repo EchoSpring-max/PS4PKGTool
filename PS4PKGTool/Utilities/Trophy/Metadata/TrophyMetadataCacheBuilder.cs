@@ -37,7 +37,6 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
         public async Task<TrophyCacheBuildResult> BuildAsync(
             IEnumerable<string> directories,
             bool recursive,
-            string orbisPubCmdPath,
             string cachePath,
             IProgress<TrophyCacheProgress>? progress = null,
             CancellationToken cancellationToken = default)
@@ -87,7 +86,7 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
                     }
 
                     NpbindExtractionResult extraction = await _extractor.ExtractAsync(
-                        orbisPubCmdPath, pkgPath, cancellationToken).ConfigureAwait(false);
+                        pkgPath, cancellationToken).ConfigureAwait(false);
                     if (extraction.Succeeded && extraction.NpCommunicationId != null)
                     {
                         cache.Set(contentId, extraction.NpCommunicationId);

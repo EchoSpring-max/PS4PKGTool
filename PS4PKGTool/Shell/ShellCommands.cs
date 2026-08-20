@@ -481,12 +481,11 @@ namespace PS4PKGTool.Shell
             }
 
             // All safety decisions are done - the SAME install service the
-            // Manager uses (same orbis-pub-cmd.exe and configured temp dir),
-            // presented through the shell operation window. The Manager is
-            // never opened. A passcode-protected package prompts and retries
+            // Manager uses (same in-process extraction pipeline), presented
+            // through the shell operation window. The Manager is never
+            // opened. A passcode-protected package prompts and retries
             // the whole install (max 5 attempts; a wrong custom passcode
             // re-prompts so a typo does not end the run).
-            var settingsSnapshot = SettingsManager.appSettings_;
             string passcode = PkgFileListingService.DefaultPasscode;
             ShellOperationForm.Run("Installing to shadPS4", title,
                 $"{titleId} Â· {(isPatch ? "Update" : "Base Game")} Â· v{meta.ApplicationVersion}", finalDir,
@@ -496,8 +495,6 @@ namespace PS4PKGTool.Shell
                         new ShellOperationProgress(s, null, !s.StartsWith("Finalizing", StringComparison.Ordinal))));
                     var svc = new Shadps4InstallService
                     {
-                        OrbisExePath = PS4PKGTool.Utilities.PS4PKGToolHelper.Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                        OrbisTempPath = settingsSnapshot.OrbisTempDirectory,
                         Passcode = passcode,
                     };
                     var result = svc.Install(

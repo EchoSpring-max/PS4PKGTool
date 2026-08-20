@@ -1112,11 +1112,7 @@ namespace PS4PKGTool
                 // true and Main permanently locked.
                 try
                 {
-                    var svc = new Shadps4InstallService
-                    {
-                        OrbisExePath = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                        OrbisTempPath = settings.OrbisTempDirectory,
-                    };
+                    var svc = new Shadps4InstallService();
                     Logger.LogInformation($"Shadps4Manager install: starting {installRequest.TitleId} into {installRequest.Library} (replace={installRequest.Replace}, patch={installRequest.IsPatch})");
                     var result = svc.Install(installRequest.PkgPath, installRequest.TitleId, installRequest.Library,
                         installRequest.Replace, progress, cts.Token, mergeIntoExisting: installRequest.IsPatch);

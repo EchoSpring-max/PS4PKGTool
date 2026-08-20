@@ -1257,39 +1257,6 @@ public class Shadps4IntegrationTests
         };
 
     [TestMethod]
-    public void OrbisCommand_EmptyConfiguredTemp_OmitsTmpPath()
-    {
-        var psi = Shadps4InstallService.BuildOrbisExtractStartInfo(
-            @"C:\tools\orbis-pub-cmd.exe", @"D:\games\game.pkg", @"D:\games\stage", "");
-
-        CollectionAssert.AreEqual(new[]
-        {
-            "img_extract", "--passcode", Shadps4InstallService.DefaultPasscode,
-            @"D:\games\game.pkg", @"D:\games\stage",
-        }, psi.ArgumentList.ToArray());
-    }
-
-    [TestMethod]
-    public void OrbisCommand_ConfiguredTemp_AddsTmpPath()
-    {
-        string temp = Path.Combine(_tempRoot, "orbis temp");
-        var psi = Shadps4InstallService.BuildOrbisExtractStartInfo(
-            @"C:\tools\orbis-pub-cmd.exe", @"D:\games\game.pkg", @"D:\games\stage", temp);
-
-        CollectionAssert.Contains(psi.ArgumentList.ToArray(), "--tmp_path");
-        int index = psi.ArgumentList.ToList().IndexOf("--tmp_path");
-        Assert.AreEqual(Path.GetFullPath(temp), psi.ArgumentList[index + 1]);
-    }
-
-    [TestMethod]
-    public void OrbisPathSafety_RejectsNonAsciiInFilenameOrParent()
-    {
-        Assert.IsTrue(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\Games Folder\game (1).pkg"));
-        Assert.IsFalse(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\Games\ゲーム.pkg"));
-        Assert.IsFalse(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\游戏\game.pkg"));
-    }
-
-    [TestMethod]
     public void Install_StagingSuccess_ProducesDumpLayoutCusaFolder()
     {
         string lib = Path.Combine(_tempRoot, "lib");

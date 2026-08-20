@@ -1,10 +1,9 @@
 using System;
-using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
@@ -36,9 +35,8 @@ namespace PS4PKGTool.Utilities.Shadps4
     /// Never extracts directly into the final directory: on cancellation,
     /// extraction failure, validation failure or disk-full the staging folder
     /// is removed and any existing installation is left untouched.
-    /// The real extractor uses the same orbis-pub-cmd pattern as the app's
-    /// existing full-PKG extraction (verified: img_extract --passcode &lt;code&gt;
-    /// &lt;pkg&gt; &lt;out&gt; extracts the whole image).
+    /// The extractor is OrbisPkgTool.PkgReader in-process (read-only on the
+    /// PKG, writes straight into the staging folder - Unicode paths work).
     /// </summary>
     public sealed class Shadps4InstallService
     {
@@ -48,20 +46,10 @@ namespace PS4PKGTool.Utilities.Shadps4
         /// <summary>Extra margin on top of the estimated extracted size.</summary>
         public const long SpaceMarginBytes = 1L * 1024 * 1024 * 1024; // 1 GB
 
-        public string OrbisExePath { get; set; } = "";
-
         /// <summary>
-        /// Optional user-selected directory passed to orbis-pub-cmd as
-        /// --tmp_path. Empty means the tool keeps its normal %TEMP% default.
-        /// This is orbis-pub-cmd's INTERNAL scratch path; it is separate from
-        /// the extraction destination and from an ASCII-safe PKG alias.
-        /// </summary>
-        public string OrbisTempPath { get; set; } = "";
-
-        /// <summary>
-        /// The passcode handed to orbis-pub-cmd img_extract. Defaults to the
-        /// standard all-zero code; callers that already know a package uses
-        /// a custom one (e.g. a shell passcode prompt) set it before Install.
+        /// The passcode used to decrypt the package. Defaults to the standard
+        /// all-zero code; callers that already know a package uses a custom
+        /// one (e.g. a shell passcode prompt) set it before Install.
         /// </summary>
         public string Passcode { get; set; } = DefaultPasscode;
 
@@ -93,10 +81,6 @@ namespace PS4PKGTool.Utilities.Shadps4
             if (string.IsNullOrWhiteSpace(libraryDir) || !Directory.Exists(libraryDir))
                 return Fail(Shadps4InstallStatus.LibraryMissing, $"shadPS4 library not found: {libraryDir}");
 
-            if (ExtractOverride == null
-                && !TryValidateConfiguredOrbisTemp(pkgPath, out string? tempError))
-                return Fail(Shadps4InstallStatus.ValidationFailed, tempError!);
-
             string finalDir = Path.Combine(libraryDir, titleId);
             if (Directory.Exists(finalDir) && !replaceExisting && !mergeIntoExisting)
                 return Fail(Shadps4InstallStatus.ExistingInstall,
@@ -126,7 +110,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                     return Fail(Shadps4InstallStatus.Cancelled, "Installation cancelled.");
 
                 progress?.Report("Extracting PKG...");
-                Logger.LogInformation("Shadps4Install: extracting via orbis-pub-cmd img_extract...");
+                Logger.LogInformation("Shadps4Install: extracting via OrbisPkgTool.PkgReader...");
                 string extractDetail = "";
                 bool extracted;
                 if (ExtractOverride != null)
@@ -135,12 +119,12 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 else
                 {
-                    (extracted, extractDetail) = ExtractWithOrbis(pkgPath, staging, ct);
+                    (extracted, extractDetail) = ExtractInProcess(pkgPath, staging, ct);
                 }
                 if (!extracted)
                 {
                     string detail = string.IsNullOrWhiteSpace(extractDetail)
-                        ? "orbis-pub-cmd img_extract failed (see log)."
+                        ? "extraction failed (see log)."
                         : extractDetail;
                     return Fail(Shadps4InstallStatus.ExtractionFailed,
                         "PKG extraction failed: " + detail);
@@ -227,7 +211,7 @@ namespace PS4PKGTool.Utilities.Shadps4
             }
             else
             {
-                var (extracted, detail) = ExtractWithOrbis(pkgPath, destinationDir, ct);
+                var (extracted, detail) = ExtractInProcess(pkgPath, destinationDir, ct);
                 ok = extracted;
                 if (!ok)
                     Logger.LogWarning("Shadps4Install: ExtractToFolder failed: " + detail);
@@ -398,194 +382,37 @@ namespace PS4PKGTool.Utilities.Shadps4
         }
 
         /// <summary>
-        /// Real extraction: orbis-pub-cmd bare img_extract (whole image).
-        /// ANSI-safe input/output paths are used directly. Only an unsafe PKG
-        /// path is temporarily relocated through OrbisSafePkgOperation, whose
-        /// sidecar makes a process or machine crash recoverable. An unsafe
-        /// output path is routed through a same-volume ASCII workspace and
-        /// moved into the requested staging folder after extraction.
+        /// Real extraction: OrbisPkgTool.PkgReader in-process (the same
+        /// pipeline as PkgExtractionService). The PKG is opened read-only -
+        /// never renamed, never moved - and every Sc0 + Image0 entry is
+        /// decrypted straight into the staging folder. Unicode paths work.
+        /// Cancellation throws OperationCanceledException (caught by Install).
         /// </summary>
-        private (bool Ok, string Detail) ExtractWithOrbis(string pkgPath, string destinationDir, CancellationToken ct)
+        private (bool Ok, string Detail) ExtractInProcess(string pkgPath, string destinationDir, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(OrbisExePath) || !File.Exists(OrbisExePath))
-            {
-                Logger.LogError($"Shadps4Install: orbis-pub-cmd not found at {OrbisExePath}");
-                return (false, "orbis-pub-cmd.exe was not found at " + OrbisExePath);
-            }
-
-            OrbisSafePkgOperation? safePackage = null;
-            OrbisSafePkgRestoreResult? restoreResult = null;
-            string? outputWorkspace = null;
-            bool ok = false;
-            string detail = "";
             try
             {
-                string inputPath = Path.GetFullPath(pkgPath);
-                // Prepare decides the mode itself: Direct for already-safe
-                // paths (no move), RenameInPlace / DriveRootStaging otherwise.
-                safePackage = OrbisSafePkgOperation.Prepare(inputPath);
-                inputPath = safePackage.OrbisPath;
-                if (safePackage.IsStaged)
-                    Logger.LogInformation($"Shadps4Install: using recoverable ASCII PKG path {inputPath}");
-                else
-                    Logger.LogInformation("Shadps4Install: PKG path is ASCII-safe; extracting directly without relocation.");
-
-                string outputPath = Path.GetFullPath(destinationDir);
-                if (!OrbisSafePkgOperation.IsAsciiSafePath(outputPath))
+                using var reader = new OrbisPkgTool.PkgReader(pkgPath, Passcode);
+                var failures = reader.ExtractAll(destinationDir, null,
+                    new OrbisPkgTool.ExtractAllOptions { CancellationToken = ct });
+                if (failures.Count > 0)
                 {
-                    string asciiParent = OrbisSafePkgOperation.FindAsciiParentDirectory(outputPath);
-                    outputWorkspace = Path.Combine(asciiParent,
-                        "p4t_o_" + Guid.NewGuid().ToString("N")[..12]);
-                    Directory.CreateDirectory(outputWorkspace);
-                    outputPath = outputWorkspace;
-                    Logger.LogInformation($"Shadps4Install: using ASCII extraction workspace {outputPath}");
+                    string summary = string.Join("; ",
+                        failures.Take(5).Select(f => $"{f.Path}: {f.Exception.Message}"));
+                    Logger.LogWarning($"Shadps4Install: {failures.Count} entries failed: {summary}");
+                    return (false, $"{failures.Count} {(failures.Count == 1 ? "entry" : "entries")} failed to extract: {summary}");
                 }
-
-                var psi = BuildOrbisExtractStartInfo(
-                    OrbisExePath, inputPath, outputPath, OrbisTempPath, Passcode);
-
-                using var extract = new Process { StartInfo = psi };
-                extract.Start();
-                Logger.LogInformation($"Shadps4Install: orbis started (pid {extract.Id}), extracting {Path.GetFileName(pkgPath)}...");
-                Task<string> stdoutTask = extract.StandardOutput.ReadToEndAsync();
-                Task<string> stderrTask = extract.StandardError.ReadToEndAsync();
-                while (!extract.WaitForExit(1000))
-                {
-                    if (ct.IsCancellationRequested)
-                    {
-                        try { extract.Kill(); extract.WaitForExit(); } catch { }
-                        Logger.LogWarning("Shadps4Install: orbis killed by cancellation.");
-                        throw new OperationCanceledException(ct);
-                    }
-                }
-                string stdout = stdoutTask.Result;
-                string stderr = stderrTask.Result;
-
-                if (extract.ExitCode != 0)
-                {
-                    Logger.LogError($"Shadps4Install: orbis img_extract exited {extract.ExitCode}.");
-                    Logger.LogError("Shadps4Install: orbis stdout: " + Tail(stdout));
-                    Logger.LogError("Shadps4Install: orbis stderr: " + Tail(stderr));
-                    // orbis-pub-cmd prints its diagnostics (including
-                    // "Passcode mismatch.") to STDOUT; stderr is usually
-                    // empty. Include both so callers can detect the reason
-                    // (the shell flow prompts for the passcode on it).
-                    string toolOutput = !string.IsNullOrWhiteSpace(stderr)
-                        ? stderr
-                        : stdout;
-                    detail = $"orbis-pub-cmd img_extract exited {extract.ExitCode}. {Tail(toolOutput)}".Trim();
-                }
-                else
-                {
-                    Logger.LogInformation("Shadps4Install: orbis img_extract completed.");
-                    if (outputWorkspace != null)
-                        MoveExtractedEntries(outputWorkspace, destinationDir);
-                    ok = true;
-                }
+                Logger.LogInformation("Shadps4Install: in-process extraction completed.");
+                return (true, "");
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                Logger.LogError("Shadps4Install: orbis extraction threw: " + ex);
-                detail = ex.Message;
+                // "Passcode mismatch." lands here with 'passcode' in the
+                // message - the shell flow keys its re-prompt on exactly that.
+                Logger.LogError("Shadps4Install: extraction threw: " + ex);
+                return (false, ex.Message);
             }
-            finally
-            {
-                if (safePackage != null)
-                    restoreResult = safePackage.Restore();
-                if (outputWorkspace != null)
-                    Cleanup(outputWorkspace);
-            }
-
-            if (restoreResult is { Succeeded: false })
-            {
-                return (false,
-                    restoreResult.ErrorMessage + " The PKG and recovery metadata remain in:\n" +
-                    restoreResult.RecoveryDirectory);
-            }
-            return (ok, detail);
-        }
-
-        internal static ProcessStartInfo BuildOrbisExtractStartInfo(
-            string orbisExePath, string packagePath, string outputPath, string? configuredTempPath,
-            string? passcode = null)
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = orbisExePath,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-            };
-            psi.ArgumentList.Add("img_extract");
-            PkgInspection.PkgFileListingService.AddPasscodeArgument(psi, passcode);
-            OrbisCommandOptions.AddTempPath(psi, configuredTempPath);
-            psi.ArgumentList.Add(packagePath);
-            psi.ArgumentList.Add(outputPath);
-            return psi;
-        }
-
-        private bool TryValidateConfiguredOrbisTemp(string pkgPath, out string? error)
-        {
-            error = null;
-            if (string.IsNullOrWhiteSpace(OrbisTempPath)) return true;
-
-            string path;
-            try { path = Path.GetFullPath(OrbisTempPath.Trim()); }
-            catch (Exception ex)
-            {
-                error = "The configured Orbis temporary directory is invalid: " + ex.Message;
-                return false;
-            }
-            if (!OrbisSafePkgOperation.IsAsciiSafePath(path))
-            {
-                error = "The configured Orbis temporary directory must use an ASCII-only path:\n" + path;
-                return false;
-            }
-
-            try
-            {
-                Directory.CreateDirectory(path);
-                string probe = Path.Combine(path, ".ps4pkgtool-write-test-" + Guid.NewGuid().ToString("N"));
-                using (File.Create(probe)) { }
-                File.Delete(probe);
-
-                long needed = EstimatedExtractedSize(pkgPath) + SpaceMarginBytes;
-                long free = FreeSpace(path);
-                if (free < needed)
-                {
-                    error = $"The configured Orbis temporary directory does not have enough free space: {path}\n" +
-                        $"Needs ~{HelperBytes(needed)}, has {HelperBytes(free)}.";
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                error = "The configured Orbis temporary directory is not writable: " + path + "\n" + ex.Message;
-                return false;
-            }
-
-            OrbisTempPath = path;
-            return true;
-        }
-
-        private static void MoveExtractedEntries(string source, string destination)
-        {
-            Directory.CreateDirectory(destination);
-            foreach (string entry in Directory.GetFileSystemEntries(source))
-            {
-                string target = Path.Combine(destination, Path.GetFileName(entry));
-                if (Directory.Exists(entry)) Directory.Move(entry, target);
-                else File.Move(entry, target);
-            }
-        }
-
-        /// <summary>Last ~800 characters of a captured process output (single log line).</summary>
-        private static string Tail(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return "(no output)";
-            return text.Length <= 800 ? text : "..." + text.Substring(text.Length - 800);
         }
 
         private static void Cleanup(string dir)

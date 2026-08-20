@@ -114,7 +114,7 @@ public sealed class TrophyMetadataTests
         try
         {
             TrophyCacheBuildResult result = await new TrophyMetadataCacheBuilder().BuildAsync(
-                new[] { directory }, recursive: true, "missing-orbis.exe",
+                new[] { directory }, recursive: true,
                 Path.Combine(directory, "cache.json"));
             Assert.AreEqual(0, result.TotalPackages);
             Assert.AreEqual(0, result.Added);
@@ -125,22 +125,20 @@ public sealed class TrophyMetadataTests
     }
 
     [TestMethod]
-    public async Task NpbindExtractorRestoresSpecialCharacterPkgNameWhenToolFails()
+    public async Task NpbindExtractorReportsFailureForInvalidPkg()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ps4pkgtool-rename-{Guid.NewGuid():N}");
+        string directory = Path.Combine(Path.GetTempPath(), $"ps4pkgtool-npbind-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         string pkgPath = Path.Combine(directory, "Game™：日本語.pkg");
         File.WriteAllBytes(pkgPath, new byte[] { 1, 2, 3, 4 });
         try
         {
-            string harmlessTool = Path.Combine(Environment.SystemDirectory, "where.exe");
-            NpbindExtractionResult result = await new NpbindExtractor().ExtractAsync(
-                harmlessTool, pkgPath);
+            NpbindExtractionResult result = await new NpbindExtractor().ExtractAsync(pkgPath);
 
             Assert.IsFalse(result.Succeeded);
-            Assert.IsTrue(File.Exists(pkgPath), "The original special-character filename was not restored.");
-            // No temp-dir leftovers (the safe-orbis temp dir is deleted with the restore).
-            Assert.IsEmpty(Directory.GetDirectories(directory, OrbisTempRecovery.TempDirPrefix + "*"));
+            Assert.IsFalse(string.IsNullOrEmpty(result.ErrorMessage));
+            // The package is opened read-only - never renamed or moved.
+            Assert.IsTrue(File.Exists(pkgPath), "The original special-character filename must be untouched.");
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

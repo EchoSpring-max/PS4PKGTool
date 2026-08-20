@@ -348,8 +348,8 @@ namespace PS4PKGTool
         /// <summary>
         /// Ensures the package's NP Communication ID sits in the shared cache
         /// the Trophy tab reads (same file the main app writes). Extraction
-        /// uses the main app's method: NpbindExtractor pulls Sc0/npbind.dat
-        /// via orbis-pub-cmd and scans it for the NPWRxxxxx_00 token.
+        /// uses the main app's method: NpbindExtractor reads Sc0/npbind.dat
+        /// in-process and scans it for the NPWRxxxxx_00 token.
         /// </summary>
         private async Task EnsureNpCommunicationIdExtractedAsync(CancellationToken cancellationToken)
         {
@@ -362,13 +362,10 @@ namespace PS4PKGTool
             if (cache.TryGet(contentId, out _))
                 return;
 
-            if (!File.Exists(Helper.OrbisPubCmd))
-                return;
-
             try
             {
                 NpbindExtractionResult extraction = await new NpbindExtractor()
-                    .ExtractAsync(Helper.OrbisPubCmd, _currentPackagePath, cancellationToken);
+                    .ExtractAsync(_currentPackagePath, cancellationToken);
                 if (extraction.Succeeded)
                 {
                     cache.Set(contentId, extraction.NpCommunicationId);

@@ -1464,11 +1464,6 @@ namespace PS4PKGTool
                 ShowInformation("Extraction already in progress.", false);
                 return;
             }
-            if (!File.Exists(Helper.OrbisPubCmd))
-            {
-                ShowError($"Missing {Path.GetFileName(Helper.OrbisPubCmd)} in AppData.", true);
-                return;
-            }
             if (!File.Exists(_currentPackagePath))
             {
                 ShowError("PKG file not found.", false);
@@ -1482,8 +1477,7 @@ namespace PS4PKGTool
                 fbd.SelectedPath,
                 SanitizeFolderName(_snapshot?.Title ?? Path.GetFileNameWithoutExtension(sourcePath)));
 
-            // The package is temporarily renamed while orbis-pub-cmd runs;
-            // lock the viewer (the status strip with Stop Extract stays live)
+            // Lock the viewer (the status strip with Stop Extract stays live)
             // so no other operation touches the file.
             BeginExtractionUi();
             labelDisplayTotalPKG.Text = "Extracting PKG...";
@@ -1519,12 +1513,12 @@ namespace PS4PKGTool
 
         /// <summary>
         /// Delegates to the shared PkgExtractionService - the exact same
-        /// orbis-pub-cmd pipeline the Explorer shell integration uses (safe
-        /// ASCII rename, temp output, cross-volume move, cleanup).
+        /// in-process extraction pipeline the Explorer shell integration
+        /// uses.
         /// </summary>
         private (bool Succeeded, string Message) ExtractFullPkgCore(string sourcePath, string extractLocation)
         {
-            var service = new PkgExtractionService(Helper.OrbisPubCmd, _fileListingPasscode);
+            var service = new PkgExtractionService(_fileListingPasscode);
             return service.ExtractFullAsync(sourcePath, extractLocation).GetAwaiter().GetResult();
         }
 

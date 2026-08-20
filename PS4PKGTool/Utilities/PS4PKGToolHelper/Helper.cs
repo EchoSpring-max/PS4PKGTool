@@ -67,7 +67,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             "PS4PKGTool");
 
         /// <summary>
-        /// Creates a short ASCII temp directory for orbis-pub-cmd working files.
+        /// Creates a short ASCII temp directory for working files.
         /// The system temp root plus a short name keeps paths under MAX_PATH even for
         /// games with deep internal structures (e.g. Ultrawings' StreamingAssets schemas).
         /// The caller must delete the returned directory when done.
@@ -78,7 +78,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             Directory.CreateDirectory(dir);
             return dir;
         }
-        public static string OrbisPubCmd = AppContext.BaseDirectory + @"AppData\orbis-pub-cmd.exe";
         public static string Ps5BcJsonFile = AppContext.BaseDirectory + @"AppData\ps5bc.json";
         public static string PS4PKGToolLogFile = AppContext.BaseDirectory + @"AppData\PS4PKGToolLog.txt";
 

@@ -739,11 +739,6 @@ namespace PS4PKGTool
             }
             if (lvFiles.SelectedItems.Count == 0)
                 return;
-            if (!File.Exists(Helper.OrbisPubCmd))
-            {
-                ShowError($"Missing {Path.GetFileName(Helper.OrbisPubCmd)} in AppData.", true);
-                return;
-            }
             if (!File.Exists(_currentPackagePath))
             {
                 ShowError("PKG file not found.", false);

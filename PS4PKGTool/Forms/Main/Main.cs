@@ -1,4 +1,4 @@
-﻿using ByteSizeLib;
+using ByteSizeLib;
 using ClosedXML.Excel;
 using DarkUI.Config;
 using DarkUI.Controls;
@@ -2946,7 +2946,6 @@ namespace PS4PKGTool
         {
             var paths = GetGLVTargetPaths();
             if (paths.Count == 0) { ShowError("No PKG selected.", false); return; }
-            if (!CheckOrbisPubCmdExists()) return;
             PKG.SelectedPKGFilename = paths[0];
             ViewUpdateChangelog();
             string changeInfoFile = AppDataDirectory + "changeinfo.xml";
@@ -5588,7 +5587,6 @@ namespace PS4PKGTool
 
         private void extractToToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (!CheckOrbisPubCmdExists()) return;
             if (PKGTreeView.SelectedNode == null) return;
             if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
             {
@@ -5984,7 +5982,6 @@ namespace PS4PKGTool
         private void PKGTreeView_ItemDrag(object sender, ItemDragEventArgs e)
         {
             if (e.Item is not TreeNode node) return;
-            if (!CheckOrbisPubCmdExists()) return;
 
             if (node.Nodes.Count > 0) return; // directories disabled
             var nodeList = new List<string> { node.FullPath };
@@ -6013,8 +6010,6 @@ namespace PS4PKGTool
 
         private void listView1_ItemDrag(object sender, ItemDragEventArgs e)
         {
-            if (!CheckOrbisPubCmdExists()) return;
-
             // Collect paths same as CtxExtractFolder_Click
             var nodeList = new List<string>();
             foreach (ListViewItem item in listView1.SelectedItems)
@@ -6101,8 +6096,6 @@ namespace PS4PKGTool
 
         private void btnViewPKGData_Click(object sender, EventArgs e)
         {
-            if (!CheckOrbisPubCmdExists())
-                return;
             tbPasscode.Text = DefaultOrbisPasscode;
             PKG.Passcode = DefaultOrbisPasscode;
 
@@ -6272,9 +6265,6 @@ namespace PS4PKGTool
         {
             if (listView1.SelectedItems.Count > 0)
             {
-                if (!CheckOrbisPubCmdExists())
-                    return;
-
                 if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
                 {
                     List<string> nodeList = new List<string>();
@@ -6349,9 +6339,6 @@ namespace PS4PKGTool
 
             if (clickedMenuItem == viewPkgChangeInfotoolStripMenuItem1 || clickedMenuItem == viewPkgChangeInfotoolStripMenuItem2)
             {
-                if (!CheckOrbisPubCmdExists())
-                    return;
-
                 ViewUpdateChangelog();
 
                 string changeInfoFile = AppDataDirectory + "changeinfo.xml";
@@ -6372,12 +6359,6 @@ namespace PS4PKGTool
                     }
                 }
             }
-        }
-
-        private bool CheckOrbisPubCmdExists()
-        {
-            // No orbis-pub-cmd dependency after the PkgReader migration.
-            return true;
         }
 
         private TreeNode SearchFileInTreeView(string p_sSearchTerm, TreeNodeCollection p_Nodes)
@@ -6424,7 +6405,6 @@ namespace PS4PKGTool
         private void CtxExtractFolder_Click(object sender, EventArgs e)
         {
             if (listView1.SelectedItems.Count == 0) return;
-            if (!CheckOrbisPubCmdExists()) return;
             if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
             {
                 List<string> nodeList = new List<string>();
@@ -7239,8 +7219,6 @@ namespace PS4PKGTool
                 return;
             }
 
-            if (!CheckOrbisPubCmdExists())
-                return;
             ExtractFullPKG();
         }
 

@@ -2,58 +2,34 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System.Diagnostics;
+using System.Text;
+using OrbisPkgTool.Pkg;
+using OrbisPkgTool.Sfo;
 
 namespace PS4PKGTool.Tests;
 
 [TestClass]
 public sealed class PkgFileListingTests
 {
-    private const string ListingOutput = """
-        D  0 2026-01-01 00:00:00 Image0
-        D  0 2026-01-01 00:00:00 Image0/sce sys
-        F  524288 2026-01-01 00:00:00 Image0/sce sys/icon 0.png
-        F  1536 2026-01-01 00:00:00 Image0/sce sys/日本語 param.sfo
-        F  4096 2026-01-01 00:00:00 Image0/eboot.bin
-        D  0 2026-01-01 00:00:00 Image0/other
-        F  99 2026-01-01 00:00:00 Image0/other/icon 0.png
-        D  0 2026-01-01 00:00:00 Sc0
-        F  88 2026-01-01 00:00:00 Sc0/param.sfo
-        """;
+    // ── tree builder (kept: feeds Main/Viewer file trees) ──────────────
 
-    [TestMethod]
-    public void Parser_HandlesRootsNestedFoldersSpacesUnicodeDuplicatesAndSizes()
+    private static IReadOnlyList<PkgFileEntry> SampleEntries() => new[]
     {
-        PkgFileParseResult parsed = new PkgFileListingParser().Parse(ListingOutput);
-
-        Assert.AreEqual(9, parsed.Entries.Count);
-        Assert.AreEqual(0, parsed.MalformedLineCount);
-        Assert.IsTrue(parsed.Entries.Any(entry => entry.FullPath == "Image0" && entry.IsDirectory));
-        Assert.IsTrue(parsed.Entries.Any(entry => entry.FullPath == "Sc0" && entry.IsDirectory));
-        Assert.AreEqual(524288, parsed.Entries.Single(entry =>
-            entry.FullPath == "Image0/sce sys/icon 0.png").Size);
-        Assert.IsTrue(parsed.Entries.Any(entry => entry.Name == "日本語 param.sfo"));
-        Assert.AreEqual(2, parsed.Entries.Count(entry => entry.Name == "icon 0.png"));
-        Assert.IsTrue(parsed.Entries.Any(entry => entry.FullPath == "Image0/eboot.bin"));
-    }
-
-    [TestMethod]
-    public void Parser_IgnoresMalformedLinesAndReportsThem()
-    {
-        string output = "F invalid prefix\nD 0 date time MissingRoot/folder\n" +
-                        "F 12 date time Image0/good file.bin\nprogress message";
-
-        PkgFileParseResult parsed = new PkgFileListingParser().Parse(output);
-
-        Assert.AreEqual(1, parsed.Entries.Count);
-        Assert.AreEqual("good file.bin", parsed.Entries[0].Name);
-        Assert.AreEqual(2, parsed.MalformedLineCount);
-    }
+        new PkgFileEntry { FullPath = "Image0", IsDirectory = true },
+        new PkgFileEntry { FullPath = "Image0/sce sys", IsDirectory = true },
+        new PkgFileEntry { FullPath = "Image0/sce sys/icon 0.png", Name = "icon 0.png", Size = 524288 },
+        new PkgFileEntry { FullPath = "Image0/sce sys/日本語 param.sfo", Name = "日本語 param.sfo", Size = 1536 },
+        new PkgFileEntry { FullPath = "Image0/eboot.bin", Name = "eboot.bin", Size = 4096 },
+        new PkgFileEntry { FullPath = "Image0/other", IsDirectory = true },
+        new PkgFileEntry { FullPath = "Image0/other/icon 0.png", Name = "icon 0.png", Size = 99 },
+        new PkgFileEntry { FullPath = "Sc0", IsDirectory = true },
+        new PkgFileEntry { FullPath = "Sc0/param.sfo", Name = "param.sfo", Size = 88 },
+    };
 
     [TestMethod]
     public void TreeBuilder_CreatesIndexedHierarchyWithoutMergingDuplicateNames()
     {
-        PkgFileParseResult parsed = new PkgFileListingParser().Parse(ListingOutput);
-        IReadOnlyList<PkgFileNode> roots = new PkgFileTreeBuilder().Build(parsed.Entries);
+        IReadOnlyList<PkgFileNode> roots = new PkgFileTreeBuilder().Build(SampleEntries());
 
         Assert.AreEqual(2, roots.Count);
         PkgFileNode image = roots.Single(root => root.Name == "Image0");
@@ -67,20 +43,48 @@ public sealed class PkgFileListingTests
     }
 
     [TestMethod]
-    public void ParserAndTreeBuilder_HandleLargeListings()
+    public void TreeBuilder_SortsDirectoriesBeforeFilesCaseInsensitive()
     {
-        var output = new System.Text.StringBuilder("D 0 date time Image0\n");
+        IReadOnlyList<PkgFileNode> roots = new PkgFileTreeBuilder().Build(SampleEntries());
+
+        PkgFileNode image = roots.Single(root => root.Name == "Image0");
+        // directories first, then files in ordinal-ignored-case order
+        for (int i = 0; i < image.Children.Count; i++)
+        {
+            for (int j = i + 1; j < image.Children.Count; j++)
+            {
+                if (image.Children[i].IsDirectory == image.Children[j].IsDirectory)
+                    Assert.IsTrue(StringComparer.OrdinalIgnoreCase.Compare(
+                        image.Children[i].Name, image.Children[j].Name) <= 0,
+                        $"{image.Children[i].Name} must sort before {image.Children[j].Name}");
+                else
+                {
+                    Assert.IsTrue(image.Children[i].IsDirectory,
+                        $"directory {image.Children[i].Name} must sort before file {image.Children[j].Name}");
+                }
+            }
+        }
+    }
+
+    [TestMethod]
+    public void TreeBuilder_HandlesLargeListings()
+    {
+        var entries = new List<PkgFileEntry> { new() { FullPath = "Image0", IsDirectory = true } };
         for (int index = 0; index < 10000; index++)
-            output.Append("F ").Append(index + 1).Append(" date time Image0/data/folder")
-                .Append(index % 100).Append("/file ").Append(index).AppendLine(".bin");
+            entries.Add(new PkgFileEntry
+            {
+                FullPath = $"Image0/data/folder{index % 100}/file {index}.bin",
+                Name = $"file {index}.bin",
+                Size = index + 1
+            });
 
-        PkgFileParseResult parsed = new PkgFileListingParser().Parse(output.ToString());
-        IReadOnlyList<PkgFileNode> roots = new PkgFileTreeBuilder().Build(parsed.Entries);
+        IReadOnlyList<PkgFileNode> roots = new PkgFileTreeBuilder().Build(entries);
 
-        Assert.AreEqual(10001, parsed.Entries.Count);
         Assert.AreEqual(1, roots.Count);
         Assert.AreEqual(100, roots[0].Children.Single(child => child.Name == "data").Children.Count);
     }
+
+    // ── session (kept: lazy load + cache contract) ─────────────────────
 
     [TestMethod]
     public async Task Session_IsLazyAndCachesSecondFilesActivation()
@@ -100,295 +104,6 @@ public sealed class PkgFileListingTests
     }
 
     [TestMethod]
-    public async Task Service_UsesArgumentListSafeInputAndRestoresUnchangedPackage()
-    {
-        // Unicode file name + safe parent -> RenameInPlace: the package is
-        // renamed inside its own directory, no p4t_v_* is created, and the
-        // original name is restored afterwards.
-        using var fixture = new PackageFixture("folder with spaces", "game 日本語 !@#.pkg");
-        byte[] expected = File.ReadAllBytes(fixture.PackagePath);
-        string tool = fixture.CreateToolPlaceholder();
-        string safePath = null;
-        var runner = new RecordingRunner((startInfo, _, _) =>
-        {
-            safePath = startInfo.ArgumentList[^1];
-            Assert.IsFalse(File.Exists(fixture.PackagePath));
-            Assert.IsTrue(File.Exists(safePath));
-            Assert.IsTrue(IsAscii(safePath));
-            StringAssert.StartsWith(Path.GetFileName(safePath), "ps4pkgtool_orbis_");
-            Assert.AreEqual(fixture.PackageDirectory, Path.GetDirectoryName(safePath));
-            CollectionAssert.Contains(startInfo.ArgumentList.ToArray(), "img_file_list");
-            CollectionAssert.Contains(startInfo.ArgumentList.ToArray(), "--passcode");
-            CollectionAssert.Contains(startInfo.ArgumentList.ToArray(), PkgFileListingService.DefaultPasscode);
-            return Task.FromResult(new OrbisProcessResult
-            {
-                ExitCode = 0,
-                StandardOutput = ListingOutput
-            });
-        });
-
-        PkgFileListingResult result = await CreateService(tool, runner)
-            .ListAsync(fixture.PackagePath, string.Empty, CancellationToken.None);
-
-        Assert.IsTrue(result.Succeeded, result.ErrorMessage);
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-        CollectionAssert.AreEqual(expected, File.ReadAllBytes(fixture.PackagePath));
-        Assert.IsEmpty(Directory.GetFiles(
-            fixture.PackageDirectory, OrbisTempRecovery.TempPkgPattern));
-        Assert.IsEmpty(Directory.GetDirectories(
-            fixture.Root, OrbisTempRecovery.TempDirPrefix + "*"));
-        Assert.AreEqual(1, runner.Count);
-    }
-
-    [TestMethod]
-    public async Task Service_AsciiSafePackage_IsPassedDirectlyWithoutStaging()
-    {
-        using var fixture = new PackageFixture("folder with spaces", "game !@#.pkg");
-        byte[] expected = File.ReadAllBytes(fixture.PackagePath);
-        string tool = fixture.CreateToolPlaceholder();
-        string passedPath = null;
-        var runner = new RecordingRunner((startInfo, _, _) =>
-        {
-            passedPath = startInfo.ArgumentList[^1];
-            // Direct mode: the original path goes to orbis untouched - the
-            // package must still be at its original location during the run.
-            Assert.AreEqual(fixture.PackagePath, passedPath);
-            Assert.IsTrue(File.Exists(fixture.PackagePath));
-            return Task.FromResult(new OrbisProcessResult
-            {
-                ExitCode = 0,
-                StandardOutput = ListingOutput
-            });
-        });
-
-        PkgFileListingResult result = await CreateService(tool, runner)
-            .ListAsync(fixture.PackagePath, string.Empty, CancellationToken.None);
-
-        Assert.IsTrue(result.Succeeded, result.ErrorMessage);
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-        CollectionAssert.AreEqual(expected, File.ReadAllBytes(fixture.PackagePath));
-        Assert.IsEmpty(Directory.GetDirectories(
-            fixture.Root, OrbisTempRecovery.TempDirPrefix + "*"));
-        Assert.AreEqual(1, runner.Count);
-    }
-
-    [TestMethod]
-    public async Task MissingTool_IsLocalFailureAndDoesNotMovePackage()
-    {
-        using var fixture = new PackageFixture("packages", "missing-tool.pkg");
-        var runner = new RecordingRunner((_, _, _) =>
-            throw new AssertFailedException("The process runner must not be called."));
-
-        PkgFileListingResult result = await CreateService(
-            Path.Combine(fixture.Root, "missing-orbis.exe"), runner)
-            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
-
-        Assert.IsFalse(result.Succeeded);
-        StringAssert.Contains(result.ErrorMessage, "not found");
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-        Assert.AreEqual(0, runner.Count);
-    }
-
-    [TestMethod]
-    public void SafeInput_SupportsSpacesUnicodeAndSymbolsAndUsesUniqueGuidNames()
-    {
-        // ASCII parent + non-ASCII file name -> RenameInPlace (no p4t_v_*).
-        {
-            using var fixture = new PackageFixture("with spaces", "Game Ω !.pkg");
-            OrbisSafePkgOperation operation = OrbisSafePkgOperation.Prepare(fixture.PackagePath);
-            Assert.AreEqual(OrbisPkgStageMode.RenameInPlace, operation.Mode);
-            Assert.IsTrue(IsAscii(operation.OrbisPath));
-            Assert.IsNull(operation.TemporaryDirectory);
-            Assert.AreEqual(fixture.PackageDirectory, Path.GetDirectoryName(operation.OrbisPath));
-            StringAssert.StartsWith(Path.GetFileName(operation.OrbisPath), "ps4pkgtool_orbis_");
-            Assert.IsTrue(operation.Restore().Succeeded);
-            Assert.IsTrue(File.Exists(fixture.PackagePath));
-            Assert.IsEmpty(Directory.GetDirectories(
-                fixture.Root, OrbisTempRecovery.TempDirPrefix + "*"));
-        }
-
-        // Non-ASCII parent -> DriveRootStaging (sidecar + same-drive staging root).
-        {
-            OrbisSafePkgOperation.StagingRootOverride = null;
-            string overrideRoot = Path.Combine(Path.GetTempPath(),
-                "p4t-stage-root-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(overrideRoot);
-            OrbisSafePkgOperation.StagingRootOverride = overrideRoot;
-            try
-            {
-                using var fixture = new PackageFixture("日本語", "Game Ω !.pkg");
-                OrbisSafePkgOperation operation = OrbisSafePkgOperation.Prepare(fixture.PackagePath);
-                Assert.AreEqual(OrbisPkgStageMode.DriveRootStaging, operation.Mode);
-                Assert.IsTrue(IsAscii(operation.OrbisPath));
-                Assert.IsNotNull(operation.TemporaryDirectory);
-                Assert.AreEqual(overrideRoot, Path.GetDirectoryName(operation.TemporaryDirectory));
-                StringAssert.StartsWith(Path.GetFileName(operation.TemporaryDirectory), OrbisTempRecovery.TempDirPrefix);
-                StringAssert.StartsWith(Path.GetFileName(operation.OrbisPath), "ps4pkgtool_orbis_");
-                Assert.AreEqual(Path.GetPathRoot(fixture.PackagePath), Path.GetPathRoot(operation.OrbisPath));
-                Assert.AreEqual(fixture.PackagePath, File.ReadAllText(Path.Combine(
-                    operation.TemporaryDirectory, OrbisTempRecovery.SidecarName)));
-                Assert.IsTrue(operation.Restore().Succeeded);
-                Assert.IsTrue(File.Exists(fixture.PackagePath));
-                Assert.IsFalse(Directory.Exists(operation.TemporaryDirectory));
-            }
-            finally
-            {
-                OrbisSafePkgOperation.StagingRootOverride = null;
-                try { Directory.Delete(overrideRoot, true); } catch { }
-            }
-        }
-
-        // Fully ASCII path -> Direct (no move, no rename, no p4t_v_*).
-        {
-            using var fixture = new PackageFixture("symbols !@#$", "Game !.pkg");
-            OrbisSafePkgOperation operation = OrbisSafePkgOperation.Prepare(fixture.PackagePath);
-            Assert.AreEqual(OrbisPkgStageMode.Direct, operation.Mode);
-            Assert.AreEqual(fixture.PackagePath, operation.OrbisPath);
-            Assert.IsNull(operation.TemporaryDirectory);
-            Assert.IsTrue(File.Exists(fixture.PackagePath));
-            Assert.IsTrue(operation.Restore().Succeeded);
-            Assert.IsTrue(File.Exists(fixture.PackagePath));
-            Assert.IsEmpty(Directory.GetDirectories(
-                fixture.Root, OrbisTempRecovery.TempDirPrefix + "*"));
-        }
-    }
-
-    [TestMethod]
-    public async Task ToolFailureAndTimeout_RestoreAndSafelyCleanInput()
-    {
-        using var fixture = new PackageFixture("packages", "failure.pkg");
-        string tool = fixture.CreateToolPlaceholder();
-        var failureRunner = new RecordingRunner((_, _, _) => Task.FromResult(
-            new OrbisProcessResult { ExitCode = 9, StandardError = "wrong passcode" }));
-        PkgFileListingResult failure = await CreateService(tool, failureRunner)
-            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
-        Assert.IsFalse(failure.Succeeded);
-        StringAssert.Contains(failure.ErrorMessage, "wrong passcode");
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-
-        var timeoutRunner = new RecordingRunner((_, _, _) => Task.FromResult(
-            new OrbisProcessResult { ExitCode = -1, TimedOut = true }));
-        PkgFileListingResult timeout = await CreateService(tool, timeoutRunner)
-            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
-        Assert.IsFalse(timeout.Succeeded);
-        StringAssert.Contains(timeout.ErrorMessage, "timed out");
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-        Assert.IsEmpty(Directory.EnumerateDirectories(
-            fixture.PackageDirectory, OrbisTempRecovery.TempDirPrefix + "*"));
-    }
-
-    [TestMethod]
-    public async Task CancellationStopsRunnerAndRestoresPackage()
-    {
-        using var fixture = new PackageFixture("packages", "cancel.pkg");
-        string tool = fixture.CreateToolPlaceholder();
-        var runner = new BlockingRunner();
-        using var cts = new CancellationTokenSource();
-        Task<PkgFileListingResult> listing = CreateService(tool, runner)
-            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, cts.Token);
-        await runner.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-
-        cts.Cancel();
-
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await listing);
-        Assert.IsTrue(runner.CancellationObserved);
-        Assert.IsTrue(File.Exists(fixture.PackagePath));
-        Assert.IsEmpty(Directory.EnumerateDirectories(
-            fixture.PackageDirectory, OrbisTempRecovery.TempDirPrefix + "*"));
-    }
-
-    [TestMethod]
-    public async Task ParserFailureRestoresPackageAndRemainsSectionLocal()
-    {
-        using var fixture = new PackageFixture("packages", "parse.pkg");
-        string tool = fixture.CreateToolPlaceholder();
-        var runner = new RecordingRunner((_, _, _) => Task.FromResult(
-            new OrbisProcessResult
-            {
-                ExitCode = 0,
-                StandardOutput = "F not-a-size date Image0/file.bin"
-            }));
-        var packageSnapshot = new PkgInspectionSnapshot { Title = "Still loaded" };
-        try
-        {
-            PkgFileListingResult result = await CreateService(tool, runner)
-                .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
-            Assert.IsFalse(result.Succeeded);
-            Assert.AreEqual("Still loaded", packageSnapshot.Title);
-            Assert.IsTrue(File.Exists(fixture.PackagePath));
-        }
-        finally { packageSnapshot.Dispose(); }
-    }
-
-    [TestMethod]
-    public void RestoreFailurePreservesRecoveryMetadataAndStartupRecoveryCanRestore()
-    {
-        string overrideRoot = Path.Combine(Path.GetTempPath(),
-            "p4t-recover-root-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(overrideRoot);
-        OrbisSafePkgOperation.StagingRootOverride = overrideRoot;
-        try
-        {
-            using var fixture = new PackageFixture("日本語", "recover.pkg");
-            byte[] originalContents = File.ReadAllBytes(fixture.PackagePath);
-            OrbisSafePkgOperation operation = OrbisSafePkgOperation.Prepare(fixture.PackagePath);
-            File.WriteAllText(fixture.PackagePath, "occupied");
-
-            OrbisSafePkgRestoreResult failed = operation.Restore();
-
-            Assert.IsFalse(failed.Succeeded);
-            Assert.IsTrue(File.Exists(operation.OrbisPath));
-            Assert.IsTrue(File.Exists(Path.Combine(
-                operation.TemporaryDirectory!, OrbisTempRecovery.SidecarName)));
-
-            File.Delete(fixture.PackagePath);
-            OrbisTempRecovery.RecoverySummary recovered = OrbisTempRecovery.Recover(
-                new[] { overrideRoot });
-            Assert.AreEqual(1, recovered.Restored);
-            CollectionAssert.AreEqual(originalContents, File.ReadAllBytes(fixture.PackagePath));
-        }
-        finally
-        {
-            OrbisSafePkgOperation.StagingRootOverride = null;
-            try { Directory.Delete(overrideRoot, true); } catch { }
-        }
-    }
-
-    [TestMethod]
-    public void SimultaneousSafeOperationsDoNotCollide()
-    {
-        string overrideRoot = Path.Combine(Path.GetTempPath(),
-            "p4t-simul-root-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(overrideRoot);
-        OrbisSafePkgOperation.StagingRootOverride = overrideRoot;
-        try
-        {
-            using var fixture = new PackageFixture("packages 日本語", "one.pkg");
-            string secondPath = Path.Combine(fixture.PackageDirectory, "two.pkg");
-            File.WriteAllText(secondPath, "two");
-            OrbisSafePkgOperation first = OrbisSafePkgOperation.Prepare(fixture.PackagePath);
-            OrbisSafePkgOperation second = OrbisSafePkgOperation.Prepare(secondPath);
-            try
-            {
-                Assert.AreEqual(OrbisPkgStageMode.DriveRootStaging, first.Mode);
-                Assert.AreEqual(OrbisPkgStageMode.DriveRootStaging, second.Mode);
-                Assert.AreNotEqual(first.TemporaryDirectory, second.TemporaryDirectory);
-                Assert.AreNotEqual(first.OrbisPath, second.OrbisPath);
-            }
-            finally
-            {
-                Assert.IsTrue(first.Restore().Succeeded);
-                Assert.IsTrue(second.Restore().Succeeded);
-            }
-        }
-        finally
-        {
-            OrbisSafePkgOperation.StagingRootOverride = null;
-            try { Directory.Delete(overrideRoot, true); } catch { }
-        }
-    }
-
-    [TestMethod]
     public async Task ViewerListingDoesNotMutateGlobalTreeState()
     {
         var originalNode = Helper.TreeView.currentNode;
@@ -405,22 +120,112 @@ public sealed class PkgFileListingTests
         Assert.AreEqual(originalName, Helper.TreeView.Nodename);
     }
 
-    private static PkgFileListingService CreateService(
-        string toolPath, IOrbisProcessRunner runner) =>
-        new PkgFileListingService(
-            toolPath,
-            runner,
-            new PkgFileListingParser(),
-            new PkgFileTreeBuilder(),
-            TimeSpan.FromMilliseconds(100));
+    // ── service: real PKG fixtures via OrbisPkgTool.PkgBuilder ─────────
+
+    [TestMethod]
+    public async Task Service_ListsRealPkg_Sc0AndImage0WithSizes()
+    {
+        using var fixture = PkgFixture.Create("list", ("a.bin", 3), ("dir/b.bin", 5));
+
+        PkgFileListingResult result = await new PkgFileListingService()
+            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
+
+        Assert.IsTrue(result.Succeeded, result.ErrorMessage);
+        CollectionAssert.Contains(result.Entries.Select(e => e.FullPath).ToList(), "Image0/a.bin");
+        CollectionAssert.Contains(result.Entries.Select(e => e.FullPath).ToList(), "Image0/dir/b.bin");
+        // PkgBuilder hoists sce_sys/param.sfo into the Sc0 entry table
+        // (standard PS4 PKG layout) — it surfaces as Sc0/param.sfo.
+        CollectionAssert.Contains(result.Entries.Select(e => e.FullPath).ToList(), "Sc0/param.sfo");
+        Assert.AreEqual(3, result.Entries.Single(e => e.FullPath == "Image0/a.bin").Size);
+        Assert.AreEqual(5, result.Entries.Single(e => e.FullPath == "Image0/dir/b.bin").Size);
+        // tree roots: Image0 (+ Sc0 when present), sorted
+        Assert.IsTrue(result.Roots.Any(root => root.Name == "Image0" && root.IsDirectory));
+        PkgFileNode image0 = result.Roots.Single(root => root.Name == "Image0");
+        Assert.IsTrue(image0.Children.Any(child => child.Name == "sce_sys"));
+        // directories carry zero size, files their logical size
+        Assert.AreEqual(0, image0.Size);
+        Assert.AreEqual(3, image0.Children.Single(child => child.Name == "a.bin").Size);
+    }
+
+    [TestMethod]
+    public async Task Service_UnicodePackagePath_ListsWithoutStaging()
+    {
+        // The old orbis-pub-cmd spawn needed an ASCII-safe temp rename for
+        // paths like this; the in-process reader opens the original path
+        // read-only and Unicode just works.
+        using var fixture = PkgFixture.Create("日本語 folder", "game Ω !@#.pkg",
+            ("a.bin", 4), ("data/readme.txt", 16));
+
+        PkgFileListingResult result = await new PkgFileListingService()
+            .ListAsync(fixture.PackagePath, PkgFileListingService.DefaultPasscode, CancellationToken.None);
+
+        Assert.IsTrue(result.Succeeded, result.ErrorMessage);
+        Assert.IsTrue(result.Entries.Any(e => e.FullPath == "Image0/a.bin"));
+        // package untouched — no rename/staging ever happened
+        Assert.IsTrue(File.Exists(fixture.PackagePath));
+    }
+
+    [TestMethod]
+    public async Task Service_CustomPasscode_RoundTrips()
+    {
+        const string passcode = "0123456789abcdef0123456789abcdef";
+        using var fixture = PkgFixture.CreateWithPasscode("passcode", passcode, ("a.bin", 8));
+
+        PkgFileListingResult result = await new PkgFileListingService()
+            .ListAsync(fixture.PackagePath, passcode, CancellationToken.None);
+
+        Assert.IsTrue(result.Succeeded, result.ErrorMessage);
+        Assert.IsTrue(result.Entries.Any(e => e.FullPath == "Image0/a.bin"));
+    }
+
+    [TestMethod]
+    public async Task Service_NotAPkg_ReportsFailureWithoutThrowing()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "p4t-garbage-" + Guid.NewGuid().ToString("N") + ".pkg");
+        try
+        {
+            await File.WriteAllBytesAsync(path, new byte[128]);
+
+            PkgFileListingResult result = await new PkgFileListingService()
+                .ListAsync(path, PkgFileListingService.DefaultPasscode, CancellationToken.None);
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.IsFalse(string.IsNullOrEmpty(result.ErrorMessage));
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
+    }
+
+    // ── AddPasscodeArgument (vestigial: still used by extraction, ──────
+    //    viewer extraction and shadps4 install spawns until they migrate)
+
+    [TestMethod]
+    public void AddPasscodeArgument_SentinelNoPasscode_DefaultAndCustom()
+    {
+        var sentinel = new ProcessStartInfo();
+        PkgFileListingService.AddPasscodeArgument(sentinel, PkgFileListingService.NoPasscode);
+        CollectionAssert.AreEqual(new[] { "--no_passcode" }, sentinel.ArgumentList);
+
+        var none = new ProcessStartInfo();
+        PkgFileListingService.AddPasscodeArgument(none, null);
+        CollectionAssert.AreEqual(
+            new[] { "--passcode", PkgFileListingService.DefaultPasscode }, none.ArgumentList);
+
+        var custom = new ProcessStartInfo();
+        PkgFileListingService.AddPasscodeArgument(custom, "0123456789abcdef0123456789abcdef");
+        CollectionAssert.AreEqual(
+            new[] { "--passcode", "0123456789abcdef0123456789abcdef" }, custom.ArgumentList);
+    }
+
+    // ── helpers ─────────────────────────────────────────────────────────
 
     private static PkgFileListingResult SuccessResult() => new()
     {
         Succeeded = true,
         Entries = new[] { new PkgFileEntry { FullPath = "Image0/file.bin", Name = "file.bin" } }
     };
-
-    private static bool IsAscii(string value) => value.All(character => character < 128);
 
     private sealed class CountingListingLoader : IPkgFileListingLoader
     {
@@ -437,71 +242,95 @@ public sealed class PkgFileListingTests
         }
     }
 
-    private sealed class RecordingRunner : IOrbisProcessRunner
+    /// <summary>Builds a real (fake-keyset) PKG via OrbisPkgTool.PkgBuilder,
+    /// the same fixture shape OrbisPkgTool's own regression suite uses.</summary>
+    private sealed class PkgFixture : IDisposable
     {
-        private readonly Func<ProcessStartInfo, TimeSpan, CancellationToken, Task<OrbisProcessResult>> _run;
+        private readonly string _root;
 
-        public RecordingRunner(
-            Func<ProcessStartInfo, TimeSpan, CancellationToken, Task<OrbisProcessResult>> run) =>
-            _run = run;
-        public int Count { get; private set; }
+        private PkgFixture(string root) => _root = root;
 
-        public Task<OrbisProcessResult> RunAsync(
-            ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken)
+        public string PackagePath { get; private set; } = string.Empty;
+
+        public static PkgFixture Create(string directoryName,
+            params (string Path, int Size)[] files)
         {
-            Count++;
-            return _run(startInfo, timeout, cancellationToken);
+            var random = new Random(0x5034);
+            return CreateCore(directoryName, "game.pkg", null, files.Select(f =>
+                (f.Path, Data: DataBytes(f.Size, random))).ToArray());
         }
-    }
 
-    private sealed class BlockingRunner : IOrbisProcessRunner
-    {
-        public TaskCompletionSource Started { get; } = new(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        public bool CancellationObserved { get; private set; }
-
-        public async Task<OrbisProcessResult> RunAsync(
-            ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken)
+        public static PkgFixture Create(string directoryName, string fileName,
+            params (string Path, int Size)[] files)
         {
-            Started.TrySetResult();
-            try
+            var random = new Random(0x5034);
+            return CreateCore(directoryName, fileName, null, files.Select(f =>
+                (f.Path, Data: DataBytes(f.Size, random))).ToArray());
+        }
+
+        public static PkgFixture CreateWithPasscode(string directoryName, string passcode,
+            params (string Path, int Size)[] files)
+        {
+            var random = new Random(0x5034);
+            return CreateCore(directoryName, "game.pkg", passcode, files.Select(f =>
+                (f.Path, Data: DataBytes(f.Size, random))).ToArray());
+        }
+
+        private static PkgFixture CreateCore(string directoryName, string fileName,
+            string? passcode, (string Path, byte[] Data)[] files)
+        {
+            string root = Path.Combine(Path.GetTempPath(),
+                "p4t-list-fixture-" + Guid.NewGuid().ToString("N"));
+            string dir = Path.Combine(root, directoryName);
+            string image0 = Path.Combine(dir, "Image0");
+            Directory.CreateDirectory(image0);
+            foreach (var (p, d) in files)
             {
-                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-                throw new AssertFailedException("Cancellation was not observed.");
+                string full = Path.Combine(image0, p.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                File.WriteAllBytes(full, d);
             }
-            catch (OperationCanceledException)
-            {
-                CancellationObserved = true;
-                throw;
-            }
+            // mandatory sce_sys/param.sfo
+            var sfo = ParamSfo.CreateGameTemplate("Fix", "CUSA09999",
+                "EP0001-CUSA09999_00-FIX0000000000001");
+            string sfoPath = Path.Combine(image0, "sce_sys", "param.sfo");
+            Directory.CreateDirectory(Path.GetDirectoryName(sfoPath)!);
+            File.WriteAllBytes(sfoPath, sfo.Serialize());
+
+            var sb = new StringBuilder();
+            sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+            sb.AppendLine("<psproject fmt=\"gp4\" version=\"1.0\">");
+            sb.AppendLine("  <volume><volume_type>pkg_ps4_app</volume_type><package>");
+            sb.AppendLine("      <content_id>EP0001-CUSA09999_00-FIX0000000000001</content_id>");
+            sb.AppendLine($"      <passcode>{passcode}</passcode>");
+            sb.AppendLine("      <storage_type>digital25</storage_type><app_type>full</app_type>");
+            sb.AppendLine("      <version>01.00</version><title_id>CUSA09999</title_id>");
+            sb.AppendLine("      <title>Fix</title><app_version>01.00</app_version>");
+            sb.AppendLine("    </package></volume>");
+            sb.AppendLine("  <files>");
+            sb.AppendLine("    <file><entry path=\"sce_sys/param.sfo\" /><orig_path>sce_sys/param.sfo</orig_path></file>");
+            foreach (var (p, _) in files)
+                sb.AppendLine($"    <file><entry path=\"{p}\" /><orig_path>{p}</orig_path></file>");
+            sb.AppendLine("  </files>");
+            sb.AppendLine("</psproject>");
+            string gp4 = Path.Combine(dir, "project.gp4");
+            File.WriteAllText(gp4, sb.ToString());
+
+            string pkg = Path.Combine(dir, fileName);
+            PkgBuilder.Build(gp4, image0, pkg, new BuildOptions());
+            return new PkgFixture(root) { PackagePath = pkg };
         }
-    }
 
-    private sealed class PackageFixture : IDisposable
-    {
-        public PackageFixture(string directoryName, string fileName)
+        private static byte[] DataBytes(int size, Random random)
         {
-            Root = Path.Combine(Path.GetTempPath(), "p4t-list-test-" + Guid.NewGuid().ToString("N"));
-            PackageDirectory = Path.Combine(Root, directoryName);
-            Directory.CreateDirectory(PackageDirectory);
-            PackagePath = Path.Combine(PackageDirectory, fileName);
-            File.WriteAllBytes(PackagePath, Enumerable.Range(0, 128).Select(value => (byte)value).ToArray());
-        }
-
-        public string Root { get; }
-        public string PackageDirectory { get; }
-        public string PackagePath { get; }
-
-        public string CreateToolPlaceholder()
-        {
-            string path = Path.Combine(Root, "orbis-pub-cmd.exe");
-            File.WriteAllText(path, "placeholder");
-            return path;
+            var data = new byte[size];
+            random.NextBytes(data);
+            return data;
         }
 
         public void Dispose()
         {
-            try { Directory.Delete(Root, recursive: true); } catch { }
+            try { Directory.Delete(_root, recursive: true); } catch { }
         }
     }
 }

@@ -1,9 +1,7 @@
-using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -48,102 +46,25 @@ namespace PS4PKGTool.Utilities.PkgInspection
         }
     }
 
-    internal sealed class PkgFileParseResult
-    {
-        public IReadOnlyList<PkgFileEntry> Entries { get; init; } = Array.Empty<PkgFileEntry>();
-        public int MalformedLineCount { get; init; }
-    }
-
     internal sealed class PkgFileListingResult
     {
         public bool Succeeded { get; init; }
         public IReadOnlyList<PkgFileEntry> Entries { get; init; } = Array.Empty<PkgFileEntry>();
         public IReadOnlyList<PkgFileNode> Roots { get; init; } = Array.Empty<PkgFileNode>();
         public string ErrorMessage { get; init; } = string.Empty;
+
+        /// <summary>Vestigial: kept for callers written against the old
+        /// orbis-pub-cmd pipeline. Always false — the in-process reader
+        /// never stages or moves the package.</summary>
         public bool RestoreFailed { get; init; }
+
+        /// <summary>Vestigial: kept for callers written against the old
+        /// pipeline. Always empty.</summary>
         public string RecoveryDirectory { get; init; } = string.Empty;
+
+        /// <summary>Vestigial: kept for callers written against the old
+        /// text-output parser. Always zero.</summary>
         public int MalformedLineCount { get; init; }
-    }
-
-    internal sealed class PkgFileListingParser
-    {
-        public PkgFileParseResult Parse(string output)
-        {
-            if (string.IsNullOrWhiteSpace(output))
-                return new PkgFileParseResult();
-
-            var entries = new List<PkgFileEntry>();
-            int malformed = 0;
-            foreach (string rawLine in output.Split(
-                new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                string line = rawLine.Trim();
-                if (line.Length == 0 || line.Contains("[Error]", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                char kind = line[0];
-                if (kind is not ('F' or 'f' or 'D' or 'd'))
-                    continue;
-
-                int pathIndex = RootIndex(line);
-                if (pathIndex < 0)
-                {
-                    malformed++;
-                    continue;
-                }
-
-                string prefix = line[..pathIndex].Trim();
-                string[] fields = prefix.Split(
-                    new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                if (fields.Length < 2 || !long.TryParse(fields[1], out long size) || size < 0)
-                {
-                    malformed++;
-                    continue;
-                }
-
-                string fullPath = NormalizePath(line[pathIndex..]);
-                if (string.IsNullOrWhiteSpace(fullPath))
-                {
-                    malformed++;
-                    continue;
-                }
-
-                int separator = fullPath.LastIndexOf('/');
-                string name = separator < 0 ? fullPath : fullPath[(separator + 1)..];
-                if (name.Length == 0)
-                {
-                    malformed++;
-                    continue;
-                }
-
-                entries.Add(new PkgFileEntry
-                {
-                    FullPath = fullPath,
-                    Name = name,
-                    ParentPath = separator < 0 ? string.Empty : fullPath[..separator],
-                    IsDirectory = kind is 'D' or 'd',
-                    Size = size
-                });
-            }
-
-            return new PkgFileParseResult
-            {
-                Entries = entries,
-                MalformedLineCount = malformed
-            };
-        }
-
-        private static int RootIndex(string line)
-        {
-            int image = line.IndexOf("Image0", StringComparison.OrdinalIgnoreCase);
-            int sc = line.IndexOf("Sc0", StringComparison.OrdinalIgnoreCase);
-            if (image < 0) return sc;
-            if (sc < 0) return image;
-            return Math.Min(image, sc);
-        }
-
-        private static string NormalizePath(string path) =>
-            path.Trim().Trim('"').Replace('\\', '/').Trim('/');
     }
 
     internal sealed class PkgFileTreeBuilder
@@ -195,213 +116,97 @@ namespace PS4PKGTool.Utilities.PkgInspection
         }
     }
 
-    internal sealed class OrbisProcessResult
-    {
-        public int ExitCode { get; init; }
-        public string StandardOutput { get; init; } = string.Empty;
-        public string StandardError { get; init; } = string.Empty;
-        public bool TimedOut { get; init; }
-    }
-
-    internal interface IOrbisProcessRunner
-    {
-        Task<OrbisProcessResult> RunAsync(
-            ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken);
-    }
-
-    internal sealed class OrbisProcessRunner : IOrbisProcessRunner
-    {
-        public async Task<OrbisProcessResult> RunAsync(
-            ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken)
-        {
-            using var process = new Process { StartInfo = startInfo };
-            process.Start();
-            Task<string> stdout = process.StandardOutput.ReadToEndAsync();
-            Task<string> stderr = process.StandardError.ReadToEndAsync();
-            using var timeoutCancellation = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken);
-            timeoutCancellation.CancelAfter(timeout);
-
-            bool timedOut = false;
-            try
-            {
-                await process.WaitForExitAsync(timeoutCancellation.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                timedOut = !cancellationToken.IsCancellationRequested;
-                try
-                {
-                    if (!process.HasExited)
-                        process.Kill(entireProcessTree: true);
-                    await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-                catch { }
-
-                await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
-                if (!timedOut)
-                    throw new OperationCanceledException(cancellationToken);
-            }
-
-            return new OrbisProcessResult
-            {
-                ExitCode = process.HasExited ? process.ExitCode : -1,
-                StandardOutput = await stdout.ConfigureAwait(false),
-                StandardError = await stderr.ConfigureAwait(false),
-                TimedOut = timedOut
-            };
-        }
-    }
-
     internal interface IPkgFileListingLoader
     {
         Task<PkgFileListingResult> ListAsync(
             string packagePath, string passcode, CancellationToken cancellationToken);
     }
 
+    /// <summary>
+    /// In-process replacement for the orbis-pub-cmd img_file_list spawn:
+    /// OrbisPkgTool.PkgReader reads the PKG entry table (Sc0) and the inner
+    /// PFS (Image0) directly. No external process, no output parsing, no
+    /// ASCII-safe temp staging — the package file is opened read-only at
+    /// its original path, so Unicode paths just work.
+    /// </summary>
     internal sealed class PkgFileListingService : IPkgFileListingLoader
     {
         public const string DefaultPasscode = "00000000000000000000000000000000";
 
-        /// <summary>Sentinel passcode value meaning "run with --no_passcode"
-        /// (official packages whose key is unknown). Callers pass this in
-        /// when the user selects the no-passcode option in the prompt.</summary>
+        /// <summary>Sentinel passcode value meaning "attempt reading
+        /// without a passcode" (official packages whose key is unknown).
+        /// Callers pass this in when the user selects the no-passcode
+        /// option in the prompt. PkgReader maps this to the default
+        /// passcode and falls back to RSA dk3 recovery when the digest
+        /// check fails — the same behavior orbis-pub-cmd's --no_passcode
+        /// produced.</summary>
         public const string NoPasscode = "\x1";
-        private readonly string _orbisPubCmdPath;
-        private readonly IOrbisProcessRunner _processRunner;
-        private readonly PkgFileListingParser _parser;
-        private readonly PkgFileTreeBuilder _treeBuilder;
-        private readonly TimeSpan _timeout;
-
-        public PkgFileListingService()
-            : this(
-                Helper.OrbisPubCmd,
-                new OrbisProcessRunner(),
-                new PkgFileListingParser(),
-                new PkgFileTreeBuilder(),
-                TimeSpan.FromSeconds(30))
-        {
-        }
-
-        internal PkgFileListingService(
-            string orbisPubCmdPath,
-            IOrbisProcessRunner processRunner,
-            PkgFileListingParser parser,
-            PkgFileTreeBuilder treeBuilder,
-            TimeSpan timeout)
-        {
-            _orbisPubCmdPath = Path.GetFullPath(orbisPubCmdPath);
-            _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
-            _parser = parser ?? throw new ArgumentNullException(nameof(parser));
-            _treeBuilder = treeBuilder ?? throw new ArgumentNullException(nameof(treeBuilder));
-            _timeout = timeout;
-        }
 
         public async Task<PkgFileListingResult> ListAsync(
             string packagePath, string passcode, CancellationToken cancellationToken)
         {
-            if (!File.Exists(_orbisPubCmdPath))
-                return Failure("orbis-pub-cmd.exe was not found.");
-
-            OrbisSafePkgOperation operation = null;
-            PkgFileListingResult result;
-            OperationCanceledException cancellation = null;
-            OrbisSafePkgRestoreResult? restoreFailure = null;
             try
             {
-                try
-                {
-                    operation = OrbisSafePkgOperation.Prepare(packagePath);
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = _orbisPubCmdPath,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    };
-                    startInfo.ArgumentList.Add("img_file_list");
-                    AddPasscodeArgument(startInfo, passcode);
-                    startInfo.ArgumentList.Add("--oformat");
-                    startInfo.ArgumentList.Add("long+original_size");
-                    startInfo.ArgumentList.Add(operation.OrbisPath);
+                cancellationToken.ThrowIfCancellationRequested();
 
-                    OrbisProcessResult process = await _processRunner.RunAsync(
-                        startInfo, _timeout, cancellationToken).ConfigureAwait(false);
-                    if (process.TimedOut)
-                    {
-                        result = Failure("orbis-pub-cmd timed out while listing package files.");
-                    }
-                    else if (process.ExitCode != 0 ||
-                        process.StandardOutput.Contains("[Error]", StringComparison.OrdinalIgnoreCase) ||
-                        process.StandardError.Contains("[Error]", StringComparison.OrdinalIgnoreCase))
-                    {
-                        result = Failure(DescribeToolFailure(process));
-                    }
-                    else
-                    {
-                        PkgFileParseResult parsed = _parser.Parse(process.StandardOutput);
-                        if (parsed.Entries.Count == 0)
-                        {
-                            result = Failure(parsed.MalformedLineCount > 0
-                                ? "orbis-pub-cmd returned an invalid file listing."
-                                : "orbis-pub-cmd returned no package files.");
-                        }
-                        else
-                        {
-                            result = new PkgFileListingResult
-                            {
-                                Succeeded = true,
-                                Entries = parsed.Entries,
-                                Roots = _treeBuilder.Build(parsed.Entries),
-                                MalformedLineCount = parsed.MalformedLineCount
-                            };
-                        }
-                    }
-                }
-                catch (OperationCanceledException ex)
-                {
-                    cancellation = ex;
-                    result = null;
-                }
-                catch (Exception ex)
-                {
-                    result = Failure("Package files could not be listed. " + ex.Message);
-                }
-            }
-            finally
-            {
-                // Staging restoration must run on every exit path - success,
-                // tool failure, parse failure, timeout and cancellation.
-                if (operation != null)
-                {
-                    OrbisSafePkgRestoreResult restore = operation.Restore();
-                    if (!restore.Succeeded)
-                        restoreFailure = restore;
-                }
-            }
+                string effectivePasscode =
+                    passcode == NoPasscode || string.IsNullOrWhiteSpace(passcode)
+                        ? OrbisPkgTool.PkgReader.DefaultPasscode
+                        : passcode;
 
-            if (restoreFailure != null)
-            {
+                // Offload the (potentially long) Image0 tree walk to the
+                // thread pool; callers on UI/background threads block on
+                // this task, so keep the read off their continuation.
+                List<OrbisPkgTool.PkgFileEntry> files = await Task.Run(
+                    () =>
+                    {
+                        using var reader = new OrbisPkgTool.PkgReader(
+                            packagePath, effectivePasscode);
+                        return reader.ListFiles();
+                    }, cancellationToken).ConfigureAwait(false);
+
+                var entries = new List<PkgFileEntry>(files.Count);
+                foreach (OrbisPkgTool.PkgFileEntry file in files)
+                {
+                    string fullPath = file.Path.Replace('\\', '/');
+                    int separator = fullPath.LastIndexOf('/');
+                    entries.Add(new PkgFileEntry
+                    {
+                        FullPath = fullPath,
+                        Name = file.Name,
+                        ParentPath = separator < 0 ? string.Empty : fullPath[..separator],
+                        IsDirectory = file.IsDirectory,
+                        Size = file.Size
+                    });
+                }
+
                 return new PkgFileListingResult
                 {
-                    Succeeded = false,
-                    RestoreFailed = true,
-                    RecoveryDirectory = restoreFailure.RecoveryDirectory,
-                    ErrorMessage = restoreFailure.ErrorMessage +
-                        " Recovery data remains in: " + restoreFailure.RecoveryDirectory
+                    Succeeded = true,
+                    Entries = entries,
+                    Roots = new PkgFileTreeBuilder().Build(entries)
                 };
             }
-
-            if (cancellation != null)
-                throw cancellation;
-            return result;
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Passcode failures surface here as
+                // InvalidDataException("Passcode mismatch.") — callers
+                // (ShellCommands, Mini Viewer) match "passcode" in the
+                // message to offer the retry prompt.
+                return Failure("Package files could not be listed. " + ex.Message);
+            }
         }
 
         /// <summary>
-        /// Adds the passcode argument(s) shared by every orbis-pub-cmd
-        /// invocation: "--no_passcode" for the sentinel, otherwise
+        /// Adds the passcode argument(s) shared by the remaining
+        /// orbis-pub-cmd invocations (extraction, viewer extraction,
+        /// shadps4 install): "--no_passcode" for the sentinel, otherwise
         /// "--passcode &lt;code&gt;" with the default when none given.
+        /// Retired once those spawns migrate to PkgReader.
         /// </summary>
         internal static void AddPasscodeArgument(ProcessStartInfo startInfo, string? passcode)
         {
@@ -414,21 +219,6 @@ namespace PS4PKGTool.Utilities.PkgInspection
                     ? DefaultPasscode
                     : passcode);
             }
-        }
-
-        private static string DescribeToolFailure(OrbisProcessResult process)
-        {
-            string detail = string.Join(" ", new[]
-            {
-                process.StandardError,
-                process.StandardOutput
-            }.Where(value => !string.IsNullOrWhiteSpace(value))
-             .Select(value => value.Trim().Replace('\r', ' ').Replace('\n', ' ')));
-            if (detail.Length > 500)
-                detail = detail[..500];
-            return detail.Length == 0
-                ? $"orbis-pub-cmd exited with code {process.ExitCode}."
-                : $"orbis-pub-cmd exited with code {process.ExitCode}: {detail}";
         }
 
         private static PkgFileListingResult Failure(string message) => new()

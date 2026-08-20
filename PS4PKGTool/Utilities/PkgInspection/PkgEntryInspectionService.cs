@@ -1,5 +1,4 @@
 using ByteSizeLib;
-using PS4_Tools.LibOrbis.PKG;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -48,28 +47,23 @@ namespace PS4PKGTool.Utilities.PkgInspection
         public IReadOnlyList<PkgEntryInfo> Read(string packagePath, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var stream = new FileStream(
-                packagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using CancellationTokenRegistration cancellationRegistration =
-                cancellationToken.Register(stream.Dispose);
-
             try
             {
-                var package = new PkgReader(stream).ReadPkg();
+                using var reader = new OrbisPkgTool.PkgReader(packagePath);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var entries = new List<PkgEntryInfo>();
-                foreach (var meta in package.Metas.Metas)
+                foreach (var entry in reader.Entries)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     entries.Add(new PkgEntryInfo
                     {
-                        Name = meta.id.ToString(),
-                        Offset = $"0x{meta.DataOffset:X}",
-                        Size = ByteSize.FromBytes(Convert.ToDouble(meta.DataSize)).ToString(),
-                        Flags1 = $"0x{meta.Flags1:X}",
-                        Flags2 = $"0x{meta.Flags2:X}",
-                        Encrypted = $"{meta.Encrypted:X}"
+                        Name = entry.Name ?? OrbisPkgTool.Pkg.PkgEntryNames.TryGetName(entry.Id) ?? $"0x{entry.Id:X8}",
+                        Offset = $"0x{entry.DataOffset:X}",
+                        Size = ByteSize.FromBytes(Convert.ToDouble(entry.DataSize)).ToString(),
+                        Flags1 = $"0x{entry.Flags1:X}",
+                        Flags2 = $"0x{entry.Flags2:X}",
+                        Encrypted = $"{(entry.IsEncrypted ? 1 : 0):X}"
                     });
                 }
 

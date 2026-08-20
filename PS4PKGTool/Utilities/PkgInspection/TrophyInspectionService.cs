@@ -1,4 +1,3 @@
-using PS4_Tools.LibOrbis.PKG;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.TrophyMetadata;
 using System;
@@ -82,25 +81,21 @@ namespace PS4PKGTool.Utilities.PkgInspection
             string packagePath, string temporaryDirectory, CancellationToken cancellationToken);
     }
 
-    internal sealed class LibOrbisPkgTrophyResourceExtractor : IPkgTrophyResourceExtractor
+    internal sealed class OrbisPkgTrophyResourceExtractor : IPkgTrophyResourceExtractor
     {
         private const string TrophyEntryName = "TROPHY__TROPHY00_TRP";
+        private const string TrophyEntryPath = "Sc0/trophy/trophy00.trp";
 
         public PkgTrophyResourceResult Extract(
             string packagePath, string temporaryDirectory, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var packageStream = new FileStream(
-                packagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using CancellationTokenRegistration cancellationRegistration =
-                cancellationToken.Register(packageStream.Dispose);
-
             try
             {
-                var package = new PkgReader(packageStream).ReadPkg();
+                using var reader = new OrbisPkgTool.PkgReader(packagePath);
                 cancellationToken.ThrowIfCancellationRequested();
-                var metadata = package.Metas.Metas.FirstOrDefault(entry =>
-                    string.Equals(entry.id.ToString(), TrophyEntryName, StringComparison.Ordinal));
+                var metadata = reader.Entries.FirstOrDefault(entry =>
+                    entry.Id == OrbisPkgTool.Pkg.PkgEntryIds.Trophy00Trp);
                 if (metadata == null)
                 {
                     return new PkgTrophyResourceResult
@@ -110,7 +105,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
                     };
                 }
 
-                if (metadata.Encrypted)
+                if (metadata.IsEncrypted)
                 {
                     return new PkgTrophyResourceResult
                     {
@@ -119,18 +114,9 @@ namespace PS4PKGTool.Utilities.PkgInspection
                     };
                 }
 
-                long offset = checked((long)metadata.DataOffset);
-                long size = checked((long)metadata.DataSize);
-                if (offset < 0 || size < 0 || offset > packageStream.Length || size > packageStream.Length - offset)
-                    throw new InvalidDataException("The trophy entry points outside the package file.");
-
                 string trpPath = Path.Combine(temporaryDirectory, "TROPHY00.TRP");
-                packageStream.Position = offset;
-                using (var output = new FileStream(
-                    trpPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                {
-                    CopyExactly(packageStream, output, size, cancellationToken);
-                }
+                byte[] trpBytes = reader.ExtractEntryBytes(TrophyEntryPath);
+                File.WriteAllBytes(trpPath, trpBytes);
 
                 return new PkgTrophyResourceResult
                 {
@@ -141,23 +127,6 @@ namespace PS4PKGTool.Utilities.PkgInspection
             catch (Exception) when (cancellationToken.IsCancellationRequested)
             {
                 throw new OperationCanceledException(cancellationToken);
-            }
-        }
-
-        private static void CopyExactly(
-            Stream source, Stream destination, long byteCount, CancellationToken cancellationToken)
-        {
-            byte[] buffer = new byte[81920];
-            long remaining = byteCount;
-            while (remaining > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                int requested = (int)Math.Min(buffer.Length, remaining);
-                int read = source.Read(buffer, 0, requested);
-                if (read == 0)
-                    throw new EndOfStreamException("The trophy entry ended before its declared size.");
-                destination.Write(buffer, 0, read);
-                remaining -= read;
             }
         }
     }
@@ -231,7 +200,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
 
         public TrophyInspectionService()
             : this(
-                new LibOrbisPkgTrophyResourceExtractor(),
+                new OrbisPkgTrophyResourceExtractor(),
                 new SharedTrophyMetadataReader(),
                 new CachedNpCommunicationIdProvider(),
                 new DetachedTrophyImageDecoder(),

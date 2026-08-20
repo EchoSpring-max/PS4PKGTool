@@ -822,51 +822,6 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
-    public void Settings_OrbisTempDirectory_RoundTrips()
-    {
-        string file = Path.Combine(_tempRoot, "Settings.conf");
-        string previous = PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory;
-        try
-        {
-            var settings = new PS4PKGTool.Utilities.Settings.AppSettings
-            {
-                OrbisTempDirectory = @"D:\Orbis Temp",
-            };
-            PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
-
-            var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
-
-            Assert.AreEqual(@"D:\Orbis Temp", loaded.OrbisTempDirectory);
-            StringAssert.Contains(File.ReadAllText(file), "orbis_temp_directory=D:\\Orbis Temp");
-            Assert.IsFalse(File.ReadAllText(file).Contains("shadps4_orbis_temp_directory="));
-            Assert.AreEqual("", new PS4PKGTool.Utilities.Settings.AppSettings().OrbisTempDirectory);
-        }
-        finally
-        {
-            PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory = previous;
-        }
-    }
-
-    [TestMethod]
-    public void Settings_LegacyShadps4OrbisTempDirectory_MigratesToGlobalSetting()
-    {
-        string file = Path.Combine(_tempRoot, "LegacySettings.conf");
-        string previous = PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory;
-        try
-        {
-            File.WriteAllText(file, "shadps4_orbis_temp_directory=E:\\OrbisScratch\n");
-
-            var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
-
-            Assert.AreEqual(@"E:\OrbisScratch", loaded.OrbisTempDirectory);
-        }
-        finally
-        {
-            PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory = previous;
-        }
-    }
-
-    [TestMethod]
     public void Settings_PkgDirectories_NestedEntriesAreDroppedOnLoad()
     {
         string file = Path.Combine(_tempRoot, "Settings.conf");

@@ -142,10 +142,6 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
                 {
                     foreach (string path in Directory.EnumerateFiles(fullDirectory, "*.pkg", options))
                     {
-                        // Never process staging artifacts: a p4t_v_* directory or a
-                        // ps4pkgtool_orbis_*.pkg rename is a moved original, not a
-                        // new package - processing it again would re-stage it deeper.
-                        if (OrbisTempRecovery.IsStagingArtifact(path)) continue;
                         string fullPath = Path.GetFullPath(path);
                         if (seen.Add(fullPath)) packages.Add(fullPath);
                     }

@@ -403,37 +403,8 @@ namespace PS4PKGTool
                 "LaunchSession");
         }
 
-        private static void SafeMoveDirectory(string src, string dst)
-        {
-            try { Directory.Move(src, dst); }
-            catch (IOException)
-            {
-                // Cross-volume move fails - fall back to copy+delete
-                foreach (string f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
-                {
-                    string rel = f.Substring(src.Length).TrimStart('\\', '/');
-                    string target = Path.Combine(dst, rel);
-                    Directory.CreateDirectory(Path.GetDirectoryName(target) ?? dst);
-                    File.Copy(f, target, true);
-                }
-                Directory.Delete(src, true);
-            }
-        }
-
         private string GroupByColumn =>
             cbGroupBy.SelectedItem?.ToString() ?? "Category";
-
-        /// <summary>Extract [Error]/[Warn] lines from orbis-pub-cmd output.</summary>
-        private static string FormatOrbisError(string raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-                return "(no output from orbis-pub-cmd)";
-            var errors = raw.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(l => l.IndexOf("Error", StringComparison.OrdinalIgnoreCase) >= 0)
-                .Select(l => l.Trim())
-                .ToList();
-            return errors.Count > 0 ? string.Join("\n", errors) : raw.Trim();
-        }
 
         private void LogToTextBox(string logMessage)
         {
@@ -536,7 +507,6 @@ namespace PS4PKGTool
             try
             {
                 SetupFilterChecklists();
-                ScanForStagedPkgsLeftovers();
                 WindowState = FormWindowState.Maximized;
                 this.Text = "PS4 PKG Tool " + ApplicationVersion;
                 await Task.Run(() =>
@@ -2151,7 +2121,6 @@ namespace PS4PKGTool
                 {
                     var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
                     pkgFiles = Directory.EnumerateFiles(folderPath, "*.PKG", searchOption)
-                        .Where(p => !OrbisTempRecovery.IsStagingArtifact(p))
                         .ToList();
                 }
                 catch (UnauthorizedAccessException ex)
@@ -2476,8 +2445,7 @@ namespace PS4PKGTool
 
                             try
                             {
-                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption)
-                                    .Where(p => !OrbisTempRecovery.IsStagingArtifact(p));
+                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption);
                                 PkgFileList.AddRange(pkgFiles);
                             }
                             catch (UnauthorizedAccessException e)
@@ -6146,31 +6114,6 @@ namespace PS4PKGTool
             toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             // Populate PKG data to the tree view
             PopulatePKGDataToTreeView();
-        }
-
-        /// <summary>
-        /// Startup staged-PKG recovery: a lightweight scan of the configured
-        /// package locations. When nothing is staged, this is completely
-        /// silent. When leftovers exist (crash / kill / power loss / older
-        /// versions), the recovery dialog is shown - it is the ONLY place
-        /// that may move staged PKGs back.
-        /// </summary>
-        private void ScanForStagedPkgsLeftovers()
-        {
-            try
-            {
-                var roots = new List<string>(appSettings_.PkgDirectories ?? new List<string>());
-                List<StagedPkgRecoveryItem> items = StagedPkgRecoveryScanner.Scan(roots);
-                if (items.Count == 0)
-                    return;
-
-                Logger.LogInformation($"Staged PKG recovery: found {items.Count} leftover item(s) from previous operations.");
-                StagedPkgRecoveryForm.ShowRecoveryDialog(this, items, roots);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning("Staged PKG recovery scan failed: " + ex.Message);
-            }
         }
 
         /// <summary>

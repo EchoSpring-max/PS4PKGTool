@@ -22,11 +22,6 @@ namespace PS4PKGTool
             cmbTheme = new DarkUI.Controls.DarkComboBox();
             btnOpenAppData = new DarkUI.Controls.DarkButton();
             grpPkgExtraction = new DarkUI.Controls.DarkSectionPanel();
-            lblOrbisTempDescription = new DarkUI.Controls.DarkLabel();
-            tbOrbisTemp = new DarkUI.Controls.DarkTextBox();
-            btnBrowseOrbisTemp = new DarkUI.Controls.DarkButton();
-            btnClearOrbisTemp = new DarkUI.Controls.DarkButton();
-            btnScanStagedPkgs = new DarkUI.Controls.DarkButton();
             grpColors = new DarkUI.Controls.DarkSectionPanel();
             darkLabel13 = new DarkUI.Controls.DarkLabel();
             darkLabel7 = new DarkUI.Controls.DarkLabel();
@@ -280,14 +275,9 @@ namespace PS4PKGTool
             btnOpenAppData.TabIndex = 4;
             btnOpenAppData.Text = "Open App Data";
             btnOpenAppData.Click += btnOpenAppData_Click;
-            // 
+            //
             // grpPkgExtraction
-            // 
-            grpPkgExtraction.Controls.Add(lblOrbisTempDescription);
-            grpPkgExtraction.Controls.Add(tbOrbisTemp);
-            grpPkgExtraction.Controls.Add(btnBrowseOrbisTemp);
-            grpPkgExtraction.Controls.Add(btnClearOrbisTemp);
-            grpPkgExtraction.Controls.Add(btnScanStagedPkgs);
+            //
             grpPkgExtraction.Location = new System.Drawing.Point(12, 196);
             grpPkgExtraction.Margin = new System.Windows.Forms.Padding(6);
             grpPkgExtraction.Name = "grpPkgExtraction";
@@ -344,49 +334,6 @@ namespace PS4PKGTool
             btnShellRemove.Text = "Remove Integration";
             btnShellRemove.Visible = false;
             btnShellRemove.Click += btnShellRemove_Click;
-            //
-            // lblOrbisTempDescription
-            // 
-            lblOrbisTempDescription.Location = new System.Drawing.Point(13, 37);
-            lblOrbisTempDescription.Name = "lblOrbisTempDescription";
-            lblOrbisTempDescription.Size = new System.Drawing.Size(575, 18);
-            lblOrbisTempDescription.TabIndex = 0;
-            lblOrbisTempDescription.Text = "Internal temp folder for orbis-pub-cmd extraction. Empty uses Windows Temp.";
-            // 
-            // tbOrbisTemp
-            // 
-            tbOrbisTemp.Location = new System.Drawing.Point(13, 68);
-            tbOrbisTemp.Name = "tbOrbisTemp";
-            tbOrbisTemp.ReadOnly = true;
-            tbOrbisTemp.Size = new System.Drawing.Size(390, 23);
-            tbOrbisTemp.TabIndex = 1;
-            // 
-            // btnBrowseOrbisTemp
-            // 
-            btnBrowseOrbisTemp.Location = new System.Drawing.Point(414, 66);
-            btnBrowseOrbisTemp.Name = "btnBrowseOrbisTemp";
-            btnBrowseOrbisTemp.Size = new System.Drawing.Size(75, 27);
-            btnBrowseOrbisTemp.TabIndex = 2;
-            btnBrowseOrbisTemp.Text = "Browse...";
-            btnBrowseOrbisTemp.Click += btnBrowseOrbisTemp_Click;
-            // 
-            // btnClearOrbisTemp
-            // 
-            btnClearOrbisTemp.Location = new System.Drawing.Point(498, 66);
-            btnClearOrbisTemp.Name = "btnClearOrbisTemp";
-            btnClearOrbisTemp.Size = new System.Drawing.Size(90, 27);
-            btnClearOrbisTemp.TabIndex = 3;
-            btnClearOrbisTemp.Text = "Use Default";
-            btnClearOrbisTemp.Click += btnClearOrbisTemp_Click;
-            //
-            // btnScanStagedPkgs
-            //
-            btnScanStagedPkgs.Location = new System.Drawing.Point(13, 102);
-            btnScanStagedPkgs.Name = "btnScanStagedPkgs";
-            btnScanStagedPkgs.Size = new System.Drawing.Size(160, 28);
-            btnScanStagedPkgs.TabIndex = 4;
-            btnScanStagedPkgs.Text = "Scan for Staged PKGs";
-            btnScanStagedPkgs.Click += btnScanStagedPkgs_Click;
             //
             // grpColors
             //
@@ -1466,9 +1413,6 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel lblShellIntegrationStatus;
         private DarkUI.Controls.DarkButton btnShellInstall;
         private DarkUI.Controls.DarkButton btnShellRemove;
-        private DarkUI.Controls.DarkLabel lblOrbisTempDescription;
-        private DarkUI.Controls.DarkTextBox tbOrbisTemp;
-        private DarkUI.Controls.DarkButton btnBrowseOrbisTemp, btnClearOrbisTemp, btnScanStagedPkgs;
         private DarkUI.Controls.DarkSectionPanel grpDirList;
         private DarkUI.Controls.DarkSectionPanel grpColumns, grpColors, grpPS5BC, grpShadps4Config;
         private DarkUI.Controls.DarkCheckBox PKGname, TitleId, ContentId, Region, SystemFirmware, Version, PkgType, Category, Size, Location, cbBackported;

@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
-using System.Diagnostics;
 
 namespace PS4PKGTool.Tests;
 
@@ -193,27 +192,6 @@ public sealed class PkgFileListingTests
         {
             try { File.Delete(path); } catch { }
         }
-    }
-
-    // ── AddPasscodeArgument (vestigial: still used by extraction, ──────
-    //    viewer extraction and shadps4 install spawns until they migrate)
-
-    [TestMethod]
-    public void AddPasscodeArgument_SentinelNoPasscode_DefaultAndCustom()
-    {
-        var sentinel = new ProcessStartInfo();
-        PkgFileListingService.AddPasscodeArgument(sentinel, PkgFileListingService.NoPasscode);
-        CollectionAssert.AreEqual(new[] { "--no_passcode" }, sentinel.ArgumentList);
-
-        var none = new ProcessStartInfo();
-        PkgFileListingService.AddPasscodeArgument(none, null);
-        CollectionAssert.AreEqual(
-            new[] { "--passcode", PkgFileListingService.DefaultPasscode }, none.ArgumentList);
-
-        var custom = new ProcessStartInfo();
-        PkgFileListingService.AddPasscodeArgument(custom, "0123456789abcdef0123456789abcdef");
-        CollectionAssert.AreEqual(
-            new[] { "--passcode", "0123456789abcdef0123456789abcdef" }, custom.ArgumentList);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────

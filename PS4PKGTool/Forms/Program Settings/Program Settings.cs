@@ -105,7 +105,6 @@ namespace PS4PKGTool
             // directory settings
             darkCheckBoxRecursive.Checked = appSettings_.ScanRecursive;
             lbPkgDirectoryList.Items.AddRange(appSettings_.PkgDirectories?.Cast<string>().ToArray() ?? Array.Empty<string>());
-            tbOrbisTemp.Text = appSettings_.OrbisTempDirectory ?? string.Empty;
 
             AutoSortRow.Checked = appSettings_.AutoSortRow;
             PKGColorLabeling.Checked = appSettings_.PkgColorLabel;
@@ -253,7 +252,6 @@ namespace PS4PKGTool
             var PkgDirectoryList = lbPkgDirectoryList.Items.Cast<string>().ToList();
             appSettings_.PkgDirectories = PkgDirectoryList;
             appSettings_.ScanRecursive = darkCheckBoxRecursive.Checked;
-            appSettings_.OrbisTempDirectory = tbOrbisTemp.Text.Trim();
 
             if (labelPs5BcJsonDownloadDate.Text != "" || labelPs5BcJsonDownloadDate.Text.Length != 0)
                 appSettings_.Ps5BcJsonLastDownloadDate = DateTime.Parse(labelPs5BcJsonDownloadDate.Text);
@@ -608,60 +606,11 @@ namespace PS4PKGTool
                 Process.Start("explorer.exe", AppDataDirectory);
         }
 
-        private void btnBrowseOrbisTemp_Click(object sender, EventArgs e)
-        {
-            using var dialog = new FolderBrowserDialog
-            {
-                Description = "Select the internal temporary folder for orbis-pub-cmd",
-                ShowNewFolderButton = true,
-            };
-            string current = tbOrbisTemp.Text.Trim();
-            if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
-                dialog.SelectedPath = current;
-            if (dialog.ShowDialog(this) != DialogResult.OK)
-                return;
-
-            string selected = Path.GetFullPath(dialog.SelectedPath);
-            if (!OrbisSafePkgOperation.IsAsciiSafePath(selected))
-            {
-                ShowWarning("The orbis temporary folder path must contain ASCII characters only.", false);
-                return;
-            }
-
-            string probe = Path.Combine(selected, ".ps4pkgtool_write_" + Guid.NewGuid().ToString("N"));
-            try
-            {
-                Directory.CreateDirectory(selected);
-                File.WriteAllText(probe, string.Empty);
-                File.Delete(probe);
-            }
-            catch (Exception ex)
-            {
-                try { if (File.Exists(probe)) File.Delete(probe); } catch { }
-                ShowWarning("The selected temporary folder is not writable:\n" + ex.Message, false);
-                return;
-            }
-
-            tbOrbisTemp.Text = selected;
-        }
-
-        private void btnClearOrbisTemp_Click(object sender, EventArgs e)
-            => tbOrbisTemp.Text = string.Empty;
-
-        /// <summary>Opens the same Staged PKG Recovery dialog as startup, on demand.</summary>
         private void btnScanStagedPkgs_Click(object sender, EventArgs e)
         {
-            try
-            {
-                List<string> roots = lbPkgDirectoryList.Items.Cast<string>().ToList();
-                List<StagedPkgRecoveryItem> items = StagedPkgRecoveryScanner.Scan(roots);
-                StagedPkgRecoveryForm.ShowRecoveryDialog(this, items, roots);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning("Staged PKG scan failed: " + ex.Message);
-                ShowWarning("The staged PKG scan failed:\n" + ex.Message, false);
-            }
+            // No-op: the staged-PKG recovery subsystem was removed with the
+            // orbis-pub-cmd migration (the in-process reader never renames or
+            // moves the package file, so no staging artifacts are ever created).
         }
 
         private void ProgramSetting_FormClosing(object sender, FormClosingEventArgs e)

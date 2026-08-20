@@ -195,15 +195,6 @@ namespace PS4PKGTool.Shell
         /// <summary>Renames one package via the same engine as the Mini Viewer; never overwrites silently.</summary>
         private static string? RenameOne(string sourcePath, string format)
         {
-            // Reuse the existing operation lock: a package staged by a live
-            // extract/install must not be renamed out from under it.
-            if (OrbisSafePkgOperation.IsPathInActiveOperation(sourcePath))
-            {
-                MessageBoxHelper.ShowWarning(
-                    "This PKG is currently in use by another operation (extract or install). It was not renamed.", false);
-                return null;
-            }
-
             try
             {
                 string destinationFolder = Path.GetDirectoryName(sourcePath) + @"\";

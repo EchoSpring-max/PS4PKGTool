@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -198,26 +197,6 @@ namespace PS4PKGTool.Utilities.PkgInspection
                 // (ShellCommands, Mini Viewer) match "passcode" in the
                 // message to offer the retry prompt.
                 return Failure("Package files could not be listed. " + ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Adds the passcode argument(s) shared by the remaining
-        /// orbis-pub-cmd invocations (extraction, viewer extraction,
-        /// shadps4 install): "--no_passcode" for the sentinel, otherwise
-        /// "--passcode &lt;code&gt;" with the default when none given.
-        /// Retired once those spawns migrate to PkgReader.
-        /// </summary>
-        internal static void AddPasscodeArgument(ProcessStartInfo startInfo, string? passcode)
-        {
-            if (passcode == NoPasscode)
-                startInfo.ArgumentList.Add("--no_passcode");
-            else
-            {
-                startInfo.ArgumentList.Add("--passcode");
-                startInfo.ArgumentList.Add(string.IsNullOrWhiteSpace(passcode)
-                    ? DefaultPasscode
-                    : passcode);
             }
         }
 

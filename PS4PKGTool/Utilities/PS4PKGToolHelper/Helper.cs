@@ -758,30 +758,21 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
                         if (File.Exists(fileExists))
                             continue;
-                        using (var fileStream = File.OpenRead(pkgFile))
+                        try
                         {
-                            LibOrbisPkg.PKG.PkgReader pkgReader = new LibOrbisPkg.PKG.PkgReader(fileStream);
-                            LibOrbisPkg.PKG.Pkg pkgData = pkgReader.ReadPkg();
-                            var metasWithIndices = pkgData.Metas.Metas.Zip(Enumerable.Range(0, pkgData.Metas.Metas.Count), (meta, index) => new { Meta = meta, Index = index });
-
-                            foreach (var metaWithIndex in metasWithIndices)
-                            {
-                                LibOrbisPkg.PKG.MetaEntry meta = metaWithIndex.Meta;
-                                var name = meta.id;
-
-                                if (name.ToString().ToUpper().EndsWith("_AT9"))
-                                {
-                                    var outputPath = Path.Combine(bgmPath, name.ToString().Replace("_AT9", ".AT9").Replace("SND0", finalTitle).SanitizeFileName());
-
-                                    using (var pkgFileStream = File.OpenRead(pkgFile))
-                                    using (var outputFileStream = File.Create(outputPath))
-                                    {
-                                        var entry = new SubStream(pkgFileStream, meta.DataOffset, meta.DataSize);
-                                        outputFileStream.SetLength(meta.DataSize);
-                                        entry.CopyTo(outputFileStream);
-                                    }
-                                }
-                            }
+                            using var reader = new OrbisPkgTool.PkgReader(pkgFile);
+                            // snd0.at9 (entry id 0x1240) is the PS4 BGM track.
+                            var snd0 = reader.Entries.FirstOrDefault(e =>
+                                e.Id == OrbisPkgTool.Pkg.PkgEntryIds.Snd0At9);
+                            if (snd0 == null)
+                                continue;
+                            byte[] at9Bytes = reader.ExtractEntryBytes("Sc0/snd0.at9");
+                            string outputPath = Path.Combine(bgmPath, (finalTitle + ".AT9").SanitizeFileName());
+                            File.WriteAllBytes(outputPath, at9Bytes);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogWarning("BGM extract failed for " + pkgFile + ": " + ex.Message);
                         }
                     }
                 }

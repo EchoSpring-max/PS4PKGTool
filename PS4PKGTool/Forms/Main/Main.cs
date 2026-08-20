@@ -5661,6 +5661,8 @@ namespace PS4PKGTool
 
         private BackgroundWorker _extractWorker;
         private BackgroundWorker _selectedExtractWorker;
+        // Cancels the in-process PkgReader extraction (Stop Extract button).
+        private CancellationTokenSource _extractionCts;
         // Set on the UI thread when Stop Extract is clicked; read by the workers after orbis dies.
         // BackgroundWorker.CancellationPending has no memory barrier, so it can read stale false -
         // this volatile flag is the reliable stop signal.
@@ -5741,6 +5743,8 @@ namespace PS4PKGTool
                     SetExtractionUiEnabled(false); // lock the app - only the stop button stays usable
                     listView1?.Invalidate();       // force the DLV to repaint in its disabled (grey) state
                     listView1?.Refresh();
+                    _extractionCts = new CancellationTokenSource();
+                    CancellationToken ct = _extractionCts.Token;
                     _extractWorker.DoWork += (sender, e) =>
                     {
                         this.Invoke((Action)(() =>
@@ -5758,95 +5762,35 @@ namespace PS4PKGTool
                         extractLocation = $@"{extractLocation}\{PS4_PKG.PS4_Title.SanitizeFileName()}";
                         Tool.CreateDirectoryIfNotExists(extractLocation);
 
-                        // Create ASCII-safe temp output dir (orbis-pub-cmd garbles non-ANSI paths)
-                        // Short temp root - the deep AppData path + long PKG paths (e.g. Ultrawings'
-                        // MSMixedReality schemas) exceed the 260-char MAX_PATH that orbis-pub-cmd allows.
-                        string tempOutputDir = CreateOrbisTempDir("e");
-                        Directory.CreateDirectory(tempOutputDir);
-
-                        // Unicode-safe staging for the orbis-pub-cmd input path.
-                        // Prepare decides the mode: a safe path is passed through
-                        // untouched (no move, no rename, no p4t_v_* directory).
-                        OrbisSafePkgOperation safePkg = null;
+                        // In-process extraction: the PKG is opened read-only and
+                        // every Sc0 + Image0 entry is decrypted straight into the
+                        // destination - no orbis-pub-cmd spawn, no ASCII temp
+                        // staging, no move step. Unicode paths just work.
                         try
                         {
-                            safePkg = OrbisSafePkgOperation.Prepare(origPath);
-                            string pkgPath = safePkg.OrbisPath;
-                            var extractStartInfo = new ProcessStartInfo
-                            {
-                                FileName = AppDataDirectory + "orbis-pub-cmd.exe",
-                                UseShellExecute = false,
-                                RedirectStandardOutput = true,
-                                CreateNoWindow = true
-                            };
-                            extractStartInfo.ArgumentList.Add("img_extract");
-                            extractStartInfo.ArgumentList.Add("--passcode");
-                            extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
-                            OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
-                            extractStartInfo.ArgumentList.Add(pkgPath);
-                            extractStartInfo.ArgumentList.Add(tempOutputDir);
-                            using Process extract = new Process { StartInfo = extractStartInfo };
-                            extract.Start();
-                            Task<string> extractReadTask = extract.StandardOutput.ReadToEndAsync();
-                            if (!extract.WaitForExit(600000))
-                            {
-                                try { extract.Kill(); extract.WaitForExit(); } catch { }
-                            }
-                            string extractOutput = extractReadTask.Result;
+                            using var reader = new OrbisPkgTool.PkgReader(origPath, DefaultOrbisPasscode);
+                            var failures = reader.ExtractAll(extractLocation, null,
+                                new OrbisPkgTool.ExtractAllOptions { CancellationToken = ct });
 
-                            int exitCode = extract.ExitCode;
-                            // exit -1 = killed process (Stop button or timeout) - orbis returns 0 on
-                            // success and 1 on errors, so -1 is the deterministic kill signal.
-                            if (exitCode == -1 || _extractionStopRequested || _extractWorker.CancellationPending)
+                            if (_extractionStopRequested || _extractWorker.CancellationPending)
                             {
                                 e.Cancel = true; // so RunWorkerCompleted shows "Extraction cancelled."
                             }
-                            else if (exitCode != 0)
+                            else if (failures.Count > 0)
                             {
-                                string errMsg = FormatOrbisError(extractOutput);
-                                Logger.LogError($"orbis-pub-cmd exit code: {exitCode}, cancelPending={_extractWorker.CancellationPending}\n{errMsg}");
-                                this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
+                                string summary = string.Join("\n", failures.Take(5).Select(f => $"{f.Path}: {f.Exception.Message}"));
+                                Logger.LogError($"Extraction: {failures.Count} entries failed.\n{summary}");
+                                this.Invoke(() => ShowError($"{failures.Count} entries failed to extract:\n{summary}", true));
                             }
                             else
                             {
-                                // Move extracted files from ASCII temp dir to actual output path
-                                if (Directory.Exists(tempOutputDir))
-                                {
-                                    foreach (string entry in Directory.GetFileSystemEntries(tempOutputDir))
-                                    {
-                                        string dest = Path.Combine(extractLocation, Path.GetFileName(entry));
-                                        try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest dir: " + ex.Message); }
-                                        if (Directory.Exists(entry))
-                                            SafeMoveDirectory(entry, dest);
-                                        else
-                                        {
-                                            try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
-                                            File.Move(entry, dest);
-                                        }
-                                    }
-                                }
                                 Logger.LogInformation($"PKG extracted to \"{extractLocation}\".");
-
                                 this.Invoke(() => ShowInformation($"PKG extracted.", false));
                             }
-
-                            // Clean up temp output dir
-                            try { if (Directory.Exists(tempOutputDir)) Directory.Delete(tempOutputDir, true); } catch (Exception ex) { Logger.LogWarning("Failed to clean temp output dir: " + ex.Message); }
                         }
-                        finally
+                        catch (OperationCanceledException)
                         {
-                            // Staging restoration must run on every exit path -
-                            // success, orbis failure, timeout and cancellation.
-                            if (safePkg != null)
-                            {
-                                OrbisSafePkgRestoreResult restore = safePkg.Restore();
-                                if (!restore.Succeeded)
-                                {
-                                    Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
-                                    if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
-                                        Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
-                                }
-                            }
+                            e.Cancel = true; // Stop Extract pressed mid-extraction
                         }
                     };
                     _extractWorker.RunWorkerCompleted += (sender, e) =>
@@ -5877,7 +5821,8 @@ namespace PS4PKGTool
                 {
                     Logger.LogInformation("Stopping extraction...");
                     Helper.IsOperationRunning = false;
-                    KillProcess("orbis-pub-cmd");
+                    _extractionStopRequested = true; // volatile - reliable across the worker thread
+                    try { _extractionCts?.Cancel(); } catch { }
                     _extractWorker?.CancelAsync();
                     toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
                     toolStripProgressBar1.Value = 0;
@@ -5896,6 +5841,8 @@ namespace PS4PKGTool
             this.Invoke((Action)(() => btnExtractFullPKG.Text = "Stop Extract"));
             this.Invoke((Action)(() => SetExtractionUiEnabled(false))); // lock the app during extraction
             this.Invoke((Action)(() => { listView1?.Invalidate(); listView1?.Refresh(); })); // repaint DLV grey
+            _extractionCts = new CancellationTokenSource();
+            CancellationToken ct = _extractionCts.Token;
             bgw.DoWork += (_, args) =>
             {
                 this.Invoke((Action)(() =>
@@ -5904,15 +5851,15 @@ namespace PS4PKGTool
                     toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
                     toolStripProgressBar1.MarqueeAnimationSpeed = 30;
                 }));
+                string in_path = PKG.SelectedPKGFilename;
+                using var reader = new OrbisPkgTool.PkgReader(in_path, DefaultOrbisPasscode);
                 foreach (var targ_path in nodeList)
                 {
                     if (_extractionStopRequested || bgw.CancellationPending)
                     {
-                        KillProcess("orbis-pub-cmd");
                         args.Cancel = true;
                         break;
                     }
-                    string in_path = PKG.SelectedPKGFilename;
                     string out_path = "";
                     bool isDirectory = targ_path.EndsWith("/") || targ_path.EndsWith("\\");
 
@@ -5974,111 +5921,27 @@ namespace PS4PKGTool
                     Logger.LogInformation($"Extracting {targ_path} ({in_path})..");
                     toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
 
-                    // Unicode-safe staging for the orbis-pub-cmd input path.
-                    // Prepare decides the mode: a safe path is passed through
-                    // untouched (no move, no rename, no p4t_v_* directory).
-                    OrbisSafePkgOperation safePkg = null;
+                    // In-process extraction: no spawn, no temp dir, no move.
+                    // PkgReader.ExtractFile decrypts the entry straight into
+                    // out_path (directories) or the parent of out_path (files).
                     try
                     {
-                        safePkg = OrbisSafePkgOperation.Prepare(in_path);
-                        string safeIn = safePkg.OrbisPath;
-
-                    // Create ASCII-safe temp output path (orbis-pub-cmd garbles non-ANSI paths)
-                    // Short temp root - see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
-                    string tempBase = CreateOrbisTempDir("x");
-                    Directory.CreateDirectory(tempBase);
-                    string tempOutPath = isDirectory
-                        ? tempBase
-                        : Path.Combine(tempBase, Path.GetFileName(out_path));
-
-                    var extractStartInfo = new ProcessStartInfo
-                    {
-                        FileName = AppDataDirectory + "orbis-pub-cmd.exe",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    extractStartInfo.ArgumentList.Add("img_extract");
-                    extractStartInfo.ArgumentList.Add("--passcode");
-                    extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
-                    OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
-                    extractStartInfo.ArgumentList.Add(safeIn + ":" + targ_path);
-                    extractStartInfo.ArgumentList.Add(tempOutPath.Replace(@"/", @"\"));
-                    using Process extract = new Process { StartInfo = extractStartInfo };
-                    extract.Start();
-                    Task<string> extractReadTask = extract.StandardOutput.ReadToEndAsync();
-                    if (!extract.WaitForExit(600000))
-                    {
-                        try { extract.Kill(); extract.WaitForExit(); } catch { }
-                    }
-                    string extractOutput = extractReadTask.Result;
-
-                    {
-                        int exitCode = extract.ExitCode;
-                        // exit -1 = killed process (Stop button or timeout) - see ExtractFullPKG.
-                        if (exitCode == -1 || _extractionStopRequested || bgw.CancellationPending)
-                        {
-                            // User stopped - the killed process returns a non-zero exit code; not a real failure.
-                            // The outer loop's cancellation check will set args.Cancel and the completion shows "Extraction cancelled."
-                        }
-                        else if (exitCode == 0)
-                        {
-                            // Move extracted files from ASCII temp dir to actual output path
-                            if (isDirectory)
-                            {
-                                if (Directory.Exists(tempOutPath))
-                                {
-                                    foreach (string entry in Directory.GetFileSystemEntries(tempOutPath))
-                                    {
-                                        string dest = Path.Combine(out_path, Path.GetFileName(entry));
-                                        try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest dir: " + ex.Message); }
-                                        if (Directory.Exists(entry))
-                                            SafeMoveDirectory(entry, dest);
-                                        else
-                                        {
-                                            try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
-                                            File.Move(entry, dest);
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                if (File.Exists(tempOutPath))
-                                {
-                                    string destDir = Path.GetDirectoryName(out_path);
-                                    if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
-                                        Directory.CreateDirectory(destDir);
-                                    try { if (File.Exists(out_path)) File.Delete(out_path); } catch (Exception ex) { Logger.LogWarning("Failed to delete output file: " + ex.Message); }
-                                    File.Move(tempOutPath, out_path);
-                                }
-                            }
-                            Logger.LogInformation($"File extracted to \"{out_path}\"");
-                        }
+                        ct.ThrowIfCancellationRequested();
+                        if (isDirectory)
+                            reader.ExtractFile(targ_path.TrimEnd('/'), out_path);
                         else
-                        {
-                            string errMsg = FormatOrbisError(extractOutput);
-                            Logger.LogError($"orbis-pub-cmd failed for \"{targ_path}\": exit={exitCode}, cancelPending={bgw.CancellationPending}\n{errMsg}");
-                            this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
-                        }
+                            reader.ExtractFile(targ_path, Path.GetDirectoryName(out_path) ?? extractLocation);
+                        Logger.LogInformation($"File extracted to \"{out_path}\"");
                     }
-                    // Clean up temp dir
-                    try { if (Directory.Exists(tempBase)) Directory.Delete(tempBase, true); } catch (Exception ex) { Logger.LogWarning("Failed to clean temp base dir: " + ex.Message); }
-                    }
-                    finally
+                    catch (OperationCanceledException)
                     {
-                        // Staging restoration must run on every exit path - success,
-                        // orbis failure, timeout, cancellation and unexpected exceptions.
-                        if (safePkg != null)
-                        {
-                            OrbisSafePkgRestoreResult restore = safePkg.Restore();
-                            if (!restore.Succeeded)
-                            {
-                                Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
-                                if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
-                                    Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
-                            }
-                        }
+                        args.Cancel = true;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError($"Extraction failed for \"{targ_path}\": {ex.Message}");
+                        this.Invoke(() => ShowError($"Extraction failed:\n{ex.Message}", true));
                     }
                 }
             };
@@ -6113,72 +5976,30 @@ namespace PS4PKGTool
         }
 
         /// <summary>
-        /// Synchronous version of ExtractSelectedPKGData for drag-drop.
-        /// orbis-pub-cmd needs the target directory to exist, so we pre-create it.
+        /// Synchronous version of ExtractSelectedPKGData for drag-drop. Opens the
+        /// PKG read-only and extracts each entry into the temp drag folder.
         /// </summary>
         private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
         {
             string inPath = PKG.SelectedPKGFilename;
-            // Unicode-safe staging for the orbis-pub-cmd input path.
-            // Prepare decides the mode: a safe path is passed through
-            // untouched (no move, no rename, no p4t_v_* directory).
-            OrbisSafePkgOperation safePkg = null;
-            try
+            using var reader = new OrbisPkgTool.PkgReader(inPath, DefaultOrbisPasscode);
+            foreach (string targ_path in nodeList)
             {
-                safePkg = OrbisSafePkgOperation.Prepare(inPath);
-                string safeIn = safePkg.OrbisPath;
-                foreach (string targ_path in nodeList)
-                {
-                    bool isDirectory = targ_path.EndsWith("/") || targ_path.EndsWith("\\");
+                bool isDirectory = targ_path.EndsWith("/") || targ_path.EndsWith("\\");
 
-                    string out_path = preserveStructure
-                        ? Path.Combine(extractLocation, targ_path.TrimEnd('/').Replace("/", @"\"))
-                        : Path.Combine(extractLocation, Path.GetFileName(targ_path.TrimEnd('/')));
+                string out_path = preserveStructure
+                    ? Path.Combine(extractLocation, targ_path.TrimEnd('/').Replace("/", @"\"))
+                    : Path.Combine(extractLocation, Path.GetFileName(targ_path.TrimEnd('/')));
 
-                    // Pre-create output directory/file path
-                    if (isDirectory)
-                        Directory.CreateDirectory(out_path);
-                    else
-                        Directory.CreateDirectory(Path.GetDirectoryName(out_path) ?? extractLocation);
+                // Pre-create output directory/file path
+                if (isDirectory)
+                    Directory.CreateDirectory(out_path);
+                else
+                    Directory.CreateDirectory(Path.GetDirectoryName(out_path) ?? extractLocation);
 
-                    string arcPath = isDirectory ? targ_path : targ_path.TrimEnd('/');
-                    var extractStartInfo = new ProcessStartInfo
-                    {
-                        FileName = AppDataDirectory + "orbis-pub-cmd.exe",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    extractStartInfo.ArgumentList.Add("img_extract");
-                    extractStartInfo.ArgumentList.Add("--passcode");
-                    extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
-                    OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
-                    extractStartInfo.ArgumentList.Add(safeIn + ":" + arcPath);
-                    extractStartInfo.ArgumentList.Add(out_path);
-                    using var proc = new Process { StartInfo = extractStartInfo };
-                    proc.Start();
-                    Task<string> procReadTask = proc.StandardOutput.ReadToEndAsync();
-                    if (!proc.WaitForExit(600000))
-                    {
-                        try { proc.Kill(); proc.WaitForExit(); } catch { }
-                    }
-                    _ = procReadTask.Result; // drain so a stalled process cannot deadlock the pipe
-                }
-            }
-            finally
-            {
-                // Staging restoration must run on every exit path - success,
-                // orbis failure, timeout, cancellation and unexpected exceptions.
-                if (safePkg != null)
-                {
-                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
-                    if (!restore.Succeeded)
-                    {
-                        Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
-                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
-                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
-                    }
-                }
+                string arcPath = isDirectory ? targ_path.TrimEnd('/') : targ_path;
+                try { reader.ExtractFile(arcPath, isDirectory ? out_path : (Path.GetDirectoryName(out_path) ?? extractLocation)); }
+                catch (Exception ex) { Logger.LogWarning($"Drag-drop extract failed for {targ_path}: {ex.Message}"); }
             }
         }
 
@@ -6550,93 +6371,24 @@ namespace PS4PKGTool
         private void ViewUpdateChangelog()
         {
             string origPath = PKG.SelectedPKGFilename;
-            // Unicode-safe staging for the orbis-pub-cmd input path.
-            // Prepare decides the mode: a safe path is passed through
-            // untouched (no move, no rename, no p4t_v_* directory).
-            OrbisSafePkgOperation safePkg = null;
-            string safePath = origPath;
-            string tempDir = null;
-
             try
             {
-                safePkg = OrbisSafePkgOperation.Prepare(origPath);
-                safePath = safePkg.OrbisPath;
-                tempDir = CreateOrbisTempDir("c"); // short ASCII temp root (see CreateOrbisTempDir)
-                string orbisPubCmdErrorMessage = "";
-                var extractStartInfo = new ProcessStartInfo
+                // In-process extraction of Sc0/changeinfo/changeinfo.xml. The
+                // PKG is opened read-only - no spawn, no ASCII staging.
+                byte[] changeInfoBytes;
+                using (var reader = new OrbisPkgTool.PkgReader(origPath, DefaultOrbisPasscode))
                 {
-                    FileName = AppDataDirectory + "orbis-pub-cmd.exe",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-                extractStartInfo.ArgumentList.Add("img_extract");
-                extractStartInfo.ArgumentList.Add("--passcode");
-                extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
-                OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
-                extractStartInfo.ArgumentList.Add(safePath + ":Sc0/changeinfo/changeinfo.xml");
-                extractStartInfo.ArgumentList.Add(tempDir);
-                using Process extract = new Process { StartInfo = extractStartInfo };
-
-                var orbisErrBuilder = new System.Text.StringBuilder();
-                extract.ErrorDataReceived += (_, ev) => { if (ev.Data != null) orbisErrBuilder.AppendLine(ev.Data); };
-                extract.Start();
-                extract.BeginErrorReadLine();
-                Task<string> extractStdoutTask = extract.StandardOutput.ReadToEndAsync();
-                if (!extract.WaitForExit(600000))
-                {
-                    try { extract.Kill(); extract.WaitForExit(); } catch { }
+                    changeInfoBytes = reader.ExtractEntryBytes("Sc0/changeinfo/changeinfo.xml");
                 }
-                string extractStdout = extractStdoutTask.Result;
-
-                foreach (string line in extractStdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    if (line.Contains("[Error]"))
-                    {
-                        orbisPubCmdErrorMessage = line;
-                        break;
-                    }
-                }
-                // If no error on stdout, check stderr
-                if (string.IsNullOrEmpty(orbisPubCmdErrorMessage))
-                    orbisPubCmdErrorMessage = orbisErrBuilder.ToString().Trim();
-
-                if (orbisPubCmdErrorMessage == "[Error]\tCould not find file or directory. (Sc0/changeinfo/changeinfo.xml)")
-                {
-                    ShowInformation("Change info not available.", true);
-                    return;
-                }
-                else if (orbisPubCmdErrorMessage != "")
-                {
-                    ShowError($"orbis-pub-cmd error:\n{FormatOrbisError(orbisPubCmdErrorMessage)}", true);
-                    return;
-                }
-
-                // Move the extracted changeinfo.xml into AppData where the viewer expects it
-                string foundChangeInfo = Directory.EnumerateFiles(tempDir, "changeinfo.xml", SearchOption.AllDirectories).FirstOrDefault();
-                if (foundChangeInfo != null)
-                    File.Copy(foundChangeInfo, AppDataDirectory + "changeinfo.xml", true);
+                File.WriteAllBytes(AppDataDirectory + "changeinfo.xml", changeInfoBytes);
+            }
+            catch (FileNotFoundException)
+            {
+                ShowInformation("Change info not available.", true);
             }
             catch (Exception ex)
             {
                 ShowError("An error occurred while viewing the update changelog: " + ex.Message, true);
-            }
-            finally
-            {
-                // Staging restoration must run on every exit path - success,
-                // orbis failure, timeout, cancellation and unexpected exceptions.
-                if (safePkg != null)
-                {
-                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
-                    if (!restore.Succeeded)
-                    {
-                        Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
-                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
-                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
-                    }
-                }
-                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
             }
         }
 
@@ -6681,12 +6433,7 @@ namespace PS4PKGTool
 
         private bool CheckOrbisPubCmdExists()
         {
-            if (!File.Exists(OrbisPubCmd))
-            {
-                ShowError($"Missing {Path.GetFileName(OrbisPubCmd)} in AppData.", true);
-                return false;
-            }
-
+            // No orbis-pub-cmd dependency after the PkgReader migration.
             return true;
         }
 
@@ -7527,16 +7274,16 @@ namespace PS4PKGTool
             bool anyRunning = false;
             if (_extractWorker != null && _extractWorker.IsBusy)
             {
-                KillProcess("orbis-pub-cmd");
                 Helper.IsOperationRunning = false;
                 _extractionStopRequested = true; // volatile - reliable across the worker thread
+                try { _extractionCts?.Cancel(); } catch { }
                 _extractWorker.CancelAsync();
                 anyRunning = true;
             }
             if (_selectedExtractWorker != null && _selectedExtractWorker.IsBusy)
             {
-                KillProcess("orbis-pub-cmd");
                 _extractionStopRequested = true; // volatile - reliable across the worker thread
+                try { _extractionCts?.Cancel(); } catch { }
                 _selectedExtractWorker.CancelAsync();
                 anyRunning = true;
             }
@@ -8245,52 +7992,11 @@ namespace PS4PKGTool
 
         private string ExtractSingleEntryForPreview(string pkgPath, string entryPath, string tempDir)
         {
-            // Use the same orbis img_extract call pattern as ExtractFilesSync,
-            // extracting a single entry path into tempDir. Prepare decides the
-            // staging mode: a safe path is passed through untouched.
-            OrbisSafePkgOperation safePkg = null;
-            try
-            {
-                safePkg = OrbisSafePkgOperation.Prepare(pkgPath);
-                var psi = new ProcessStartInfo
-                {
-                    FileName = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                };
-                psi.ArgumentList.Add("img_extract");
-                psi.ArgumentList.Add("--passcode");
-                psi.ArgumentList.Add(DefaultOrbisPasscode);
-                OrbisCommandOptions.AddConfiguredTempPath(psi);
-                psi.ArgumentList.Add(safePkg.OrbisPath + ":" + entryPath);
-                psi.ArgumentList.Add(tempDir);
-                using var proc = new Process { StartInfo = psi };
-                proc.Start();
-                var readTask = proc.StandardOutput.ReadToEndAsync();
-                if (!proc.WaitForExit(600000))
-                {
-                    try { proc.Kill(); proc.WaitForExit(); } catch { }
-                }
-                _ = readTask.Result;
-                string extracted = Directory.EnumerateFiles(tempDir, "*", SearchOption.AllDirectories).FirstOrDefault();
-                return extracted ?? "";
-            }
-            finally
-            {
-                // Staging restoration must run on every exit path - success,
-                // orbis failure, timeout, cancellation and unexpected exceptions.
-                if (safePkg != null)
-                {
-                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
-                    if (!restore.Succeeded)
-                    {
-                        Logger.LogError("Preview failed to restore PKG: " + restore.ErrorMessage);
-                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
-                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
-                    }
-                }
-            }
+            // In-process extraction: the PKG is opened read-only and the entry
+            // is decrypted straight into tempDir. No spawn, no staging.
+            using var reader = new OrbisPkgTool.PkgReader(pkgPath, DefaultOrbisPasscode);
+            reader.ExtractFile(entryPath, tempDir);
+            return Directory.EnumerateFiles(tempDir, "*", SearchOption.AllDirectories).FirstOrDefault() ?? "";
         }
 
         private void PopulateListView(bool showRootNodes = false)

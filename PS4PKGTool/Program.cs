@@ -1,4 +1,6 @@
 ﻿using DarkUI.Config;
+using PS4PKGTool.Shell;
+using PS4PKGTool.Startup;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using System;
@@ -18,7 +20,7 @@ namespace PS4PKGTool
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -34,10 +36,76 @@ namespace PS4PKGTool
             appSettings_ = LoadSettings(SettingFilePath);
 
             // Apply saved theme before showing any form (avoids flash of default)
+            Theme savedTheme = ThemeManager.Presets.FirstOrDefault(theme =>
+                string.Equals(theme.Name, appSettings_.ThemeName, StringComparison.Ordinal));
             int themeIdx = appSettings_.ThemeIndex;
-            if (themeIdx >= 0 && themeIdx < ThemeManager.Presets.Count)
-                ThemeManager.Apply(ThemeManager.Presets[themeIdx]);
+            savedTheme ??= themeIdx >= 0 && themeIdx < ThemeManager.Presets.Count
+                ? ThemeManager.Presets[themeIdx]
+                : null;
+            if (savedTheme != null)
+                ThemeManager.Apply(savedTheme);
 
+            // Explorer shell integration: install/remove the .pkg context
+            // menu (also available from Program Settings).
+            if (args.Length == 1 && string.Equals(args[0], "--shell-register", StringComparison.OrdinalIgnoreCase))
+            {
+                ShellRegistry.Install();
+                appSettings_.ShellIntegrationInstalled = ShellRegistry.IsInstalled();
+                SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+                Logger.LogInformation("Shell integration registered: " + appSettings_.ShellIntegrationInstalled);
+                return;
+            }
+            if (args.Length == 1 && string.Equals(args[0], "--shell-unregister", StringComparison.OrdinalIgnoreCase))
+            {
+                ShellRegistry.Remove();
+                appSettings_.ShellIntegrationInstalled = false;
+                SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+                Logger.LogInformation("Shell integration removed.");
+                return;
+            }
+
+            // Explorer shell integration: PS4PKGTool.exe --shell <cmd> ...
+            // Runs ONLY what the command needs - no Main form, no Mini
+            // Viewer, no library scan.
+            if (ShellCommandRouter.IsShellMode(args))
+            {
+                var shellRequest = ShellCommandRouter.Parse(args);
+                string? shellError = shellRequest == null
+                    ? "The shell command is not recognized.\n\n" +
+                      "Usage:\n" +
+                      "  PS4PKGTool.exe --shell copy <field> <package>...\n" +
+                      "  PS4PKGTool.exe --shell rename <formatId> <package>...\n" +
+                      "  PS4PKGTool.exe --shell validate <package>...\n" +
+                      "  PS4PKGTool.exe --shell extract <package>...\n" +
+                      "  PS4PKGTool.exe --shell install-shadps4 <package>..."
+                    : ShellCommandRouter.ValidatePaths(shellRequest.PackagePaths);
+                if (shellError != null)
+                {
+                    AppMessageBox.Show("PS4 PKG Tool", shellError, AppMessageType.Error, AppMessageButtons.OK);
+                    return;
+                }
+                ShellCommands.Run(shellRequest);
+                return;
+            }
+
+            StartupRoute route = StartupArgumentRouter.Route(args);
+            if (route.Kind == StartupRouteKind.InvalidArguments)
+            {
+                AppMessageBox.Show(
+                    "Mini PKG Viewer",
+                    route.ErrorMessage,
+                    AppMessageType.Error,
+                    AppMessageButtons.OK);
+                return;
+            }
+
+            if (route.Kind == StartupRouteKind.MiniPkgViewer)
+            {
+                Application.Run(new MiniPkgViewerForm(route.PackagePath));
+                return;
+            }
+
+            // Keep the existing no-argument startup path unchanged.
             ChooseStartupForm();
         }
 
@@ -53,10 +121,26 @@ namespace PS4PKGTool
 
         private static void EnsureSettingsFileExists()
         {
-            if (!Directory.Exists(Helper.AppDataDirectory))
+            if (!Directory.Exists(Helper.UserSettingsDirectory))
+                Directory.CreateDirectory(Helper.UserSettingsDirectory);
+
+            // One-time migration: settings used to live next to the exe,
+            // where any clean rebuild wiped them. Move a surviving file so
+            // existing users keep their settings across the move.
+            string legacyPath = Path.Combine(Helper.AppDataDirectory, "Settings.conf");
+            if (!File.Exists(SettingFilePath)
+                && File.Exists(legacyPath)
+                && new FileInfo(legacyPath).Length > 0)
             {
-                Directory.CreateDirectory(Helper.AppDataDirectory);
-                Logger.LogInformation("Creating AppData directory...");
+                try
+                {
+                    File.Move(legacyPath, SettingFilePath);
+                    Logger.LogInformation("Migrated settings to " + SettingFilePath);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogInformation("Settings migration failed: " + ex.Message);
+                }
             }
 
             if (!File.Exists(SettingFilePath) || new FileInfo(SettingFilePath).Length == 0)

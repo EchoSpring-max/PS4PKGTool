@@ -154,7 +154,7 @@ The entire business state lives in a single static class `Helper` with nested st
 ```
 Helper
 ├── static fields: FirstLaunch, FinalizePkgProcess
-├── static paths: AppDataDirectory, OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
+├── static paths: AppDataDirectory (next to exe, wiped by rebuilds), UserSettingsDirectory (%APPDATA%\PS4PKGTool), OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
 ├── RoundBytes(long) → human-readable byte count
 ├── Backport (nested class) — backport tracking via JSON file
 │   ├── BackportInfo (model)
@@ -219,7 +219,7 @@ Helper
 ```
 SettingsManager (static)
 ├── appSettings_ : AppSettings (static instance)
-├── SettingFilePath = "{exe}\AppData\Settings.conf"
+├── SettingFilePath = "%APPDATA%\PS4PKGTool\Settings.conf" (moved out of the build output folder — clean rebuilds used to wipe it; one-time migration from "{exe}\AppData\Settings.conf" in Program.EnsureSettingsFileExists)
 ├── SaveSettings(AppSettings, filePath) → writes key=value flat file
 └── LoadSettings(filePath) → reads key=value flat file → returns AppSettings
 

@@ -21,13 +21,25 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             darkLabelMessage.Text = message;
             darkLabelMessage.MaximumSize = new Size(420, 0);
 
-            // Set accent color based on type
+            // Type → accent color + notification sound. The sound plays only
+            // for these notification dialogs (DarkForm plays it on modal
+            // open when NotificationIcon is set) - plain forms never set
+            // it, so opening Settings etc. stays silent.
             Color accent;
             switch (type)
             {
-                case AppMessageType.Error: accent = Color.FromArgb(220, 80, 80); break;
-                case AppMessageType.Warning: accent = Color.FromArgb(220, 180, 60); break;
-                default: accent = Color.FromArgb(100, 160, 220); break;
+                case AppMessageType.Error:
+                    accent = Color.FromArgb(220, 80, 80);
+                    NotificationIcon = MessageBoxIcon.Error;    // SystemSounds.Hand
+                    break;
+                case AppMessageType.Warning:
+                    accent = Color.FromArgb(220, 180, 60);
+                    NotificationIcon = MessageBoxIcon.Warning;  // SystemSounds.Exclamation
+                    break;
+                default:
+                    accent = Color.FromArgb(100, 160, 220);
+                    NotificationIcon = MessageBoxIcon.Information; // SystemSounds.Asterisk
+                    break;
             }
             darkLabelTitle.ForeColor = accent;
 

@@ -127,12 +127,15 @@ namespace PS4PKGTool
             RpiUninstallDlcPKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallThemePKGToolStripMenuItem2 = new ToolStripMenuItem();
             toolStripSeparatorShadps4 = new ToolStripSeparator();
-            toolStripMenuItemShadps4 = new ToolStripMenuItem();
+            sToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItemShadps4Launch = new ToolStripMenuItem();
             toolStripMenuItemShadps4Install = new ToolStripMenuItem();
+            toolStripMenuItemShadps4OpenManager = new ToolStripMenuItem();
             toolStripMenuItemShadps4InstallSetup = new ToolStripMenuItem();
             toolStripMenuItemShadps4OpenLauncher = new ToolStripMenuItem();
             toolStripMenuItemShadps4Configure = new ToolStripMenuItem();
+            toolStripMenuItemShadps4Manager = new ToolStripMenuItem();
+            toolStripMenuItemTools = new ToolStripMenuItem();
             openAppDataDirectoryToolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem34 = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
@@ -227,15 +230,15 @@ namespace PS4PKGTool
             RpiUninstallDlcPKGToolStripMenuItem1 = new ToolStripMenuItem();
             RpiUninstallThemePKGToolStripMenuItem1 = new ToolStripMenuItem();
             darkStatusStrip1 = new DarkUI.Controls.DarkStatusStrip();
-            toolStripStatusLabel1 = new ToolStripStatusLabel();
-            toolStripStatusLabel3 = new ToolStripStatusLabel();
-            toolStripStatusLabel5 = new ToolStripStatusLabel();
-            toolStripProgressBar1 = new ToolStripProgressBar();
-            toolStripStatusLabel2 = new ToolStripStatusLabel();
-            labelDisplayTotalPKG = new ToolStripStatusLabel();
-            ToolStripSplitButtonTotalPKG = new ToolStripSplitButton();
-            toolStripSplitButton1 = new ToolStripSplitButton();
-            toolStripStatusLabel4 = new ToolStripStatusLabel();
+            toolStripStatusLabel1 = new DarkUI.Controls.DarkToolStripStatusLabel();
+            toolStripStatusLabel3 = new DarkUI.Controls.DarkToolStripStatusLabel();
+            toolStripStatusLabel5 = new DarkUI.Controls.DarkToolStripStatusLabel();
+            toolStripSeparator13 = new DarkUI.Controls.DarkToolStripSeparator();
+            toolStripProgressBar1 = new DarkUI.Controls.DarkToolStripProgressBar();
+            toolStripSeparator14 = new DarkUI.Controls.DarkToolStripSeparator();
+            toolStripStatusLabel2 = new DarkUI.Controls.DarkToolStripStatusLabel();
+            labelDisplayTotalPKG = new DarkUI.Controls.DarkToolStripStatusLabel();
+            toolStripStatusLabel4 = new DarkUI.Controls.DarkToolStripStatusLabel();
             contextMenuTrophy = new DarkUI.Controls.DarkContextMenu();
             ExtractTrophyImageToolStripMenuItem = new ToolStripMenuItem();
             contextMenuEntry = new DarkUI.Controls.DarkContextMenu();
@@ -265,48 +268,52 @@ namespace PS4PKGTool
             ctxListSeparator = new ToolStripSeparator();
             ctxCopyPath = new ToolStripMenuItem();
             ctxCopyName = new ToolStripMenuItem();
-            flatTabControl1 = new DarkUI.Controls.DarkTabControl();
-            tabPage1 = new TabPage();
-            panel2 = new Panel();
+            mainTabControl = new DarkUI.Controls.DarkTabControl();
+            tabPage1 = new DarkUI.Controls.DarkTabPage();
             darkSectionPanel10 = new DarkUI.Controls.DarkSectionPanel();
             darkDataGridView2 = new DarkUI.Controls.DarkDataGridView();
+            grpFilter = new DarkUI.Controls.DarkGroupBox();
+            flpFilter = new FlowLayoutPanel();
+            lblCategory = new DarkUI.Controls.DarkLabel();
+            ccbCategory = new DarkUI.Controls.DarkCheckedComboBox(components);
+            lblRegion = new DarkUI.Controls.DarkLabel();
+            ccbRegion = new DarkUI.Controls.DarkCheckedComboBox(components);
+            lblFilterSysVer = new DarkUI.Controls.DarkLabel();
+            tbFilterSysVer = new DarkUI.Controls.DarkTextBox();
+            lblType = new DarkUI.Controls.DarkLabel();
+            ccbType = new DarkUI.Controls.DarkCheckedComboBox(components);
+            lblShadps4 = new DarkUI.Controls.DarkLabel();
+            ccbShadps4 = new DarkUI.Controls.DarkCheckedComboBox(components);
+            tbSearchGame = new DarkUI.Controls.DarkSearchBox();
+            btnFilterClear = new DarkUI.Controls.DarkButton();
+            flowChips = new DarkUI.Controls.DarkChipsPanel(components);
+            lblFilterCount = new DarkUI.Controls.DarkLabel();
             subTabControl = new DarkUI.Controls.DarkTabControl();
             tabPageTable = new TabPage();
             PKGGridView = new DarkUI.Controls.DarkDataGridView();
-            tbSearchGame = new DarkUI.Controls.DarkSearchBox();
-            pnlFilterBar = new System.Windows.Forms.Panel();
-            btnFilterCategory = new DarkUI.Controls.DarkButton();
-            btnFilterRegion = new DarkUI.Controls.DarkButton();
-            lblFilterSysVer = new DarkUI.Controls.DarkLabel();
-            tbFilterSysVer = new DarkUI.Controls.DarkTextBox();
-            btnFilterType = new DarkUI.Controls.DarkButton();
-            btnFilterCompat = new DarkUI.Controls.DarkButton();
-            flowChips = new System.Windows.Forms.FlowLayoutPanel();
-            lblFilterCount = new DarkUI.Controls.DarkLabel();
-            lblGlvFilterHint = new DarkUI.Controls.DarkLabel();
-            btnGlvFilterClear = new DarkUI.Controls.DarkButton();
             tabPageGroup = new TabPage();
             groupedListView = new DarkUI.Controls.DarkGroupedListView();
             btnGroupExpand = new DarkUI.Controls.DarkButton();
             cbGroupBy = new DarkUI.Controls.DarkComboBox();
             darkLabelGroupBy = new DarkUI.Controls.DarkLabel();
             darkLabelGroupCount = new DarkUI.Controls.DarkLabel();
-            darkSectionPanel9 = new DarkUI.Controls.DarkSectionPanel();
-            panel1 = new Panel();
-            darkLabel1 = new DarkUI.Controls.DarkLabel();
+            lblGlvFilterHint = new DarkUI.Controls.DarkLabel();
             darkSectionPanel8 = new DarkUI.Controls.DarkSectionPanel();
             panel5 = new Panel();
             pictureBox1 = new PictureBox();
             label3 = new DarkUI.Controls.DarkLabel();
-            tabPage2 = new TabPage();
+            darkSectionPanel9 = new DarkUI.Controls.DarkSectionPanel();
+            panel1 = new Panel();
+            darkLabel1 = new DarkUI.Controls.DarkLabel();
+            tabPage2 = new DarkUI.Controls.DarkTabPage();
             TrophyGridView = new DarkUI.Controls.DarkDataGridView();
-            tabPage3 = new TabPage();
+            tabPage3 = new DarkUI.Controls.DarkTabPage();
             flatTabControlBgi = new DarkUI.Controls.DarkTabControl();
             tabPagePic0 = new TabPage();
             pbPIC0 = new PictureBox();
             tabPagePic1 = new TabPage();
             pbPIC1 = new PictureBox();
-            tabPage4 = new TabPage();
+            tabPage4 = new DarkUI.Controls.DarkTabPage();
             panel7 = new Panel();
             darkSectionPanel2 = new DarkUI.Controls.DarkSectionPanel();
             dgvEntryList = new DarkUI.Controls.DarkDataGridView();
@@ -314,24 +321,15 @@ namespace PS4PKGTool
             darkDataGridView4 = new DarkUI.Controls.DarkDataGridView();
             darkSectionPanel1 = new DarkUI.Controls.DarkSectionPanel();
             dgvHeader = new DarkUI.Controls.DarkDataGridView();
-            tabPage7 = new TabPage();
+            tabPage7 = new DarkUI.Controls.DarkTabPage();
             panel6 = new Panel();
-            btnExportTextures = new DarkUI.Controls.DarkButton();
-            btnExportTreeView = new DarkUI.Controls.DarkButton();
-            btnExtractFullPKG = new DarkUI.Controls.DarkButton();
-            darkLabel5 = new DarkUI.Controls.DarkLabel();
-            tbPasscode = new DarkUI.Controls.DarkTextBox();
-            btnViewPKGData = new DarkUI.Controls.DarkButton();
-            darkSectionPanel4 = new DarkUI.Controls.DarkSectionPanel();
-            splitContainer1 = new DarkUI.Controls.DarkSplitContainer();
+            darkSplitContainer1 = new DarkUI.Controls.DarkSplitContainer();
+            splitPane1 = new DarkUI.Controls.DarkSplitPane();
             PKGTreeView = new DarkUI.Controls.DarkTreeView();
-            splitContainer2 = new DarkUI.Controls.DarkSplitContainer();
-            panelListHost = new Panel();
+            splitPane2 = new DarkUI.Controls.DarkSplitPane();
             listView1 = new DarkUI.Controls.DarkListView();
             tbFilterTreeView = new DarkUI.Controls.DarkSearchBox();
-            btnSearchFileInTreeView = new DarkUI.Controls.DarkButton();
-            tbSearchTreeView = new DarkUI.Controls.DarkTextBox();
-            darkLabel6 = new DarkUI.Controls.DarkLabel();
+            splitPane3 = new DarkUI.Controls.DarkSplitPane();
             sectionFileViewer = new DarkUI.Controls.DarkSectionPanel();
             btnAssetBack = new DarkUI.Controls.DarkButton();
             fileViewerBody = new Panel();
@@ -340,7 +338,14 @@ namespace PS4PKGTool
             txtPreview = new DarkUI.Controls.DarkTextBox();
             txtHexPreview = new DarkUI.Controls.DarkTextBox();
             lblFileViewerInfo = new DarkUI.Controls.DarkLabel();
-            _tabLog = new TabPage();
+            darkHeaderBar1 = new DarkUI.Controls.DarkHeaderBar();
+            darkLabel5 = new DarkUI.Controls.DarkLabel();
+            btnExportTextures = new DarkUI.Controls.DarkButton();
+            tbPasscode = new DarkUI.Controls.DarkTextBox();
+            btnExportTreeView = new DarkUI.Controls.DarkButton();
+            btnExtractFullPKG = new DarkUI.Controls.DarkButton();
+            btnViewPKGData = new DarkUI.Controls.DarkButton();
+            _tabLog = new DarkUI.Controls.DarkTabPage();
             _tbLogBox = new DarkUI.Controls.DarkTextBox();
             columnHeader7 = new ColumnHeader();
             columnHeader8 = new ColumnHeader();
@@ -395,20 +400,21 @@ namespace PS4PKGTool
             contextMenuBackgroundImage.SuspendLayout();
             contextMenuExtractNode.SuspendLayout();
             contextMenuExtractListView.SuspendLayout();
-            flatTabControl1.SuspendLayout();
+            mainTabControl.SuspendLayout();
             tabPage1.SuspendLayout();
-            panel2.SuspendLayout();
             darkSectionPanel10.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)darkDataGridView2).BeginInit();
+            grpFilter.SuspendLayout();
+            flpFilter.SuspendLayout();
             subTabControl.SuspendLayout();
             tabPageTable.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)PKGGridView).BeginInit();
             tabPageGroup.SuspendLayout();
-            darkSectionPanel9.SuspendLayout();
-            panel1.SuspendLayout();
             darkSectionPanel8.SuspendLayout();
             panel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
+            darkSectionPanel9.SuspendLayout();
+            panel1.SuspendLayout();
             tabPage2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)TrophyGridView).BeginInit();
             tabPage3.SuspendLayout();
@@ -427,13 +433,14 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)dgvHeader).BeginInit();
             tabPage7.SuspendLayout();
             panel6.SuspendLayout();
-            darkSectionPanel4.SuspendLayout();
-            splitContainer1.SuspendLayout();
-            splitContainer2.SuspendLayout();
-            panelListHost.SuspendLayout();
+            darkSplitContainer1.SuspendLayout();
+            splitPane1.SuspendLayout();
+            splitPane2.SuspendLayout();
+            splitPane3.SuspendLayout();
             sectionFileViewer.SuspendLayout();
             fileViewerBody.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picPreview).BeginInit();
+            darkHeaderBar1.SuspendLayout();
             _tabLog.SuspendLayout();
             contextMenuGLV.SuspendLayout();
             tabPage5.SuspendLayout();
@@ -443,7 +450,6 @@ namespace PS4PKGTool
             // 
             // label1
             // 
-            label1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label1.Location = new System.Drawing.Point(0, 0);
             label1.Name = "label1";
             label1.Size = new System.Drawing.Size(100, 23);
@@ -452,7 +458,6 @@ namespace PS4PKGTool
             // label2
             // 
             label2.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Italic);
-            label2.ForeColor = System.Drawing.Color.Silver;
             label2.Location = new System.Drawing.Point(154, 471);
             label2.Name = "label2";
             label2.Size = new System.Drawing.Size(0, 14);
@@ -552,12 +557,10 @@ namespace PS4PKGTool
             // 
             // contextMenuPKGGridView
             // 
-            contextMenuPKGGridView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuPKGGridView.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuPKGGridView.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21, toolStripSeparatorShadps4, toolStripMenuItemShadps4 });
+            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21, toolStripSeparatorShadps4, sToolStripMenuItem, toolStripMenuItemShadps4Launch, toolStripMenuItemShadps4Install, toolStripMenuItemShadps4OpenManager });
             contextMenuPKGGridView.Name = "DarkContextMenuStrip1";
-            contextMenuPKGGridView.Size = new System.Drawing.Size(248, 487);
+            contextMenuPKGGridView.Size = new System.Drawing.Size(248, 553);
             // 
             // toolStripMenuItem94
             // 
@@ -1250,21 +1253,21 @@ namespace PS4PKGTool
             toolStripSeparatorShadps4.Name = "toolStripSeparatorShadps4";
             toolStripSeparatorShadps4.Size = new System.Drawing.Size(244, 6);
             // 
-            // toolStripMenuItemShadps4
+            // sToolStripMenuItem
             // 
-            toolStripMenuItemShadps4.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            toolStripMenuItemShadps4.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItemShadps4Launch, toolStripMenuItemShadps4Install, toolStripMenuItemShadps4InstallSetup, toolStripMenuItemShadps4OpenLauncher, toolStripMenuItemShadps4Configure });
-            toolStripMenuItemShadps4.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            toolStripMenuItemShadps4.Name = "toolStripMenuItemShadps4";
-            toolStripMenuItemShadps4.Size = new System.Drawing.Size(247, 22);
-            toolStripMenuItemShadps4.Text = "shadPS4";
+            sToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            sToolStripMenuItem.Enabled = false;
+            sToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            sToolStripMenuItem.Name = "sToolStripMenuItem";
+            sToolStripMenuItem.Size = new System.Drawing.Size(247, 22);
+            sToolStripMenuItem.Text = "shadPS4";
             // 
             // toolStripMenuItemShadps4Launch
             // 
             toolStripMenuItemShadps4Launch.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripMenuItemShadps4Launch.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItemShadps4Launch.Name = "toolStripMenuItemShadps4Launch";
-            toolStripMenuItemShadps4Launch.Size = new System.Drawing.Size(239, 22);
+            toolStripMenuItemShadps4Launch.Size = new System.Drawing.Size(247, 22);
             toolStripMenuItemShadps4Launch.Text = "Launch";
             toolStripMenuItemShadps4Launch.Click += toolStripMenuItemShadps4Launch_Click;
             // 
@@ -1273,9 +1276,18 @@ namespace PS4PKGTool
             toolStripMenuItemShadps4Install.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripMenuItemShadps4Install.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripMenuItemShadps4Install.Name = "toolStripMenuItemShadps4Install";
-            toolStripMenuItemShadps4Install.Size = new System.Drawing.Size(239, 22);
-            toolStripMenuItemShadps4Install.Text = "Install Game to shadPS4 Library";
+            toolStripMenuItemShadps4Install.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4Install.Text = "Install to shadPS4...";
             toolStripMenuItemShadps4Install.Click += toolStripMenuItemShadps4Install_Click;
+            // 
+            // toolStripMenuItemShadps4OpenManager
+            // 
+            toolStripMenuItemShadps4OpenManager.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4OpenManager.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4OpenManager.Name = "toolStripMenuItemShadps4OpenManager";
+            toolStripMenuItemShadps4OpenManager.Size = new System.Drawing.Size(247, 22);
+            toolStripMenuItemShadps4OpenManager.Text = "Open shadPS4 Manager";
+            toolStripMenuItemShadps4OpenManager.Click += toolStripMenuItemShadps4OpenManager_Click;
             // 
             // toolStripMenuItemShadps4InstallSetup
             // 
@@ -1303,6 +1315,24 @@ namespace PS4PKGTool
             toolStripMenuItemShadps4Configure.Size = new System.Drawing.Size(239, 22);
             toolStripMenuItemShadps4Configure.Text = "Configure shadPS4...";
             toolStripMenuItemShadps4Configure.Click += toolStripMenuItemShadps4Configure_Click;
+            // 
+            // toolStripMenuItemShadps4Manager
+            // 
+            toolStripMenuItemShadps4Manager.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemShadps4Manager.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemShadps4Manager.Name = "toolStripMenuItemShadps4Manager";
+            toolStripMenuItemShadps4Manager.Size = new System.Drawing.Size(168, 22);
+            toolStripMenuItemShadps4Manager.Text = "shadPS4 Manager";
+            toolStripMenuItemShadps4Manager.Click += toolStripMenuItemShadps4Manager_Click;
+            // 
+            // toolStripMenuItemTools
+            // 
+            toolStripMenuItemTools.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripMenuItemTools.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItemShadps4Manager });
+            toolStripMenuItemTools.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripMenuItemTools.Name = "toolStripMenuItemTools";
+            toolStripMenuItemTools.Size = new System.Drawing.Size(47, 20);
+            toolStripMenuItemTools.Text = "Tools";
             // 
             // openAppDataDirectoryToolStripMenuItem2
             // 
@@ -1360,8 +1390,7 @@ namespace PS4PKGTool
             // 
             label8.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             label8.Font = new System.Drawing.Font("Segoe UI", 9F);
-            label8.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            label8.Location = new System.Drawing.Point(959, 649);
+            label8.Location = new System.Drawing.Point(1194, 649);
             label8.Name = "label8";
             label8.Size = new System.Drawing.Size(0, 15);
             label8.TabIndex = 82;
@@ -1369,14 +1398,12 @@ namespace PS4PKGTool
             // 
             // darkMenuStrip1
             // 
-            darkMenuStrip1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             darkMenuStrip1.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkMenuStrip1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkMenuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem2, toolStripMenuItem144 });
+            darkMenuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem2, toolStripMenuItemTools, toolStripMenuItem144 });
             darkMenuStrip1.Location = new System.Drawing.Point(0, 0);
             darkMenuStrip1.Name = "darkMenuStrip1";
             darkMenuStrip1.Padding = new Padding(3, 2, 0, 2);
-            darkMenuStrip1.Size = new System.Drawing.Size(984, 24);
+            darkMenuStrip1.Size = new System.Drawing.Size(1219, 24);
             darkMenuStrip1.TabIndex = 84;
             darkMenuStrip1.Text = "darkMenuStrip1";
             // 
@@ -2148,82 +2175,86 @@ namespace PS4PKGTool
             // 
             // darkStatusStrip1
             // 
-            darkStatusStrip1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             darkStatusStrip1.Font = new System.Drawing.Font("Segoe UI", 8.25F);
-            darkStatusStrip1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkStatusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel3, toolStripStatusLabel5, toolStripProgressBar1, toolStripStatusLabel2, labelDisplayTotalPKG, ToolStripSplitButtonTotalPKG, toolStripSplitButton1, toolStripStatusLabel4 });
-            darkStatusStrip1.Location = new System.Drawing.Point(0, 633);
+            darkStatusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel3, toolStripStatusLabel5, toolStripSeparator13, toolStripProgressBar1, toolStripSeparator14, toolStripStatusLabel2, labelDisplayTotalPKG, toolStripStatusLabel4 });
+            darkStatusStrip1.Location = new System.Drawing.Point(0, 789);
             darkStatusStrip1.Name = "darkStatusStrip1";
             darkStatusStrip1.Padding = new Padding(0, 5, 0, 2);
-            darkStatusStrip1.Size = new System.Drawing.Size(984, 28);
+            darkStatusStrip1.Size = new System.Drawing.Size(1219, 28);
             darkStatusStrip1.TabIndex = 85;
             darkStatusStrip1.Text = "darkStatusStrip1";
             // 
             // toolStripStatusLabel1
             // 
+            toolStripStatusLabel1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             toolStripStatusLabel1.Size = new System.Drawing.Size(13, 16);
             toolStripStatusLabel1.Text = "  ";
             // 
             // toolStripStatusLabel3
             // 
-            toolStripStatusLabel3.ForeColor = System.Drawing.Color.Silver;
+            toolStripStatusLabel3.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripStatusLabel3.Name = "toolStripStatusLabel3";
             toolStripStatusLabel3.Size = new System.Drawing.Size(0, 16);
             // 
             // toolStripStatusLabel5
             // 
+            toolStripStatusLabel5.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripStatusLabel5.Name = "toolStripStatusLabel5";
             toolStripStatusLabel5.Size = new System.Drawing.Size(0, 16);
             // 
+            // toolStripSeparator13
+            // 
+            toolStripSeparator13.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripSeparator13.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripSeparator13.Margin = new Padding(0, 0, 2, 0);
+            toolStripSeparator13.Name = "toolStripSeparator13";
+            toolStripSeparator13.Size = new System.Drawing.Size(6, 21);
+            // 
             // toolStripProgressBar1
             // 
+            toolStripProgressBar1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripProgressBar1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripProgressBar1.Marquee = false;
             toolStripProgressBar1.Name = "toolStripProgressBar1";
-            toolStripProgressBar1.Size = new System.Drawing.Size(298, 15);
+            toolStripProgressBar1.Size = new System.Drawing.Size(298, 19);
+            // 
+            // toolStripSeparator14
+            // 
+            toolStripSeparator14.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolStripSeparator14.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolStripSeparator14.Margin = new Padding(0, 0, 2, 0);
+            toolStripSeparator14.Name = "toolStripSeparator14";
+            toolStripSeparator14.Size = new System.Drawing.Size(6, 21);
             // 
             // toolStripStatusLabel2
             // 
+            toolStripStatusLabel2.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripStatusLabel2.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripStatusLabel2.Font = new System.Drawing.Font("Segoe UI", 8.25F);
-            toolStripStatusLabel2.ForeColor = System.Drawing.Color.Silver;
             toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            toolStripStatusLabel2.Size = new System.Drawing.Size(474, 16);
+            toolStripStatusLabel2.Size = new System.Drawing.Size(863, 16);
             toolStripStatusLabel2.Spring = true;
             toolStripStatusLabel2.Text = "... ";
             toolStripStatusLabel2.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // labelDisplayTotalPKG
             // 
+            labelDisplayTotalPKG.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             labelDisplayTotalPKG.Name = "labelDisplayTotalPKG";
             labelDisplayTotalPKG.Size = new System.Drawing.Size(16, 16);
             labelDisplayTotalPKG.Text = "...";
             // 
-            // ToolStripSplitButtonTotalPKG
-            // 
-            ToolStripSplitButtonTotalPKG.ForeColor = System.Drawing.Color.Silver;
-            ToolStripSplitButtonTotalPKG.Name = "ToolStripSplitButtonTotalPKG";
-            ToolStripSplitButtonTotalPKG.Size = new System.Drawing.Size(72, 19);
-            ToolStripSplitButtonTotalPKG.Text = "Filter PKG";
-            // 
-            // toolStripSplitButton1
-            // 
-            toolStripSplitButton1.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            toolStripSplitButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
-            toolStripSplitButton1.Name = "toolStripSplitButton1";
-            toolStripSplitButton1.Size = new System.Drawing.Size(96, 19);
-            toolStripSplitButton1.Text = "Hard disk info";
-            // 
             // toolStripStatusLabel4
             // 
+            toolStripStatusLabel4.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripStatusLabel4.Name = "toolStripStatusLabel4";
             toolStripStatusLabel4.Size = new System.Drawing.Size(13, 16);
             toolStripStatusLabel4.Text = "  ";
             // 
             // contextMenuTrophy
             // 
-            contextMenuTrophy.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuTrophy.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuTrophy.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuTrophy.Items.AddRange(new ToolStripItem[] { ExtractTrophyImageToolStripMenuItem });
             contextMenuTrophy.Name = "DarkContextMenu1";
             contextMenuTrophy.Size = new System.Drawing.Size(174, 26);
@@ -2239,9 +2270,7 @@ namespace PS4PKGTool
             // 
             // contextMenuEntry
             // 
-            contextMenuEntry.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuEntry.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuEntry.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuEntry.Items.AddRange(new ToolStripItem[] { ExtractAllEntryToolStripMenuItem, ExtractDecryptedEntryToolStripMenuItem });
             contextMenuEntry.Name = "DarkContextMenuBitmap";
             contextMenuEntry.Size = new System.Drawing.Size(211, 48);
@@ -2272,9 +2301,7 @@ namespace PS4PKGTool
             // 
             // contextMenuOfficialUpdate
             // 
-            contextMenuOfficialUpdate.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuOfficialUpdate.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuOfficialUpdate.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuOfficialUpdate.Items.AddRange(new ToolStripItem[] { copyURLToolStripMenuItem, downloadSelectedPKGUpdateToolStripMenuItem });
             contextMenuOfficialUpdate.Name = "DarkContextMenuPkgUpdate";
             contextMenuOfficialUpdate.Size = new System.Drawing.Size(215, 48);
@@ -2297,9 +2324,7 @@ namespace PS4PKGTool
             // 
             // contextMenuBackgroundImage
             // 
-            contextMenuBackgroundImage.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuBackgroundImage.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuBackgroundImage.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuBackgroundImage.Items.AddRange(new ToolStripItem[] { saveImageToolStripMenuItem, SetImageAsDesktopBackgroundToolStripMenuItem });
             contextMenuBackgroundImage.Name = "BitmapPIC0DarkContextMenu";
             contextMenuBackgroundImage.Size = new System.Drawing.Size(204, 48);
@@ -2324,9 +2349,7 @@ namespace PS4PKGTool
             // 
             // contextMenuExtractNode
             // 
-            contextMenuExtractNode.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuExtractNode.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuExtractNode.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuExtractNode.Items.AddRange(new ToolStripItem[] { ctxExpandNode, ctxCollapseNode, ctxTreeSeparator, expandAllToolStripMenuItem, collapseAllNodeToolStripMenuItem, extractNodeToolStripMenuItem });
             contextMenuExtractNode.Name = "DarkContextMenuExtractNode";
             contextMenuExtractNode.Size = new System.Drawing.Size(183, 121);
@@ -2406,16 +2429,16 @@ namespace PS4PKGTool
             // 
             darkSectionPanel7.Dock = DockStyle.Fill;
             darkSectionPanel7.Location = new System.Drawing.Point(6, 6);
+            darkSectionPanel7.Margin = new Padding(6);
             darkSectionPanel7.Name = "darkSectionPanel7";
+            darkSectionPanel7.Padding = new Padding(12);
             darkSectionPanel7.SectionHeader = null;
             darkSectionPanel7.Size = new System.Drawing.Size(288, 225);
             darkSectionPanel7.TabIndex = 95;
             // 
             // contextMenuExtractListView
             // 
-            contextMenuExtractListView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuExtractListView.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuExtractListView.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuExtractListView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem32, ctxExtractFolder, ctxListSeparator, ctxCopyPath, ctxCopyName });
             contextMenuExtractListView.Name = "DarkContextMenuExtractFromListView";
             contextMenuExtractListView.Size = new System.Drawing.Size(274, 99);
@@ -2464,61 +2487,51 @@ namespace PS4PKGTool
             ctxCopyName.Text = "Copy filename";
             ctxCopyName.Click += CtxCopyName_Click;
             // 
-            // flatTabControl1
+            // mainTabControl
             // 
-            flatTabControl1.AllowDrop = true;
-            flatTabControl1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            flatTabControl1.Controls.Add(tabPage1);
-            flatTabControl1.Controls.Add(tabPage2);
-            flatTabControl1.Controls.Add(tabPage3);
-            flatTabControl1.Controls.Add(tabPage4);
-            flatTabControl1.Controls.Add(tabPage7);
-            flatTabControl1.Controls.Add(_tabLog);
-            flatTabControl1.Font = new System.Drawing.Font("Segoe UI", 9F);
-            flatTabControl1.ItemSize = new System.Drawing.Size(121, 28);
-            flatTabControl1.Location = new System.Drawing.Point(12, 38);
-            flatTabControl1.Margin = new Padding(3, 2, 3, 2);
-            flatTabControl1.Name = "flatTabControl1";
-            flatTabControl1.Padding = new System.Drawing.Point(0, 0);
-            flatTabControl1.SelectedIndex = 0;
-            flatTabControl1.Size = new System.Drawing.Size(959, 592);
-            flatTabControl1.TabIndex = 91;
+            mainTabControl.AllowDrop = true;
+            mainTabControl.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            mainTabControl.Controls.Add(tabPage1);
+            mainTabControl.Controls.Add(tabPage2);
+            mainTabControl.Controls.Add(tabPage3);
+            mainTabControl.Controls.Add(tabPage4);
+            mainTabControl.Controls.Add(tabPage7);
+            mainTabControl.Controls.Add(_tabLog);
+            mainTabControl.Font = new System.Drawing.Font("Segoe UI", 9F);
+            mainTabControl.ItemSize = new System.Drawing.Size(121, 28);
+            mainTabControl.Location = new System.Drawing.Point(12, 38);
+            mainTabControl.Margin = new Padding(3, 2, 3, 2);
+            mainTabControl.Name = "mainTabControl";
+            mainTabControl.Padding = new System.Drawing.Point(0, 0);
+            mainTabControl.SelectedIndex = 0;
+            mainTabControl.Size = new System.Drawing.Size(1194, 748);
+            mainTabControl.TabIndex = 91;
             // 
             // tabPage1
             // 
             tabPage1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabPage1.Controls.Add(panel2);
+            tabPage1.Controls.Add(darkSectionPanel10);
+            tabPage1.Controls.Add(grpFilter);
+            tabPage1.Controls.Add(subTabControl);
+            tabPage1.Controls.Add(darkSectionPanel8);
+            tabPage1.Controls.Add(darkSectionPanel9);
             tabPage1.ForeColor = System.Drawing.Color.Gainsboro;
             tabPage1.Location = new System.Drawing.Point(4, 32);
-            tabPage1.Margin = new Padding(3, 2, 3, 2);
             tabPage1.Name = "tabPage1";
-            tabPage1.Padding = new Padding(3, 2, 3, 2);
-            tabPage1.Size = new System.Drawing.Size(951, 556);
+            tabPage1.Padding = new Padding(12);
+            tabPage1.Size = new System.Drawing.Size(1186, 712);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "PKG List";
-            // 
-            // panel2
-            // 
-            panel2.Controls.Add(darkSectionPanel10);
-            panel2.Controls.Add(subTabControl);
-            panel2.Controls.Add(darkSectionPanel9);
-            panel2.Controls.Add(darkSectionPanel8);
-            panel2.Dock = DockStyle.Fill;
-            panel2.Location = new System.Drawing.Point(3, 2);
-            panel2.Name = "panel2";
-            panel2.Size = new System.Drawing.Size(945, 552);
-            panel2.TabIndex = 93;
             // 
             // darkSectionPanel10
             // 
             darkSectionPanel10.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
-            darkSectionPanel10.BorderStyle = BorderStyle.FixedSingle;
             darkSectionPanel10.Controls.Add(darkDataGridView2);
-            darkSectionPanel10.Location = new System.Drawing.Point(683, 358);
-            darkSectionPanel10.Margin = new Padding(3, 2, 3, 2);
+            darkSectionPanel10.Location = new System.Drawing.Point(911, 389);
+            darkSectionPanel10.Margin = new Padding(6);
             darkSectionPanel10.Name = "darkSectionPanel10";
             darkSectionPanel10.SectionHeader = "Param.sfo";
-            darkSectionPanel10.Size = new System.Drawing.Size(259, 190);
+            darkSectionPanel10.Size = new System.Drawing.Size(259, 309);
             darkSectionPanel10.TabIndex = 90;
             // 
             // darkDataGridView2
@@ -2537,8 +2550,180 @@ namespace PS4PKGTool
             darkDataGridView2.ReadOnly = true;
             darkDataGridView2.RowTemplate.Height = 23;
             darkDataGridView2.ScrollBars = ScrollBars.Horizontal;
-            darkDataGridView2.Size = new System.Drawing.Size(255, 162);
+            darkDataGridView2.Size = new System.Drawing.Size(257, 283);
             darkDataGridView2.TabIndex = 76;
+            // 
+            // grpFilter
+            // 
+            grpFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grpFilter.Controls.Add(flpFilter);
+            grpFilter.Controls.Add(flowChips);
+            grpFilter.Controls.Add(lblFilterCount);
+            grpFilter.Font = new System.Drawing.Font("Segoe UI", 9F);
+            grpFilter.Location = new System.Drawing.Point(12, 18);
+            grpFilter.Margin = new Padding(6);
+            grpFilter.Name = "grpFilter";
+            grpFilter.Padding = new Padding(12);
+            grpFilter.Size = new System.Drawing.Size(884, 127);
+            grpFilter.TabIndex = 92;
+            grpFilter.TabStop = false;
+            grpFilter.Text = "Filters";
+            grpFilter.Resize += grpFilter_Resize;
+            // 
+            // flpFilter
+            // 
+            flpFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            flpFilter.BackColor = System.Drawing.Color.Transparent;
+            flpFilter.Controls.Add(lblCategory);
+            flpFilter.Controls.Add(ccbCategory);
+            flpFilter.Controls.Add(lblRegion);
+            flpFilter.Controls.Add(ccbRegion);
+            flpFilter.Controls.Add(lblFilterSysVer);
+            flpFilter.Controls.Add(tbFilterSysVer);
+            flpFilter.Controls.Add(lblType);
+            flpFilter.Controls.Add(ccbType);
+            flpFilter.Controls.Add(lblShadps4);
+            flpFilter.Controls.Add(ccbShadps4);
+            flpFilter.Controls.Add(tbSearchGame);
+            flpFilter.Controls.Add(btnFilterClear);
+            flpFilter.Location = new System.Drawing.Point(12, 28);
+            flpFilter.Name = "flpFilter";
+            flpFilter.Size = new System.Drawing.Size(858, 59);
+            flpFilter.TabIndex = 0;
+            // 
+            // lblCategory
+            // 
+            lblCategory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblCategory.Location = new System.Drawing.Point(0, 5);
+            lblCategory.Margin = new Padding(0, 5, 4, 0);
+            lblCategory.Name = "lblCategory";
+            lblCategory.Size = new System.Drawing.Size(55, 15);
+            lblCategory.TabIndex = 0;
+            lblCategory.Text = "Category";
+            // 
+            // ccbCategory
+            // 
+            ccbCategory.ItemHeight = 18;
+            ccbCategory.Location = new System.Drawing.Point(59, 0);
+            ccbCategory.Margin = new Padding(0, 0, 12, 4);
+            ccbCategory.Name = "ccbCategory";
+            ccbCategory.Size = new System.Drawing.Size(150, 24);
+            ccbCategory.TabIndex = 1;
+            // 
+            // lblRegion
+            // 
+            lblRegion.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblRegion.Location = new System.Drawing.Point(221, 5);
+            lblRegion.Margin = new Padding(0, 5, 4, 0);
+            lblRegion.Name = "lblRegion";
+            lblRegion.Size = new System.Drawing.Size(44, 15);
+            lblRegion.TabIndex = 2;
+            lblRegion.Text = "Region";
+            // 
+            // ccbRegion
+            // 
+            ccbRegion.ItemHeight = 18;
+            ccbRegion.Location = new System.Drawing.Point(269, 0);
+            ccbRegion.Margin = new Padding(0, 0, 12, 4);
+            ccbRegion.Name = "ccbRegion";
+            ccbRegion.Size = new System.Drawing.Size(150, 24);
+            ccbRegion.TabIndex = 3;
+            // 
+            // lblFilterSysVer
+            // 
+            lblFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblFilterSysVer.Location = new System.Drawing.Point(431, 5);
+            lblFilterSysVer.Margin = new Padding(0, 5, 4, 0);
+            lblFilterSysVer.Name = "lblFilterSysVer";
+            lblFilterSysVer.Size = new System.Drawing.Size(107, 15);
+            lblFilterSysVer.TabIndex = 4;
+            lblFilterSysVer.Text = "System Version ≥";
+            // 
+            // tbFilterSysVer
+            // 
+            tbFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbFilterSysVer.Location = new System.Drawing.Point(542, 0);
+            tbFilterSysVer.Margin = new Padding(0, 0, 12, 4);
+            tbFilterSysVer.Name = "tbFilterSysVer";
+            tbFilterSysVer.Size = new System.Drawing.Size(55, 23);
+            tbFilterSysVer.TabIndex = 5;
+            tbFilterSysVer.TextChanged += tbFilterSysVer_TextChanged;
+            // 
+            // lblType
+            // 
+            lblType.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblType.Location = new System.Drawing.Point(609, 5);
+            lblType.Margin = new Padding(0, 5, 4, 0);
+            lblType.Name = "lblType";
+            lblType.Size = new System.Drawing.Size(32, 15);
+            lblType.TabIndex = 6;
+            lblType.Text = "Type";
+            // 
+            // ccbType
+            // 
+            ccbType.ItemHeight = 18;
+            ccbType.Location = new System.Drawing.Point(645, 0);
+            ccbType.Margin = new Padding(0, 0, 12, 4);
+            ccbType.Name = "ccbType";
+            ccbType.Size = new System.Drawing.Size(135, 24);
+            ccbType.TabIndex = 7;
+            // 
+            // lblShadps4
+            // 
+            lblShadps4.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblShadps4.Location = new System.Drawing.Point(792, 5);
+            lblShadps4.Margin = new Padding(0, 5, 4, 0);
+            lblShadps4.Name = "lblShadps4";
+            lblShadps4.Size = new System.Drawing.Size(52, 15);
+            lblShadps4.TabIndex = 8;
+            lblShadps4.Text = "ShadPS4";
+            // 
+            // ccbShadps4
+            // 
+            ccbShadps4.ItemHeight = 18;
+            ccbShadps4.Location = new System.Drawing.Point(0, 28);
+            ccbShadps4.Margin = new Padding(0, 0, 12, 4);
+            ccbShadps4.Name = "ccbShadps4";
+            ccbShadps4.Size = new System.Drawing.Size(150, 24);
+            ccbShadps4.TabIndex = 9;
+            // 
+            // tbSearchGame
+            // 
+            tbSearchGame.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbSearchGame.Location = new System.Drawing.Point(162, 28);
+            tbSearchGame.Margin = new Padding(0, 0, 12, 4);
+            tbSearchGame.Name = "tbSearchGame";
+            tbSearchGame.Placeholder = "[Filename]/[Title]/[ID]";
+            tbSearchGame.Size = new System.Drawing.Size(296, 24);
+            tbSearchGame.TabIndex = 86;
+            tbSearchGame.SearchTextChanged += TbSearchGame_TextChanged;
+            // 
+            // btnFilterClear
+            // 
+            btnFilterClear.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnFilterClear.Location = new System.Drawing.Point(470, 28);
+            btnFilterClear.Margin = new Padding(0, 0, 0, 4);
+            btnFilterClear.Name = "btnFilterClear";
+            btnFilterClear.Size = new System.Drawing.Size(64, 24);
+            btnFilterClear.TabIndex = 87;
+            btnFilterClear.Text = "Clear";
+            btnFilterClear.Click += btnFilterClear_Click;
+            // 
+            // flowChips
+            // 
+            flowChips.Location = new System.Drawing.Point(12, 85);
+            flowChips.Name = "flowChips";
+            flowChips.Padding = new Padding(2);
+            flowChips.Size = new System.Drawing.Size(838, 30);
+            flowChips.TabIndex = 10;
+            // 
+            // lblFilterCount
+            // 
+            lblFilterCount.Font = new System.Drawing.Font("Segoe UI", 8F);
+            lblFilterCount.Location = new System.Drawing.Point(555, 74);
+            lblFilterCount.Name = "lblFilterCount";
+            lblFilterCount.Size = new System.Drawing.Size(104, 15);
+            lblFilterCount.TabIndex = 7;
             // 
             // subTabControl
             // 
@@ -2548,156 +2733,47 @@ namespace PS4PKGTool
             subTabControl.Controls.Add(tabPageGroup);
             subTabControl.Font = new System.Drawing.Font("Segoe UI", 9F);
             subTabControl.ItemSize = new System.Drawing.Size(84, 28);
-            subTabControl.Location = new System.Drawing.Point(3, -2);
+            subTabControl.Location = new System.Drawing.Point(12, 157);
+            subTabControl.Margin = new Padding(6);
             subTabControl.Name = "subTabControl";
             subTabControl.Padding = new System.Drawing.Point(0, 0);
             subTabControl.SelectedIndex = 0;
-            subTabControl.Size = new System.Drawing.Size(676, 550);
+            subTabControl.Size = new System.Drawing.Size(884, 541);
             subTabControl.TabIndex = 92;
             // 
             // tabPageTable
             // 
             tabPageTable.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tabPageTable.Controls.Add(PKGGridView);
-            tabPageTable.Controls.Add(pnlFilterBar);
             tabPageTable.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageTable.Location = new System.Drawing.Point(4, 32);
             tabPageTable.Name = "tabPageTable";
-            tabPageTable.Size = new System.Drawing.Size(668, 514);
+            tabPageTable.Size = new System.Drawing.Size(876, 505);
             tabPageTable.TabIndex = 0;
             tabPageTable.Text = "Table";
-            //
-            // pnlFilterBar
-            //
-            pnlFilterBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            pnlFilterBar.BackColor = System.Drawing.Color.FromArgb(45, 47, 49);
-            pnlFilterBar.Controls.Add(btnFilterCategory);
-            pnlFilterBar.Controls.Add(btnFilterRegion);
-            pnlFilterBar.Controls.Add(lblFilterSysVer);
-            pnlFilterBar.Controls.Add(tbFilterSysVer);
-            pnlFilterBar.Controls.Add(btnFilterType);
-            pnlFilterBar.Controls.Add(btnFilterCompat);
-            pnlFilterBar.Controls.Add(tbSearchGame);
-            pnlFilterBar.Controls.Add(flowChips);
-            pnlFilterBar.Controls.Add(lblFilterCount);
-            pnlFilterBar.Location = new System.Drawing.Point(0, 0);
-            pnlFilterBar.Name = "pnlFilterBar";
-            pnlFilterBar.Size = new System.Drawing.Size(668, 62);
-            pnlFilterBar.TabIndex = 92;
-            //
-            // btnFilterCategory
-            //
-            btnFilterCategory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnFilterCategory.Location = new System.Drawing.Point(4, 5);
-            btnFilterCategory.Name = "btnFilterCategory";
-            btnFilterCategory.Size = new System.Drawing.Size(95, 24);
-            btnFilterCategory.TabIndex = 0;
-            btnFilterCategory.Text = "Category ▾";
-            btnFilterCategory.Click += btnFilterCategory_Click;
-            //
-            // btnFilterRegion
-            //
-            btnFilterRegion.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnFilterRegion.Location = new System.Drawing.Point(103, 5);
-            btnFilterRegion.Name = "btnFilterRegion";
-            btnFilterRegion.Size = new System.Drawing.Size(85, 24);
-            btnFilterRegion.TabIndex = 1;
-            btnFilterRegion.Text = "Region ▾";
-            btnFilterRegion.Click += btnFilterRegion_Click;
-            //
-            // lblFilterSysVer
-            //
-            lblFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblFilterSysVer.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            lblFilterSysVer.Location = new System.Drawing.Point(192, 9);
-            lblFilterSysVer.Name = "lblFilterSysVer";
-            lblFilterSysVer.Size = new System.Drawing.Size(42, 15);
-            lblFilterSysVer.TabIndex = 2;
-            lblFilterSysVer.Text = "SysVer ≥";
-            //
-            // tbFilterSysVer
-            //
-            tbFilterSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbFilterSysVer.Location = new System.Drawing.Point(236, 5);
-            tbFilterSysVer.Name = "tbFilterSysVer";
-            tbFilterSysVer.Size = new System.Drawing.Size(60, 23);
-            tbFilterSysVer.TabIndex = 3;
-            tbFilterSysVer.TextChanged += tbFilterSysVer_TextChanged;
-            //
-            // btnFilterType
-            //
-            btnFilterType.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnFilterType.Location = new System.Drawing.Point(300, 5);
-            btnFilterType.Name = "btnFilterType";
-            btnFilterType.Size = new System.Drawing.Size(80, 24);
-            btnFilterType.TabIndex = 4;
-            btnFilterType.Text = "Type ▾";
-            btnFilterType.Click += btnFilterType_Click;
-            //
-            // btnFilterCompat
-            //
-            btnFilterCompat.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnFilterCompat.Location = new System.Drawing.Point(384, 5);
-            btnFilterCompat.Name = "btnFilterCompat";
-            btnFilterCompat.Size = new System.Drawing.Size(95, 24);
-            btnFilterCompat.TabIndex = 5;
-            btnFilterCompat.Text = "ShadPS4 ▾";
-            btnFilterCompat.Click += btnFilterCompat_Click;
-            //
-            // flowChips
-            //
-            flowChips.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            flowChips.AutoScroll = true;
-            flowChips.BackColor = System.Drawing.Color.Transparent;
-            flowChips.Location = new System.Drawing.Point(4, 34);
-            flowChips.Name = "flowChips";
-            flowChips.Size = new System.Drawing.Size(540, 24);
-            flowChips.TabIndex = 6;
-            //
-            // lblFilterCount
-            //
-            lblFilterCount.Font = new System.Drawing.Font("Segoe UI", 8F);
-            lblFilterCount.ForeColor = System.Drawing.Color.Silver;
-            lblFilterCount.Location = new System.Drawing.Point(548, 37);
-            lblFilterCount.Name = "lblFilterCount";
-            lblFilterCount.Size = new System.Drawing.Size(116, 15);
-            lblFilterCount.TabIndex = 7;
-            lblFilterCount.Text = "";
-            //
+            // 
             // PKGGridView
-            //
+            // 
             PKGGridView.AllowDrop = true;
             PKGGridView.AllowUserToAddRows = false;
             PKGGridView.AllowUserToDeleteRows = false;
             PKGGridView.AllowUserToDragDropRows = false;
             PKGGridView.AllowUserToPasteCells = false;
-            PKGGridView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             PKGGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             PKGGridView.ContextMenuStrip = contextMenuPKGGridView;
-            PKGGridView.Location = new System.Drawing.Point(2, 64);
+            PKGGridView.Dock = DockStyle.Fill;
+            PKGGridView.Location = new System.Drawing.Point(0, 0);
             PKGGridView.Name = "PKGGridView";
             PKGGridView.ReadOnly = true;
             PKGGridView.RowTemplate.Height = 23;
             PKGGridView.ScrollBars = ScrollBars.Vertical;
-            PKGGridView.Size = new System.Drawing.Size(666, 450);
+            PKGGridView.Size = new System.Drawing.Size(876, 505);
             PKGGridView.TabIndex = 75;
             PKGGridView.CellFormatting += PKGListGridView_CellFormatting;
             PKGGridView.ColumnHeaderMouseClick += PKGListGridView_ColumnHeaderMouseClick;
             PKGGridView.SelectionChanged += PKGListGridView_SelectionChanged;
             PKGGridView.DragDrop += PKGGridView_DragDrop;
             PKGGridView.DragEnter += PKGGridView_DragEnter;
-            // 
-            // tbSearchGame
-            // 
-            tbSearchGame.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tbSearchGame.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbSearchGame.Location = new System.Drawing.Point(483, 4);
-            tbSearchGame.Margin = new Padding(3, 2, 3, 2);
-            tbSearchGame.Name = "tbSearchGame";
-            tbSearchGame.Placeholder = "[Filename]/[Title]/[ID]";
-            tbSearchGame.Size = new System.Drawing.Size(181, 24);
-            tbSearchGame.TabIndex = 86;
-            tbSearchGame.SearchTextChanged += TbSearchGame_TextChanged;
             // 
             // tabPageGroup
             // 
@@ -2708,30 +2784,28 @@ namespace PS4PKGTool
             tabPageGroup.Controls.Add(darkLabelGroupBy);
             tabPageGroup.Controls.Add(darkLabelGroupCount);
             tabPageGroup.Controls.Add(lblGlvFilterHint);
-            tabPageGroup.Controls.Add(btnGlvFilterClear);
             tabPageGroup.ForeColor = System.Drawing.Color.Gainsboro;
             tabPageGroup.Location = new System.Drawing.Point(4, 32);
             tabPageGroup.Name = "tabPageGroup";
-            tabPageGroup.Size = new System.Drawing.Size(668, 514);
+            tabPageGroup.Size = new System.Drawing.Size(876, 505);
             tabPageGroup.TabIndex = 1;
             tabPageGroup.Text = "Grouped";
             // 
             // groupedListView
             // 
             groupedListView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            groupedListView.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
             groupedListView.Font = new System.Drawing.Font("Segoe UI", 9F);
             groupedListView.Location = new System.Drawing.Point(0, 30);
             groupedListView.MultiSelect = false;
             groupedListView.Name = "groupedListView";
-            groupedListView.Size = new System.Drawing.Size(668, 484);
+            groupedListView.Size = new System.Drawing.Size(882, 474);
             groupedListView.TabIndex = 0;
             // 
             // btnGroupExpand
             // 
             btnGroupExpand.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnGroupExpand.Font = new System.Drawing.Font("Segoe UI", 8F);
-            btnGroupExpand.Location = new System.Drawing.Point(574, 3);
+            btnGroupExpand.Location = new System.Drawing.Point(788, 4);
             btnGroupExpand.Margin = new Padding(0, 2, 3, 2);
             btnGroupExpand.Name = "btnGroupExpand";
             btnGroupExpand.Size = new System.Drawing.Size(89, 23);
@@ -2750,8 +2824,7 @@ namespace PS4PKGTool
             // darkLabelGroupBy
             // 
             darkLabelGroupBy.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelGroupBy.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabelGroupBy.Location = new System.Drawing.Point(4, 7);
+            darkLabelGroupBy.Location = new System.Drawing.Point(4, 8);
             darkLabelGroupBy.Name = "darkLabelGroupBy";
             darkLabelGroupBy.Size = new System.Drawing.Size(55, 15);
             darkLabelGroupBy.TabIndex = 106;
@@ -2760,76 +2833,25 @@ namespace PS4PKGTool
             // darkLabelGroupCount
             // 
             darkLabelGroupCount.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabelGroupCount.ForeColor = System.Drawing.Color.Silver;
             darkLabelGroupCount.Location = new System.Drawing.Point(252, 7);
             darkLabelGroupCount.Name = "darkLabelGroupCount";
             darkLabelGroupCount.Size = new System.Drawing.Size(60, 15);
             darkLabelGroupCount.TabIndex = 107;
-            //
+            // 
             // lblGlvFilterHint
-            //
+            // 
             lblGlvFilterHint.Font = new System.Drawing.Font("Segoe UI", 8F);
-            lblGlvFilterHint.ForeColor = System.Drawing.Color.FromArgb(230, 180, 60);
             lblGlvFilterHint.Location = new System.Drawing.Point(320, 7);
             lblGlvFilterHint.Name = "lblGlvFilterHint";
             lblGlvFilterHint.Size = new System.Drawing.Size(200, 15);
             lblGlvFilterHint.TabIndex = 108;
-            lblGlvFilterHint.Text = "";
-            //
-            // btnGlvFilterClear
-            //
-            btnGlvFilterClear.Font = new System.Drawing.Font("Segoe UI", 8F);
-            btnGlvFilterClear.Location = new System.Drawing.Point(524, 4);
-            btnGlvFilterClear.Name = "btnGlvFilterClear";
-            btnGlvFilterClear.Size = new System.Drawing.Size(48, 22);
-            btnGlvFilterClear.TabIndex = 109;
-            btnGlvFilterClear.Text = "Clear";
-            btnGlvFilterClear.Visible = false;
-            btnGlvFilterClear.Click += btnGlvFilterClear_Click;
-            // 
-            // darkSectionPanel9
-            // 
-            darkSectionPanel9.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            darkSectionPanel9.BorderStyle = BorderStyle.FixedSingle;
-            darkSectionPanel9.Controls.Add(panel1);
-            darkSectionPanel9.Location = new System.Drawing.Point(683, 279);
-            darkSectionPanel9.Margin = new Padding(3, 2, 3, 2);
-            darkSectionPanel9.Name = "darkSectionPanel9";
-            darkSectionPanel9.SectionHeader = "Title";
-            darkSectionPanel9.Size = new System.Drawing.Size(259, 75);
-            darkSectionPanel9.TabIndex = 89;
-            // 
-            // panel1
-            // 
-            panel1.BorderStyle = BorderStyle.FixedSingle;
-            panel1.Controls.Add(darkLabel1);
-            panel1.Dock = DockStyle.Fill;
-            panel1.Location = new System.Drawing.Point(1, 25);
-            panel1.Margin = new Padding(3, 2, 3, 2);
-            panel1.Name = "panel1";
-            panel1.Size = new System.Drawing.Size(255, 47);
-            panel1.TabIndex = 70;
-            // 
-            // darkLabel1
-            // 
-            darkLabel1.BackColor = System.Drawing.Color.Transparent;
-            darkLabel1.Dock = DockStyle.Fill;
-            darkLabel1.Enabled = false;
-            darkLabel1.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel1.ForeColor = System.Drawing.Color.Silver;
-            darkLabel1.Location = new System.Drawing.Point(0, 0);
-            darkLabel1.Name = "darkLabel1";
-            darkLabel1.Size = new System.Drawing.Size(253, 45);
-            darkLabel1.TabIndex = 69;
-            darkLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // darkSectionPanel8
             // 
             darkSectionPanel8.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            darkSectionPanel8.BorderStyle = BorderStyle.FixedSingle;
             darkSectionPanel8.Controls.Add(panel5);
-            darkSectionPanel8.Location = new System.Drawing.Point(683, 3);
-            darkSectionPanel8.Margin = new Padding(3, 2, 3, 2);
+            darkSectionPanel8.Location = new System.Drawing.Point(910, 18);
+            darkSectionPanel8.Margin = new Padding(6);
             darkSectionPanel8.Name = "darkSectionPanel8";
             darkSectionPanel8.SectionHeader = "Avatar";
             darkSectionPanel8.Size = new System.Drawing.Size(260, 272);
@@ -2845,19 +2867,18 @@ namespace PS4PKGTool
             panel5.Location = new System.Drawing.Point(1, 25);
             panel5.Margin = new Padding(3, 2, 3, 2);
             panel5.Name = "panel5";
-            panel5.Size = new System.Drawing.Size(256, 244);
+            panel5.Size = new System.Drawing.Size(258, 246);
             panel5.TabIndex = 79;
             panel5.Paint += panel5_Paint;
             // 
             // pictureBox1
             // 
             pictureBox1.BackColor = System.Drawing.Color.Transparent;
-            pictureBox1.BorderStyle = BorderStyle.FixedSingle;
             pictureBox1.Dock = DockStyle.Fill;
             pictureBox1.Location = new System.Drawing.Point(0, 0);
             pictureBox1.Margin = new Padding(3, 2, 3, 2);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new System.Drawing.Size(254, 242);
+            pictureBox1.Size = new System.Drawing.Size(256, 244);
             pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
             pictureBox1.TabIndex = 59;
             pictureBox1.TabStop = false;
@@ -2866,12 +2887,44 @@ namespace PS4PKGTool
             // 
             label3.Anchor = AnchorStyles.None;
             label3.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold);
-            label3.ForeColor = System.Drawing.Color.Silver;
-            label3.Location = new System.Drawing.Point(3, 98);
+            label3.Location = new System.Drawing.Point(4, 99);
             label3.Name = "label3";
             label3.Size = new System.Drawing.Size(249, 46);
             label3.TabIndex = 70;
             label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // darkSectionPanel9
+            // 
+            darkSectionPanel9.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            darkSectionPanel9.Controls.Add(panel1);
+            darkSectionPanel9.Location = new System.Drawing.Point(910, 302);
+            darkSectionPanel9.Margin = new Padding(6);
+            darkSectionPanel9.Name = "darkSectionPanel9";
+            darkSectionPanel9.SectionHeader = "Title";
+            darkSectionPanel9.Size = new System.Drawing.Size(259, 75);
+            darkSectionPanel9.TabIndex = 89;
+            // 
+            // panel1
+            // 
+            panel1.BorderStyle = BorderStyle.FixedSingle;
+            panel1.Controls.Add(darkLabel1);
+            panel1.Dock = DockStyle.Fill;
+            panel1.Location = new System.Drawing.Point(1, 25);
+            panel1.Margin = new Padding(3, 2, 3, 2);
+            panel1.Name = "panel1";
+            panel1.Size = new System.Drawing.Size(257, 49);
+            panel1.TabIndex = 70;
+            // 
+            // darkLabel1
+            // 
+            darkLabel1.BackColor = System.Drawing.Color.Transparent;
+            darkLabel1.Dock = DockStyle.Fill;
+            darkLabel1.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel1.Location = new System.Drawing.Point(0, 0);
+            darkLabel1.Name = "darkLabel1";
+            darkLabel1.Size = new System.Drawing.Size(255, 47);
+            darkLabel1.TabIndex = 69;
+            darkLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // tabPage2
             // 
@@ -2882,7 +2935,7 @@ namespace PS4PKGTool
             tabPage2.Margin = new Padding(3, 2, 3, 2);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(3, 2, 3, 2);
-            tabPage2.Size = new System.Drawing.Size(951, 556);
+            tabPage2.Size = new System.Drawing.Size(1186, 712);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Trophy";
             // 
@@ -2900,7 +2953,7 @@ namespace PS4PKGTool
             TrophyGridView.ReadOnly = true;
             TrophyGridView.RowTemplate.Height = 23;
             TrophyGridView.ScrollBars = ScrollBars.Horizontal;
-            TrophyGridView.Size = new System.Drawing.Size(945, 552);
+            TrophyGridView.Size = new System.Drawing.Size(1180, 708);
             TrophyGridView.TabIndex = 76;
             TrophyGridView.SelectionChanged += darkDataGridView3_SelectionChanged;
             // 
@@ -2912,7 +2965,8 @@ namespace PS4PKGTool
             tabPage3.Location = new System.Drawing.Point(4, 32);
             tabPage3.Margin = new Padding(3, 2, 3, 2);
             tabPage3.Name = "tabPage3";
-            tabPage3.Size = new System.Drawing.Size(951, 556);
+            tabPage3.Padding = new Padding(12);
+            tabPage3.Size = new System.Drawing.Size(1186, 712);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Background Art";
             // 
@@ -2924,12 +2978,12 @@ namespace PS4PKGTool
             flatTabControlBgi.Dock = DockStyle.Fill;
             flatTabControlBgi.Font = new System.Drawing.Font("Segoe UI", 9F);
             flatTabControlBgi.ItemSize = new System.Drawing.Size(87, 28);
-            flatTabControlBgi.Location = new System.Drawing.Point(0, 0);
+            flatTabControlBgi.Location = new System.Drawing.Point(12, 12);
             flatTabControlBgi.Margin = new Padding(3, 2, 3, 2);
             flatTabControlBgi.Name = "flatTabControlBgi";
             flatTabControlBgi.Padding = new System.Drawing.Point(0, 0);
             flatTabControlBgi.SelectedIndex = 0;
-            flatTabControlBgi.Size = new System.Drawing.Size(951, 556);
+            flatTabControlBgi.Size = new System.Drawing.Size(1162, 688);
             flatTabControlBgi.TabIndex = 91;
             // 
             // tabPagePic0
@@ -2940,7 +2994,7 @@ namespace PS4PKGTool
             tabPagePic0.Margin = new Padding(3, 2, 3, 2);
             tabPagePic0.Name = "tabPagePic0";
             tabPagePic0.Padding = new Padding(3, 2, 3, 2);
-            tabPagePic0.Size = new System.Drawing.Size(943, 520);
+            tabPagePic0.Size = new System.Drawing.Size(1154, 652);
             tabPagePic0.TabIndex = 0;
             tabPagePic0.Text = "PIC0.PNG";
             // 
@@ -2951,7 +3005,7 @@ namespace PS4PKGTool
             pbPIC0.Location = new System.Drawing.Point(3, 2);
             pbPIC0.Margin = new Padding(3, 2, 3, 2);
             pbPIC0.Name = "pbPIC0";
-            pbPIC0.Size = new System.Drawing.Size(937, 516);
+            pbPIC0.Size = new System.Drawing.Size(1148, 648);
             pbPIC0.SizeMode = PictureBoxSizeMode.Zoom;
             pbPIC0.TabIndex = 0;
             pbPIC0.TabStop = false;
@@ -2964,7 +3018,7 @@ namespace PS4PKGTool
             tabPagePic1.Margin = new Padding(3, 2, 3, 2);
             tabPagePic1.Name = "tabPagePic1";
             tabPagePic1.Padding = new Padding(3, 2, 3, 2);
-            tabPagePic1.Size = new System.Drawing.Size(943, 520);
+            tabPagePic1.Size = new System.Drawing.Size(1154, 652);
             tabPagePic1.TabIndex = 1;
             tabPagePic1.Text = "PIC1.PNG";
             // 
@@ -2975,7 +3029,7 @@ namespace PS4PKGTool
             pbPIC1.Location = new System.Drawing.Point(3, 2);
             pbPIC1.Margin = new Padding(3, 2, 3, 2);
             pbPIC1.Name = "pbPIC1";
-            pbPIC1.Size = new System.Drawing.Size(937, 516);
+            pbPIC1.Size = new System.Drawing.Size(1148, 648);
             pbPIC1.TabIndex = 0;
             pbPIC1.TabStop = false;
             // 
@@ -2987,7 +3041,8 @@ namespace PS4PKGTool
             tabPage4.Location = new System.Drawing.Point(4, 32);
             tabPage4.Margin = new Padding(3, 2, 3, 2);
             tabPage4.Name = "tabPage4";
-            tabPage4.Size = new System.Drawing.Size(951, 556);
+            tabPage4.Padding = new Padding(12);
+            tabPage4.Size = new System.Drawing.Size(1186, 712);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "PKG Internals";
             // 
@@ -2997,21 +3052,21 @@ namespace PS4PKGTool
             panel7.Controls.Add(darkSectionPanel3);
             panel7.Controls.Add(darkSectionPanel1);
             panel7.Dock = DockStyle.Fill;
-            panel7.Location = new System.Drawing.Point(0, 0);
+            panel7.Location = new System.Drawing.Point(12, 12);
             panel7.Margin = new Padding(3, 2, 3, 2);
             panel7.Name = "panel7";
-            panel7.Size = new System.Drawing.Size(951, 556);
+            panel7.Size = new System.Drawing.Size(1162, 688);
             panel7.TabIndex = 98;
             // 
             // darkSectionPanel2
             // 
             darkSectionPanel2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             darkSectionPanel2.Controls.Add(dgvEntryList);
-            darkSectionPanel2.Location = new System.Drawing.Point(259, 98);
+            darkSectionPanel2.Location = new System.Drawing.Point(255, 92);
             darkSectionPanel2.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel2.Name = "darkSectionPanel2";
             darkSectionPanel2.SectionHeader = "Entry List";
-            darkSectionPanel2.Size = new System.Drawing.Size(692, 459);
+            darkSectionPanel2.Size = new System.Drawing.Size(907, 597);
             darkSectionPanel2.TabIndex = 95;
             // 
             // dgvEntryList
@@ -3027,7 +3082,7 @@ namespace PS4PKGTool
             dgvEntryList.Name = "dgvEntryList";
             dgvEntryList.ReadOnly = true;
             dgvEntryList.RowTemplate.Height = 23;
-            dgvEntryList.Size = new System.Drawing.Size(690, 433);
+            dgvEntryList.Size = new System.Drawing.Size(905, 571);
             dgvEntryList.TabIndex = 77;
             dgvEntryList.SelectionChanged += dgvEntryList_SelectionChanged;
             // 
@@ -3035,11 +3090,11 @@ namespace PS4PKGTool
             // 
             darkSectionPanel3.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             darkSectionPanel3.Controls.Add(darkDataGridView4);
-            darkSectionPanel3.Location = new System.Drawing.Point(259, 0);
+            darkSectionPanel3.Location = new System.Drawing.Point(255, 0);
             darkSectionPanel3.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel3.Name = "darkSectionPanel3";
             darkSectionPanel3.SectionHeader = "Build Information";
-            darkSectionPanel3.Size = new System.Drawing.Size(692, 76);
+            darkSectionPanel3.Size = new System.Drawing.Size(907, 76);
             darkSectionPanel3.TabIndex = 95;
             // 
             // darkDataGridView4
@@ -3055,7 +3110,7 @@ namespace PS4PKGTool
             darkDataGridView4.ReadOnly = true;
             darkDataGridView4.RowTemplate.Height = 23;
             darkDataGridView4.ScrollBars = ScrollBars.Horizontal;
-            darkDataGridView4.Size = new System.Drawing.Size(690, 50);
+            darkDataGridView4.Size = new System.Drawing.Size(905, 50);
             darkDataGridView4.TabIndex = 78;
             darkDataGridView4.SelectionChanged += darkDataGridView4_SelectionChanged;
             // 
@@ -3067,7 +3122,7 @@ namespace PS4PKGTool
             darkSectionPanel1.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel1.Name = "darkSectionPanel1";
             darkSectionPanel1.SectionHeader = "Advanced PKG Header";
-            darkSectionPanel1.Size = new System.Drawing.Size(240, 556);
+            darkSectionPanel1.Size = new System.Drawing.Size(240, 688);
             darkSectionPanel1.TabIndex = 94;
             // 
             // dgvHeader
@@ -3082,7 +3137,7 @@ namespace PS4PKGTool
             dgvHeader.Name = "dgvHeader";
             dgvHeader.ReadOnly = true;
             dgvHeader.RowTemplate.Height = 23;
-            dgvHeader.Size = new System.Drawing.Size(238, 530);
+            dgvHeader.Size = new System.Drawing.Size(238, 662);
             dgvHeader.TabIndex = 76;
             dgvHeader.SelectionChanged += dgvHeader_SelectionChanged;
             // 
@@ -3095,121 +3150,44 @@ namespace PS4PKGTool
             tabPage7.Margin = new Padding(3, 2, 3, 2);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(3, 2, 3, 2);
-            tabPage7.Size = new System.Drawing.Size(951, 556);
+            tabPage7.Size = new System.Drawing.Size(1186, 712);
             tabPage7.TabIndex = 5;
             tabPage7.Text = "File Browser";
             // 
             // panel6
             // 
-            panel6.Controls.Add(btnExportTextures);
-            panel6.Controls.Add(btnExportTreeView);
-            panel6.Controls.Add(btnExtractFullPKG);
-            panel6.Controls.Add(darkLabel5);
-            panel6.Controls.Add(tbPasscode);
-            panel6.Controls.Add(btnViewPKGData);
-            panel6.Controls.Add(darkSectionPanel4);
+            panel6.Controls.Add(darkSplitContainer1);
+            panel6.Controls.Add(darkHeaderBar1);
             panel6.Dock = DockStyle.Fill;
             panel6.Location = new System.Drawing.Point(3, 2);
             panel6.Margin = new Padding(3, 2, 3, 2);
             panel6.Name = "panel6";
-            panel6.Size = new System.Drawing.Size(945, 552);
+            panel6.Size = new System.Drawing.Size(1180, 708);
             panel6.TabIndex = 97;
             // 
-            // btnExportTextures
+            // darkSplitContainer1
             // 
-            btnExportTextures.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExportTextures.Location = new System.Drawing.Point(628, 2);
-            btnExportTextures.Margin = new Padding(3, 2, 3, 2);
-            btnExportTextures.Name = "btnExportTextures";
-            btnExportTextures.Size = new System.Drawing.Size(110, 23);
-            btnExportTextures.TabIndex = 102;
-            btnExportTextures.Text = "Export Textures";
-            btnExportTextures.Click += btnExportTextures_Click;
+            darkSplitContainer1.Controls.Add(splitPane1);
+            darkSplitContainer1.Controls.Add(splitPane2);
+            darkSplitContainer1.Controls.Add(splitPane3);
+            darkSplitContainer1.Dock = DockStyle.Fill;
+            darkSplitContainer1.Location = new System.Drawing.Point(0, 50);
+            darkSplitContainer1.Name = "darkSplitContainer1";
+            darkSplitContainer1.Size = new System.Drawing.Size(1180, 658);
+            darkSplitContainer1.TabIndex = 104;
             // 
-            // btnExportTreeView
+            // splitPane1
             // 
-            btnExportTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExportTreeView.Location = new System.Drawing.Point(400, 2);
-            btnExportTreeView.Margin = new Padding(3, 2, 3, 2);
-            btnExportTreeView.Name = "btnExportTreeView";
-            btnExportTreeView.Size = new System.Drawing.Size(108, 23);
-            btnExportTreeView.TabIndex = 101;
-            btnExportTreeView.Text = "Export Tree View";
-            btnExportTreeView.Click += btnExportTreeView_Click;
-            // 
-            // btnExtractFullPKG
-            // 
-            btnExtractFullPKG.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExtractFullPKG.Location = new System.Drawing.Point(514, 2);
-            btnExtractFullPKG.Margin = new Padding(3, 2, 3, 2);
-            btnExtractFullPKG.Name = "btnExtractFullPKG";
-            btnExtractFullPKG.Size = new System.Drawing.Size(108, 23);
-            btnExtractFullPKG.TabIndex = 100;
-            btnExtractFullPKG.Text = "Extract full PKG";
-            btnExtractFullPKG.Click += btnExtractFullPKG_Click;
-            // 
-            // darkLabel5
-            // 
-            darkLabel5.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkLabel5.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel5.Location = new System.Drawing.Point(1, 6);
-            darkLabel5.Name = "darkLabel5";
-            darkLabel5.Size = new System.Drawing.Size(59, 15);
-            darkLabel5.TabIndex = 96;
-            darkLabel5.Text = "Passcode:";
-            // 
-            // tbPasscode
-            // 
-            tbPasscode.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbPasscode.Location = new System.Drawing.Point(67, 2);
-            tbPasscode.Margin = new Padding(3, 2, 3, 2);
-            tbPasscode.MaxLength = 32;
-            tbPasscode.Multiline = true;
-            tbPasscode.Name = "tbPasscode";
-            tbPasscode.ReadOnly = true;
-            tbPasscode.Size = new System.Drawing.Size(202, 23);
-            tbPasscode.TabIndex = 0;
-            tbPasscode.Text = "00000000000000000000000000000000";
-            // 
-            // btnViewPKGData
-            // 
-            btnViewPKGData.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnViewPKGData.Location = new System.Drawing.Point(275, 2);
-            btnViewPKGData.Margin = new Padding(3, 2, 3, 2);
-            btnViewPKGData.Name = "btnViewPKGData";
-            btnViewPKGData.Size = new System.Drawing.Size(119, 23);
-            btnViewPKGData.TabIndex = 94;
-            btnViewPKGData.Text = "View PKG files";
-            btnViewPKGData.Click += btnViewPKGData_Click;
-            // 
-            // darkSectionPanel4
-            // 
-            darkSectionPanel4.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            darkSectionPanel4.Controls.Add(splitContainer1);
-            darkSectionPanel4.Location = new System.Drawing.Point(0, 29);
-            darkSectionPanel4.Margin = new Padding(3, 2, 3, 2);
-            darkSectionPanel4.Name = "darkSectionPanel4";
-            darkSectionPanel4.SectionHeader = "PKG Files";
-            darkSectionPanel4.Size = new System.Drawing.Size(945, 524);
-            darkSectionPanel4.TabIndex = 95;
-            darkSectionPanel4.Tag = "";
-            // 
-            // splitContainer1
-            // 
-            splitContainer1.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
-            splitContainer1.Controls.Add(PKGTreeView);
-            splitContainer1.Controls.Add(splitContainer2);
-            splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new System.Drawing.Point(1, 25);
-            splitContainer1.Margin = new Padding(3, 4, 3, 4);
-            splitContainer1.Name = "splitContainer1";
-            splitContainer1.Size = new System.Drawing.Size(943, 498);
-            splitContainer1.TabIndex = 0;
+            splitPane1.Controls.Add(PKGTreeView);
+            splitPane1.Location = new System.Drawing.Point(0, 0);
+            splitPane1.Name = "splitPane1";
+            splitPane1.Size = new System.Drawing.Size(390, 658);
+            splitPane1.TabIndex = 0;
             // 
             // PKGTreeView
             // 
-            PKGTreeView.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
             PKGTreeView.CheckBoxes = false;
+            PKGTreeView.Dock = DockStyle.Fill;
             PKGTreeView.FullRowSelect = false;
             PKGTreeView.HotTracking = false;
             PKGTreeView.ImageList = null;
@@ -3225,7 +3203,7 @@ namespace PS4PKGTool
             PKGTreeView.ShowLines = true;
             PKGTreeView.ShowPlusMinus = true;
             PKGTreeView.ShowRootLines = true;
-            PKGTreeView.Size = new System.Drawing.Size(469, 498);
+            PKGTreeView.Size = new System.Drawing.Size(390, 658);
             PKGTreeView.Sorted = false;
             PKGTreeView.TabIndex = 0;
             PKGTreeView.TopNode = null;
@@ -3236,42 +3214,28 @@ namespace PS4PKGTool
             PKGTreeView.MouseClick += PKGTreeView_MouseClick;
             PKGTreeView.ItemDrag += PKGTreeView_ItemDrag;
             // 
-            // splitContainer2
+            // splitPane2
             // 
-            splitContainer2.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
-            splitContainer2.Controls.Add(panelListHost);
-            splitContainer2.Controls.Add(sectionFileViewer);
-            splitContainer2.Location = new System.Drawing.Point(474, 0);
-            splitContainer2.Name = "splitContainer2";
-            splitContainer2.Size = new System.Drawing.Size(469, 498);
-            splitContainer2.TabIndex = 1;
-            // 
-            // panelListHost
-            // 
-            panelListHost.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            panelListHost.Controls.Add(listView1);
-            panelListHost.Controls.Add(tbFilterTreeView);
-            panelListHost.Controls.Add(btnSearchFileInTreeView);
-            panelListHost.Controls.Add(tbSearchTreeView);
-            panelListHost.Controls.Add(darkLabel6);
-            panelListHost.Location = new System.Drawing.Point(0, 0);
-            panelListHost.Name = "panelListHost";
-            panelListHost.Size = new System.Drawing.Size(231, 498);
-            panelListHost.TabIndex = 0;
+            splitPane2.Controls.Add(listView1);
+            splitPane2.Controls.Add(tbFilterTreeView);
+            splitPane2.Location = new System.Drawing.Point(395, 0);
+            splitPane2.Name = "splitPane2";
+            splitPane2.Size = new System.Drawing.Size(390, 658);
+            splitPane2.TabIndex = 1;
             // 
             // listView1
             // 
             listView1.AllowDrop = true;
-            listView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            listView1.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
+            listView1.Dock = DockStyle.Fill;
             listView1.FullRowSelect = true;
+            listView1.HeaderStyle = ColumnHeaderStyle.Clickable;
             listView1.LargeImageList = imageList1;
             listView1.ListViewItemSorter = null;
             listView1.Location = new System.Drawing.Point(0, 28);
             listView1.Margin = new Padding(3, 4, 3, 4);
             listView1.MultiSelect = true;
             listView1.Name = "listView1";
-            listView1.Size = new System.Drawing.Size(231, 472);
+            listView1.Size = new System.Drawing.Size(390, 630);
             listView1.SmallImageList = null;
             listView1.TabIndex = 0;
             listView1.UseCompatibleStateImageBehavior = false;
@@ -3285,64 +3249,40 @@ namespace PS4PKGTool
             // 
             // tbFilterTreeView
             // 
-            tbFilterTreeView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            tbFilterTreeView.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tbFilterTreeView.Location = new System.Drawing.Point(1, 0);
+            tbFilterTreeView.Dock = DockStyle.Top;
+            tbFilterTreeView.Location = new System.Drawing.Point(0, 0);
             tbFilterTreeView.Margin = new Padding(3, 2, 3, 2);
             tbFilterTreeView.Name = "tbFilterTreeView";
             tbFilterTreeView.Placeholder = "Filter filename here";
-            tbFilterTreeView.Size = new System.Drawing.Size(229, 28);
+            tbFilterTreeView.Size = new System.Drawing.Size(390, 28);
             tbFilterTreeView.TabIndex = 100;
             // 
-            // btnSearchFileInTreeView
+            // splitPane3
             // 
-            btnSearchFileInTreeView.Anchor = AnchorStyles.Top;
-            btnSearchFileInTreeView.Image = (System.Drawing.Image)resources.GetObject("btnSearchFileInTreeView.Image");
-            btnSearchFileInTreeView.Location = new System.Drawing.Point(391, 302);
-            btnSearchFileInTreeView.Margin = new Padding(3, 2, 3, 2);
-            btnSearchFileInTreeView.Name = "btnSearchFileInTreeView";
-            btnSearchFileInTreeView.Size = new System.Drawing.Size(34, 22);
-            btnSearchFileInTreeView.TabIndex = 99;
-            btnSearchFileInTreeView.Visible = false;
-            btnSearchFileInTreeView.Click += SearchFileInTreeView_Click;
-            // 
-            // tbSearchTreeView
-            // 
-            tbSearchTreeView.Anchor = AnchorStyles.Top;
-            tbSearchTreeView.Location = new System.Drawing.Point(183, 302);
-            tbSearchTreeView.Margin = new Padding(3, 2, 3, 2);
-            tbSearchTreeView.Name = "tbSearchTreeView";
-            tbSearchTreeView.Size = new System.Drawing.Size(199, 23);
-            tbSearchTreeView.TabIndex = 97;
-            tbSearchTreeView.Visible = false;
-            // 
-            // darkLabel6
-            // 
-            darkLabel6.Anchor = AnchorStyles.Top;
-            darkLabel6.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel6.Location = new System.Drawing.Point(113, 306);
-            darkLabel6.Name = "darkLabel6";
-            darkLabel6.Size = new System.Drawing.Size(64, 15);
-            darkLabel6.TabIndex = 98;
-            darkLabel6.Text = "Search file:";
-            darkLabel6.Visible = false;
+            splitPane3.Controls.Add(sectionFileViewer);
+            splitPane3.Location = new System.Drawing.Point(790, 0);
+            splitPane3.Name = "splitPane3";
+            splitPane3.Size = new System.Drawing.Size(390, 658);
+            splitPane3.TabIndex = 3;
             // 
             // sectionFileViewer
             // 
             sectionFileViewer.Controls.Add(btnAssetBack);
             sectionFileViewer.Controls.Add(fileViewerBody);
             sectionFileViewer.Controls.Add(lblFileViewerInfo);
-            sectionFileViewer.Location = new System.Drawing.Point(236, 0);
+            sectionFileViewer.Dock = DockStyle.Fill;
+            sectionFileViewer.Location = new System.Drawing.Point(0, 0);
+            sectionFileViewer.Margin = new Padding(6);
             sectionFileViewer.Name = "sectionFileViewer";
             sectionFileViewer.SectionHeader = "File Viewer";
-            sectionFileViewer.Size = new System.Drawing.Size(233, 498);
+            sectionFileViewer.Size = new System.Drawing.Size(390, 658);
             sectionFileViewer.TabIndex = 2;
             // 
             // btnAssetBack
             // 
             btnAssetBack.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnAssetBack.Font = new System.Drawing.Font("Segoe UI", 8F);
-            btnAssetBack.Location = new System.Drawing.Point(157, 30);
+            btnAssetBack.Location = new System.Drawing.Point(304, 30);
             btnAssetBack.Margin = new Padding(3, 2, 3, 2);
             btnAssetBack.Name = "btnAssetBack";
             btnAssetBack.Size = new System.Drawing.Size(70, 24);
@@ -3362,20 +3302,20 @@ namespace PS4PKGTool
             fileViewerBody.Location = new System.Drawing.Point(1, 59);
             fileViewerBody.Name = "fileViewerBody";
             fileViewerBody.Padding = new Padding(1);
-            fileViewerBody.Size = new System.Drawing.Size(231, 438);
+            fileViewerBody.Size = new System.Drawing.Size(388, 598);
             fileViewerBody.TabIndex = 0;
             // 
             // assetListView
             // 
-            assetListView.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
             assetListView.Dock = DockStyle.Fill;
             assetListView.FullRowSelect = true;
+            assetListView.HeaderStyle = ColumnHeaderStyle.Clickable;
             assetListView.LargeImageList = null;
             assetListView.ListViewItemSorter = null;
             assetListView.Location = new System.Drawing.Point(1, 1);
             assetListView.MultiSelect = false;
             assetListView.Name = "assetListView";
-            assetListView.Size = new System.Drawing.Size(229, 436);
+            assetListView.Size = new System.Drawing.Size(386, 596);
             assetListView.SmallImageList = null;
             assetListView.TabIndex = 0;
             assetListView.UseCompatibleStateImageBehavior = false;
@@ -3389,7 +3329,7 @@ namespace PS4PKGTool
             picPreview.Dock = DockStyle.Fill;
             picPreview.Location = new System.Drawing.Point(1, 1);
             picPreview.Name = "picPreview";
-            picPreview.Size = new System.Drawing.Size(229, 436);
+            picPreview.Size = new System.Drawing.Size(386, 596);
             picPreview.SizeMode = PictureBoxSizeMode.Zoom;
             picPreview.TabIndex = 0;
             picPreview.TabStop = false;
@@ -3406,7 +3346,7 @@ namespace PS4PKGTool
             txtPreview.Name = "txtPreview";
             txtPreview.ReadOnly = true;
             txtPreview.ScrollBars = ScrollBars.Both;
-            txtPreview.Size = new System.Drawing.Size(229, 436);
+            txtPreview.Size = new System.Drawing.Size(386, 596);
             txtPreview.TabIndex = 1;
             txtPreview.Visible = false;
             txtPreview.WordWrap = false;
@@ -3422,7 +3362,7 @@ namespace PS4PKGTool
             txtHexPreview.Name = "txtHexPreview";
             txtHexPreview.ReadOnly = true;
             txtHexPreview.ScrollBars = ScrollBars.Both;
-            txtHexPreview.Size = new System.Drawing.Size(229, 436);
+            txtHexPreview.Size = new System.Drawing.Size(386, 596);
             txtHexPreview.TabIndex = 2;
             txtHexPreview.Visible = false;
             txtHexPreview.WordWrap = false;
@@ -3431,14 +3371,96 @@ namespace PS4PKGTool
             // 
             lblFileViewerInfo.AutoEllipsis = true;
             lblFileViewerInfo.Dock = DockStyle.Top;
-            lblFileViewerInfo.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblFileViewerInfo.Location = new System.Drawing.Point(1, 25);
             lblFileViewerInfo.Name = "lblFileViewerInfo";
             lblFileViewerInfo.Padding = new Padding(8, 0, 8, 0);
-            lblFileViewerInfo.Size = new System.Drawing.Size(231, 34);
+            lblFileViewerInfo.Size = new System.Drawing.Size(388, 34);
             lblFileViewerInfo.TabIndex = 1;
             lblFileViewerInfo.Text = "Select a file to preview it.";
             lblFileViewerInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // darkHeaderBar1
+            // 
+            darkHeaderBar1.Controls.Add(darkLabel5);
+            darkHeaderBar1.Controls.Add(btnExportTextures);
+            darkHeaderBar1.Controls.Add(tbPasscode);
+            darkHeaderBar1.Controls.Add(btnExportTreeView);
+            darkHeaderBar1.Controls.Add(btnExtractFullPKG);
+            darkHeaderBar1.Controls.Add(btnViewPKGData);
+            darkHeaderBar1.Dock = DockStyle.Top;
+            darkHeaderBar1.Location = new System.Drawing.Point(0, 0);
+            darkHeaderBar1.Name = "darkHeaderBar1";
+            darkHeaderBar1.ShowThemeSelector = false;
+            darkHeaderBar1.Size = new System.Drawing.Size(1180, 50);
+            darkHeaderBar1.TabIndex = 103;
+            darkHeaderBar1.Text = "darkHeaderBar1";
+            // 
+            // darkLabel5
+            // 
+            darkLabel5.Font = new System.Drawing.Font("Segoe UI", 9F);
+            darkLabel5.Location = new System.Drawing.Point(3, 15);
+            darkLabel5.Name = "darkLabel5";
+            darkLabel5.Size = new System.Drawing.Size(59, 15);
+            darkLabel5.TabIndex = 96;
+            darkLabel5.Text = "Passcode:";
+            // 
+            // btnExportTextures
+            // 
+            btnExportTextures.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExportTextures.Location = new System.Drawing.Point(647, 11);
+            btnExportTextures.Margin = new Padding(3, 2, 3, 2);
+            btnExportTextures.Name = "btnExportTextures";
+            btnExportTextures.Size = new System.Drawing.Size(110, 23);
+            btnExportTextures.TabIndex = 102;
+            btnExportTextures.Text = "Export Textures";
+            btnExportTextures.Click += btnExportTextures_Click;
+            // 
+            // tbPasscode
+            // 
+            tbPasscode.Font = new System.Drawing.Font("Segoe UI", 9F);
+            tbPasscode.Location = new System.Drawing.Point(69, 11);
+            tbPasscode.Margin = new Padding(3, 2, 3, 2);
+            tbPasscode.MaxLength = 32;
+            tbPasscode.Multiline = true;
+            tbPasscode.Name = "tbPasscode";
+            tbPasscode.ReadOnly = true;
+            tbPasscode.Size = new System.Drawing.Size(219, 23);
+            tbPasscode.TabIndex = 0;
+            tbPasscode.Text = "00000000000000000000000000000000";
+            tbPasscode.TextAlign = HorizontalAlignment.Center;
+            // 
+            // btnExportTreeView
+            // 
+            btnExportTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExportTreeView.Location = new System.Drawing.Point(419, 11);
+            btnExportTreeView.Margin = new Padding(3, 2, 3, 2);
+            btnExportTreeView.Name = "btnExportTreeView";
+            btnExportTreeView.Size = new System.Drawing.Size(108, 23);
+            btnExportTreeView.TabIndex = 101;
+            btnExportTreeView.Text = "Export Tree View";
+            btnExportTreeView.Click += btnExportTreeView_Click;
+            // 
+            // btnExtractFullPKG
+            // 
+            btnExtractFullPKG.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnExtractFullPKG.Location = new System.Drawing.Point(533, 11);
+            btnExtractFullPKG.Margin = new Padding(3, 2, 3, 2);
+            btnExtractFullPKG.Name = "btnExtractFullPKG";
+            btnExtractFullPKG.Size = new System.Drawing.Size(108, 23);
+            btnExtractFullPKG.TabIndex = 100;
+            btnExtractFullPKG.Text = "Extract full PKG";
+            btnExtractFullPKG.Click += btnExtractFullPKG_Click;
+            // 
+            // btnViewPKGData
+            // 
+            btnViewPKGData.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnViewPKGData.Location = new System.Drawing.Point(294, 11);
+            btnViewPKGData.Margin = new Padding(3, 2, 3, 2);
+            btnViewPKGData.Name = "btnViewPKGData";
+            btnViewPKGData.Size = new System.Drawing.Size(119, 23);
+            btnViewPKGData.TabIndex = 94;
+            btnViewPKGData.Text = "View PKG files";
+            btnViewPKGData.Click += btnViewPKGData_Click;
             // 
             // _tabLog
             // 
@@ -3446,7 +3468,7 @@ namespace PS4PKGTool
             _tabLog.Controls.Add(_tbLogBox);
             _tabLog.Location = new System.Drawing.Point(4, 32);
             _tabLog.Name = "_tabLog";
-            _tabLog.Size = new System.Drawing.Size(951, 556);
+            _tabLog.Size = new System.Drawing.Size(1186, 712);
             _tabLog.TabIndex = 7;
             _tabLog.Text = "Log";
             // 
@@ -3459,7 +3481,7 @@ namespace PS4PKGTool
             _tbLogBox.Name = "_tbLogBox";
             _tbLogBox.ReadOnly = true;
             _tbLogBox.ScrollBars = ScrollBars.Vertical;
-            _tbLogBox.Size = new System.Drawing.Size(951, 556);
+            _tbLogBox.Size = new System.Drawing.Size(1186, 712);
             _tbLogBox.TabIndex = 0;
             // 
             // columnHeader7
@@ -3484,9 +3506,7 @@ namespace PS4PKGTool
             // 
             // contextMenuGLV
             // 
-            contextMenuGLV.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             contextMenuGLV.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuGLV.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             contextMenuGLV.Items.AddRange(new ToolStripItem[] { glvTitleStripMenuItem, glvRenamePriMenuItem });
             contextMenuGLV.Name = "contextMenuGLV";
             contextMenuGLV.Size = new System.Drawing.Size(209, 48);
@@ -3536,6 +3556,7 @@ namespace PS4PKGTool
             darkSectionPanel11.Location = new System.Drawing.Point(12, 50);
             darkSectionPanel11.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel11.Name = "darkSectionPanel11";
+            darkSectionPanel11.Padding = new Padding(12);
             darkSectionPanel11.SectionHeader = "Update Package Files";
             darkSectionPanel11.Size = new System.Drawing.Size(927, 496);
             darkSectionPanel11.TabIndex = 109;
@@ -3547,21 +3568,20 @@ namespace PS4PKGTool
             dgvUpdate.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvUpdate.ContextMenuStrip = contextMenuOfficialUpdate;
             dgvUpdate.Dock = DockStyle.Fill;
-            dgvUpdate.Location = new System.Drawing.Point(1, 25);
+            dgvUpdate.Location = new System.Drawing.Point(13, 37);
             dgvUpdate.Margin = new Padding(3, 4, 3, 4);
             dgvUpdate.MultiSelect = false;
             dgvUpdate.Name = "dgvUpdate";
             dgvUpdate.ReadOnly = true;
             dgvUpdate.RowTemplate.Height = 23;
             dgvUpdate.ScrollBars = ScrollBars.Horizontal;
-            dgvUpdate.Size = new System.Drawing.Size(925, 470);
+            dgvUpdate.Size = new System.Drawing.Size(901, 446);
             dgvUpdate.TabIndex = 108;
             // 
             // lblUpdateInfo
             // 
             lblUpdateInfo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             lblUpdateInfo.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblUpdateInfo.ForeColor = System.Drawing.Color.Silver;
             lblUpdateInfo.Location = new System.Drawing.Point(12, 10);
             lblUpdateInfo.Name = "lblUpdateInfo";
             lblUpdateInfo.Size = new System.Drawing.Size(927, 16);
@@ -3571,7 +3591,6 @@ namespace PS4PKGTool
             // lblVersion
             // 
             lblVersion.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblVersion.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblVersion.Location = new System.Drawing.Point(12, 28);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new System.Drawing.Size(140, 16);
@@ -3581,7 +3600,6 @@ namespace PS4PKGTool
             // lblSysVer
             // 
             lblSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblSysVer.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblSysVer.Location = new System.Drawing.Point(160, 28);
             lblSysVer.Name = "lblSysVer";
             lblSysVer.Size = new System.Drawing.Size(130, 16);
@@ -3591,7 +3609,6 @@ namespace PS4PKGTool
             // lblUpdType
             // 
             lblUpdType.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblUpdType.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblUpdType.Location = new System.Drawing.Point(300, 28);
             lblUpdType.Name = "lblUpdType";
             lblUpdType.Size = new System.Drawing.Size(100, 16);
@@ -3601,7 +3618,6 @@ namespace PS4PKGTool
             // lblMand
             // 
             lblMand.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblMand.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblMand.Location = new System.Drawing.Point(410, 28);
             lblMand.Name = "lblMand";
             lblMand.Size = new System.Drawing.Size(110, 16);
@@ -3611,7 +3627,6 @@ namespace PS4PKGTool
             // lblRemaster
             // 
             lblRemaster.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblRemaster.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblRemaster.Location = new System.Drawing.Point(530, 28);
             lblRemaster.Name = "lblRemaster";
             lblRemaster.Size = new System.Drawing.Size(110, 16);
@@ -3621,7 +3636,6 @@ namespace PS4PKGTool
             // lblFiles
             // 
             lblFiles.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblFiles.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblFiles.Location = new System.Drawing.Point(650, 28);
             lblFiles.Name = "lblFiles";
             lblFiles.Size = new System.Drawing.Size(80, 16);
@@ -3631,7 +3645,6 @@ namespace PS4PKGTool
             // lblSize
             // 
             lblSize.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblSize.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblSize.Location = new System.Drawing.Point(740, 28);
             lblSize.Name = "lblSize";
             lblSize.Size = new System.Drawing.Size(120, 16);
@@ -3648,14 +3661,15 @@ namespace PS4PKGTool
             // darkSectionPanel12
             // 
             darkSectionPanel12.Location = new System.Drawing.Point(0, 0);
+            darkSectionPanel12.Margin = new Padding(6);
             darkSectionPanel12.Name = "darkSectionPanel12";
+            darkSectionPanel12.Padding = new Padding(12);
             darkSectionPanel12.SectionHeader = null;
             darkSectionPanel12.Size = new System.Drawing.Size(200, 100);
             darkSectionPanel12.TabIndex = 0;
             // 
             // label13
             // 
-            label13.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label13.Location = new System.Drawing.Point(0, 0);
             label13.Name = "label13";
             label13.Size = new System.Drawing.Size(100, 23);
@@ -3663,7 +3677,6 @@ namespace PS4PKGTool
             // 
             // label14
             // 
-            label14.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label14.Location = new System.Drawing.Point(0, 0);
             label14.Name = "label14";
             label14.Size = new System.Drawing.Size(100, 23);
@@ -3671,7 +3684,6 @@ namespace PS4PKGTool
             // 
             // label15
             // 
-            label15.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label15.Location = new System.Drawing.Point(0, 0);
             label15.Name = "label15";
             label15.Size = new System.Drawing.Size(100, 23);
@@ -3679,7 +3691,6 @@ namespace PS4PKGTool
             // 
             // label16
             // 
-            label16.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label16.Location = new System.Drawing.Point(0, 0);
             label16.Name = "label16";
             label16.Size = new System.Drawing.Size(100, 23);
@@ -3687,7 +3698,6 @@ namespace PS4PKGTool
             // 
             // label17
             // 
-            label17.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label17.Location = new System.Drawing.Point(0, 0);
             label17.Name = "label17";
             label17.Size = new System.Drawing.Size(100, 23);
@@ -3695,7 +3705,6 @@ namespace PS4PKGTool
             // 
             // label18
             // 
-            label18.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label18.Location = new System.Drawing.Point(0, 0);
             label18.Name = "label18";
             label18.Size = new System.Drawing.Size(100, 23);
@@ -3703,7 +3712,6 @@ namespace PS4PKGTool
             // 
             // label19
             // 
-            label19.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label19.Location = new System.Drawing.Point(0, 0);
             label19.Name = "label19";
             label19.Size = new System.Drawing.Size(100, 23);
@@ -3711,7 +3719,6 @@ namespace PS4PKGTool
             // 
             // labelRemaster
             // 
-            labelRemaster.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             labelRemaster.Location = new System.Drawing.Point(0, 0);
             labelRemaster.Name = "labelRemaster";
             labelRemaster.Size = new System.Drawing.Size(100, 23);
@@ -3719,7 +3726,6 @@ namespace PS4PKGTool
             // 
             // label21
             // 
-            label21.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             label21.Location = new System.Drawing.Point(0, 0);
             label21.Name = "label21";
             label21.Size = new System.Drawing.Size(100, 23);
@@ -3727,7 +3733,6 @@ namespace PS4PKGTool
             // 
             // labelUpdateType
             // 
-            labelUpdateType.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             labelUpdateType.Location = new System.Drawing.Point(0, 0);
             labelUpdateType.Name = "labelUpdateType";
             labelUpdateType.Size = new System.Drawing.Size(100, 23);
@@ -3735,7 +3740,6 @@ namespace PS4PKGTool
             // 
             // labelMandatory
             // 
-            labelMandatory.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             labelMandatory.Location = new System.Drawing.Point(0, 0);
             labelMandatory.Name = "labelMandatory";
             labelMandatory.Size = new System.Drawing.Size(100, 23);
@@ -3744,7 +3748,6 @@ namespace PS4PKGTool
             // labelPKGdigest
             // 
             labelPKGdigest.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelPKGdigest.ForeColor = System.Drawing.Color.Silver;
             labelPKGdigest.Location = new System.Drawing.Point(424, 66);
             labelPKGdigest.Name = "labelPKGdigest";
             labelPKGdigest.Size = new System.Drawing.Size(16, 15);
@@ -3755,7 +3758,6 @@ namespace PS4PKGTool
             // 
             label5.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label5.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label5.ForeColor = System.Drawing.Color.Silver;
             label5.Location = new System.Drawing.Point(20, 36);
             label5.Name = "label5";
             label5.Size = new System.Drawing.Size(122, 15);
@@ -3766,7 +3768,6 @@ namespace PS4PKGTool
             // 
             label12.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label12.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label12.ForeColor = System.Drawing.Color.Silver;
             label12.Location = new System.Drawing.Point(20, 51);
             label12.Name = "label12";
             label12.Size = new System.Drawing.Size(92, 15);
@@ -3776,7 +3777,6 @@ namespace PS4PKGTool
             // label9
             // 
             label9.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label9.ForeColor = System.Drawing.Color.Silver;
             label9.Location = new System.Drawing.Point(164, 81);
             label9.Name = "label9";
             label9.Size = new System.Drawing.Size(10, 15);
@@ -3787,7 +3787,6 @@ namespace PS4PKGTool
             // 
             label11.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label11.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label11.ForeColor = System.Drawing.Color.Silver;
             label11.Location = new System.Drawing.Point(20, 66);
             label11.Name = "label11";
             label11.Size = new System.Drawing.Size(55, 15);
@@ -3797,7 +3796,6 @@ namespace PS4PKGTool
             // label4
             // 
             label4.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label4.ForeColor = System.Drawing.Color.Silver;
             label4.Location = new System.Drawing.Point(164, 66);
             label4.Name = "label4";
             label4.Size = new System.Drawing.Size(10, 15);
@@ -3808,7 +3806,6 @@ namespace PS4PKGTool
             // 
             label10.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label10.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label10.ForeColor = System.Drawing.Color.Silver;
             label10.Location = new System.Drawing.Point(20, 81);
             label10.Name = "label10";
             label10.Size = new System.Drawing.Size(58, 15);
@@ -3818,7 +3815,6 @@ namespace PS4PKGTool
             // label7
             // 
             label7.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label7.ForeColor = System.Drawing.Color.Silver;
             label7.Location = new System.Drawing.Point(164, 51);
             label7.Name = "label7";
             label7.Size = new System.Drawing.Size(10, 15);
@@ -3828,7 +3824,6 @@ namespace PS4PKGTool
             // labelSystemReq
             // 
             labelSystemReq.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelSystemReq.ForeColor = System.Drawing.Color.Silver;
             labelSystemReq.Location = new System.Drawing.Point(175, 36);
             labelSystemReq.Name = "labelSystemReq";
             labelSystemReq.Size = new System.Drawing.Size(16, 15);
@@ -3838,7 +3833,6 @@ namespace PS4PKGTool
             // label6
             // 
             label6.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label6.ForeColor = System.Drawing.Color.Silver;
             label6.Location = new System.Drawing.Point(164, 36);
             label6.Name = "label6";
             label6.Size = new System.Drawing.Size(10, 15);
@@ -3848,7 +3842,6 @@ namespace PS4PKGTool
             // labelUpdateVersion
             // 
             labelUpdateVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelUpdateVersion.ForeColor = System.Drawing.Color.Silver;
             labelUpdateVersion.Location = new System.Drawing.Point(175, 51);
             labelUpdateVersion.Name = "labelUpdateVersion";
             labelUpdateVersion.Size = new System.Drawing.Size(16, 15);
@@ -3858,7 +3851,6 @@ namespace PS4PKGTool
             // labelTotalSize
             // 
             labelTotalSize.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelTotalSize.ForeColor = System.Drawing.Color.Silver;
             labelTotalSize.Location = new System.Drawing.Point(175, 81);
             labelTotalSize.Name = "labelTotalSize";
             labelTotalSize.Size = new System.Drawing.Size(16, 15);
@@ -3868,7 +3860,6 @@ namespace PS4PKGTool
             // labelTotalFile
             // 
             labelTotalFile.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelTotalFile.ForeColor = System.Drawing.Color.Silver;
             labelTotalFile.Location = new System.Drawing.Point(175, 66);
             labelTotalFile.Name = "labelTotalFile";
             labelTotalFile.Size = new System.Drawing.Size(16, 15);
@@ -3880,16 +3871,16 @@ namespace PS4PKGTool
             AllowDrop = true;
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            ClientSize = new System.Drawing.Size(984, 661);
+            ClientSize = new System.Drawing.Size(1219, 817);
             Controls.Add(darkMenuStrip1);
-            Controls.Add(flatTabControl1);
+            Controls.Add(mainTabControl);
             Controls.Add(darkStatusStrip1);
             Controls.Add(label8);
             Controls.Add(label2);
             Font = new System.Drawing.Font("Segoe UI", 9F);
+            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 2, 3, 2);
-            MinimumSize = new System.Drawing.Size(1000, 700);
+            MinimumSize = new System.Drawing.Size(1235, 856);
             Name = "Main";
             SizeGripStyle = SizeGripStyle.Show;
             StartPosition = FormStartPosition.CenterScreen;
@@ -3897,6 +3888,7 @@ namespace PS4PKGTool
             TransparencyKey = System.Drawing.Color.Fuchsia;
             FormClosed += Form1_FormClosed;
             Load += Form1_Load;
+            Resize += Main_Resize;
             contextMenuPKGGridView.ResumeLayout(false);
             darkMenuStrip1.ResumeLayout(false);
             darkMenuStrip1.PerformLayout();
@@ -3908,20 +3900,22 @@ namespace PS4PKGTool
             contextMenuBackgroundImage.ResumeLayout(false);
             contextMenuExtractNode.ResumeLayout(false);
             contextMenuExtractListView.ResumeLayout(false);
-            flatTabControl1.ResumeLayout(false);
+            mainTabControl.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
-            panel2.ResumeLayout(false);
             darkSectionPanel10.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)darkDataGridView2).EndInit();
+            grpFilter.ResumeLayout(false);
+            flpFilter.ResumeLayout(false);
+            flpFilter.PerformLayout();
             subTabControl.ResumeLayout(false);
             tabPageTable.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)PKGGridView).EndInit();
             tabPageGroup.ResumeLayout(false);
-            darkSectionPanel9.ResumeLayout(false);
-            panel1.ResumeLayout(false);
             darkSectionPanel8.ResumeLayout(false);
             panel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
+            darkSectionPanel9.ResumeLayout(false);
+            panel1.ResumeLayout(false);
             tabPage2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)TrophyGridView).EndInit();
             tabPage3.ResumeLayout(false);
@@ -3940,16 +3934,16 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)dgvHeader).EndInit();
             tabPage7.ResumeLayout(false);
             panel6.ResumeLayout(false);
-            panel6.PerformLayout();
-            darkSectionPanel4.ResumeLayout(false);
-            splitContainer1.ResumeLayout(false);
-            splitContainer2.ResumeLayout(false);
-            panelListHost.ResumeLayout(false);
-            panelListHost.PerformLayout();
+            darkSplitContainer1.ResumeLayout(false);
+            splitPane1.ResumeLayout(false);
+            splitPane2.ResumeLayout(false);
+            splitPane3.ResumeLayout(false);
             sectionFileViewer.ResumeLayout(false);
             fileViewerBody.ResumeLayout(false);
             fileViewerBody.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picPreview).EndInit();
+            darkHeaderBar1.ResumeLayout(false);
+            darkHeaderBar1.PerformLayout();
             _tabLog.ResumeLayout(false);
             _tabLog.PerformLayout();
             contextMenuGLV.ResumeLayout(false);
@@ -4052,21 +4046,26 @@ namespace PS4PKGTool
         private ToolStripMenuItem toolStripMenuItem159;
         private ToolStripMenuItem toolStripMenuItem160;
         private ToolStripMenuItem renameAllPkg6ToolStripMenuItem1;
-        private ToolStripSplitButton ToolStripSplitButtonTotalPKG;
-        private System.Windows.Forms.Panel pnlFilterBar;
-        private DarkUI.Controls.DarkButton btnFilterCategory;
-        private DarkUI.Controls.DarkButton btnFilterRegion;
+        private DarkUI.Controls.DarkGroupBox grpFilter;
+        private DarkUI.Controls.DarkLabel lblCategory;
+        private DarkUI.Controls.DarkCheckedComboBox ccbCategory;
+        private DarkUI.Controls.DarkLabel lblRegion;
+        private DarkUI.Controls.DarkCheckedComboBox ccbRegion;
         private DarkUI.Controls.DarkLabel lblFilterSysVer;
         private DarkUI.Controls.DarkTextBox tbFilterSysVer;
-        private DarkUI.Controls.DarkButton btnFilterType;
-        private DarkUI.Controls.DarkButton btnFilterCompat;
-        private System.Windows.Forms.FlowLayoutPanel flowChips;
+        private DarkUI.Controls.DarkLabel lblType;
+        private DarkUI.Controls.DarkCheckedComboBox ccbType;
+        private DarkUI.Controls.DarkLabel lblShadps4;
+        private DarkUI.Controls.DarkCheckedComboBox ccbShadps4;
+        private DarkUI.Controls.DarkButton btnFilterClear;
+        private System.Windows.Forms.FlowLayoutPanel flpFilter;
+        private DarkUI.Controls.DarkChipsPanel flowChips;
         private DarkUI.Controls.DarkLabel lblFilterCount;
         private DarkUI.Controls.DarkLabel lblGlvFilterHint;
-        private DarkUI.Controls.DarkButton btnGlvFilterClear;
-        public ToolStripStatusLabel toolStripStatusLabel2;
-        private ToolStripStatusLabel toolStripStatusLabel3;
-        private ToolStripStatusLabel toolStripStatusLabel4;
+        public DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel2;
+        private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel3;
+        private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel4;
+        private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel5;
         private DarkUI.Controls.DarkSearchBox tbSearchGame;
         private ToolStripMenuItem globalExtractImagesAndIconToolStripMenuItem1;
         private ToolStripMenuItem globalExtractImageOnlyToolStripMenuItem1;
@@ -4077,8 +4076,6 @@ namespace PS4PKGTool
         private ToolStripMenuItem globalExtractImagesAndIconToolStripMenuItem2;
         private ToolStripMenuItem globalExtractImageOnlyToolStripMenuItem2;
         private ToolStripMenuItem globalExtractIconOnlyToolStripMenuItem2;
-        private ToolStripStatusLabel toolStripStatusLabel5;
-        private ToolStripSplitButton toolStripSplitButton1;
         private ToolStripMenuItem managePS4PKGToolStripMenuItem;
         private ToolStripMenuItem renameAllPkg7ToolStripMenuItem2;
         private ToolStripMenuItem renameAllPkg8ToolStripMenuItem2;
@@ -4099,31 +4096,33 @@ namespace PS4PKGTool
         private ToolStripMenuItem uninstallPKGFromPS4ToolStripMenuItem;
         private ToolStripMenuItem toolStripMenuItem21;
         private ToolStripSeparator toolStripSeparatorShadps4;
-        private ToolStripMenuItem toolStripMenuItemShadps4;
         private ToolStripMenuItem toolStripMenuItemShadps4Launch;
         private ToolStripMenuItem toolStripMenuItemShadps4Install;
         private ToolStripMenuItem toolStripMenuItemShadps4InstallSetup;
         private ToolStripMenuItem toolStripMenuItemShadps4OpenLauncher;
         private ToolStripMenuItem toolStripMenuItemShadps4Configure;
+        private ToolStripMenuItem toolStripMenuItemShadps4OpenManager;
+        private ToolStripMenuItem toolStripMenuItemShadps4Manager;
+        private ToolStripMenuItem toolStripMenuItemTools;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem1;
         private ToolStripMenuItem renameAllPkg10ToolStripMenuItem2;
         private ToolStripMenuItem renameSelectedPkg10ToolStripMenuItem2;
         private ToolStripMenuItem renameSelectedPkg10ToolStripMenuItem1;
-        private ToolStripProgressBar toolStripProgressBar1;
+        private DarkUI.Controls.DarkToolStripProgressBar toolStripProgressBar1;
         private DarkUI.Controls.DarkDataGridView darkDataGridView2;
         private ToolStripMenuItem RpiUninstallThemePKGToolStripMenuItem2;
-        private DarkUI.Controls.DarkTabControl flatTabControl1;
-        private TabPage tabPage1;
-        private TabPage tabPage2;
+        private DarkUI.Controls.DarkTabControl mainTabControl;
+        private DarkUI.Controls.DarkTabPage tabPage1;
+        private DarkUI.Controls.DarkTabPage tabPage2;
         private DarkUI.Controls.DarkDataGridView TrophyGridView;
-        private TabPage tabPage3;
+        private DarkUI.Controls.DarkTabPage tabPage3;
         private DarkUI.Controls.DarkTabControl flatTabControlBgi;
         private DarkUI.Controls.DarkContextMenu TrophyDarkContextMenu;
         private ToolStripMenuItem ExtractTrophyImageToolStripMenuItem;
         private DarkUI.Controls.DarkContextMenu contextMenuBackgroundImage;
         private ToolStripMenuItem saveImageToolStripMenuItem;
         private ToolStripMenuItem SetImageAsDesktopBackgroundToolStripMenuItem;
-        private TabPage tabPage4;
+        private DarkUI.Controls.DarkTabPage tabPage4;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel2;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel1;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel3;
@@ -4172,10 +4171,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel labelPKGdigest;
         private DarkUI.Controls.DarkTextBox tbPasscode;
         private DarkUI.Controls.DarkButton btnViewPKGData;
-        private TabPage tabPage7;
-        private DarkUI.Controls.DarkSplitContainer splitContainer1;
-        private DarkUI.Controls.DarkSplitContainer splitContainer2;
-        private Panel panelListHost;
+        private DarkUI.Controls.DarkTabPage tabPage7;
         private DarkUI.Controls.DarkSectionPanel sectionFileViewer;
         private DarkUI.Controls.DarkLabel lblFileViewerInfo;
         private Panel fileViewerBody;
@@ -4191,7 +4187,7 @@ namespace PS4PKGTool
         private ColumnHeader columnHeader9;
         private ColumnHeader columnHeader10;
         private TabPage tabPage5;
-        private TabPage _tabLog;
+        private DarkUI.Controls.DarkTabPage _tabLog;
         private DarkUI.Controls.DarkTextBox _tbLogBox;
         private Panel panel8;
         private DarkUI.Controls.DarkLabel lblUpdateInfo;
@@ -4223,16 +4219,13 @@ namespace PS4PKGTool
         private ToolStripMenuItem ctxCopyPath;
         private ToolStripMenuItem ctxCopyName;
         private ToolStripMenuItem viewPkgChangeInfotoolStripMenuItem2;
-        private ToolStripStatusLabel labelDisplayTotalPKG;
-        private ToolStripStatusLabel toolStripStatusLabel1;
+        private DarkUI.Controls.DarkToolStripStatusLabel labelDisplayTotalPKG;
+        private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel1;
         private ToolStripMenuItem toolStripMenuItem34;
         private ToolStripMenuItem viewPkgChangeInfotoolStripMenuItem1;
         private DarkUI.Controls.DarkLabel darkLabel5;
-        private DarkUI.Controls.DarkTextBox tbSearchTreeView;
         private DarkUI.Controls.DarkSearchBox tbFilterTreeView;
-        private DarkUI.Controls.DarkLabel darkLabel6;
         private ToolStripMenuItem expandAllToolStripMenuItem;
-        private DarkUI.Controls.DarkButton btnSearchFileInTreeView;
         private ToolStripMenuItem collapseAllNodeToolStripMenuItem;
         private ToolStripMenuItem ctxExpandNode;
         private ToolStripMenuItem ctxCollapseNode;
@@ -4278,7 +4271,6 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkStatusStrip darkStatusStrip1;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel7;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel12;
-        private DarkUI.Controls.DarkSectionPanel darkSectionPanel4;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel11;
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripSeparator toolStripSeparator2;
@@ -4309,14 +4301,20 @@ namespace PS4PKGTool
         private ToolStripMenuItem checkForDuplicatePKGToolStripMenuItem1;
         private ToolStripSeparator toolStripSeparator11;
         private ToolStripSeparator toolStripSeparator12;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator13;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator14;
         private ToolStripMenuItem openAppDataDirectoryToolStripMenuItem2;
         private ToolStripMenuItem downloadOfficialUpdateToolStripMenuItem1;
         private ToolStripMenuItem downloadOfficialUpdateToolStripMenuItem2;
-        // (removed: darkLabel7)
-        private Panel panel2;
         private ToolStripMenuItem moveByPkgTitleIdToolStripMenuItem;
         private DarkUI.Controls.DarkButton btnExportTreeView;
         private DarkUI.Controls.DarkButton btnExportTextures;
+        private ToolStripMenuItem sToolStripMenuItem;
+        private DarkUI.Controls.DarkHeaderBar darkHeaderBar1;
+        private DarkUI.Controls.DarkSplitContainer darkSplitContainer1;
+        private DarkUI.Controls.DarkSplitPane splitPane1;
+        private DarkUI.Controls.DarkSplitPane splitPane2;
+        private DarkUI.Controls.DarkSplitPane splitPane3;
     }
 }
 

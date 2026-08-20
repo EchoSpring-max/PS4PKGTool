@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.TrophyMetadata;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
@@ -114,7 +115,7 @@ public sealed class TrophyMetadataTests
         {
             TrophyCacheBuildResult result = await new TrophyMetadataCacheBuilder().BuildAsync(
                 new[] { directory }, recursive: true, "missing-orbis.exe",
-                Path.Combine(directory, "cache.json"), Path.Combine(directory, "temp"));
+                Path.Combine(directory, "cache.json"));
             Assert.AreEqual(0, result.TotalPackages);
             Assert.AreEqual(0, result.Added);
             Assert.AreEqual(0, result.Failed);
@@ -134,11 +135,12 @@ public sealed class TrophyMetadataTests
         {
             string harmlessTool = Path.Combine(Environment.SystemDirectory, "where.exe");
             NpbindExtractionResult result = await new NpbindExtractor().ExtractAsync(
-                harmlessTool, pkgPath, Path.Combine(directory, "work"));
+                harmlessTool, pkgPath);
 
             Assert.IsFalse(result.Succeeded);
             Assert.IsTrue(File.Exists(pkgPath), "The original special-character filename was not restored.");
-            Assert.IsEmpty(Directory.EnumerateFiles(directory, "ps4pkgtool_npbind_*.pkg"));
+            // No temp-dir leftovers (the safe-orbis temp dir is deleted with the restore).
+            Assert.IsEmpty(Directory.GetDirectories(directory, OrbisTempRecovery.TempDirPrefix + "*"));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

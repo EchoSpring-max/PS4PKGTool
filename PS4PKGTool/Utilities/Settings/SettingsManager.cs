@@ -13,7 +13,9 @@ namespace PS4PKGTool.Utilities.Settings
     public static class SettingsManager
     {
         public static AppSettings appSettings_ = new AppSettings();
-        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.AppDataDirectory, @"Settings.conf");
+        // Settings live outside the build output folder: the old next-to-exe
+        // location was wiped by every clean rebuild (settings silently reset).
+        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.UserSettingsDirectory, @"Settings.conf");
         public static void SaveSettings(AppSettings settings, string filePath)
         {
             try
@@ -56,6 +58,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_backport_column={settings.pkgBackportColumn}");
                     writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
                     writer.WriteLine($"theme_index={settings.ThemeIndex}");
+                    writer.WriteLine($"theme_name={settings.ThemeName}");
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
                     writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
                     writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
@@ -63,6 +66,9 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"shadps4_active_launcher={settings.Shadps4ActiveLauncher}");
                     writer.WriteLine($"shadps4_managed_root={settings.Shadps4ManagedRoot}");
                     writer.WriteLine($"shadps4_install_directory={settings.Shadps4InstallDirectory}");
+                    writer.WriteLine($"orbis_temp_directory={settings.OrbisTempDirectory}");
+                    writer.WriteLine($"shadps4_config_detection_dismissed={settings.Shadps4ConfigDetectionDismissed}");
+                    writer.WriteLine($"shell_integration_installed={settings.ShellIntegrationInstalled}");
 
                 }
             }
@@ -78,6 +84,7 @@ namespace PS4PKGTool.Utilities.Settings
             {
                 if (File.Exists(filePath))
                 {
+                    bool loadedGlobalOrbisTemp = false;
                     using (StreamReader reader = new StreamReader(filePath))
                     {
                         string line;
@@ -254,6 +261,10 @@ namespace PS4PKGTool.Utilities.Settings
                                 int.TryParse(line.Substring("theme_index=".Length), out int theme_index);
                                 appSettings_.ThemeIndex = theme_index;
                             }
+                            else if (line.StartsWith("theme_name="))
+                            {
+                                appSettings_.ThemeName = line.Substring("theme_name=".Length).Trim();
+                            }
                             else if (line.StartsWith("shadps4_check="))
                             {
                                 bool.TryParse(line.Substring("shadps4_check=".Length), out bool shadps4_check);
@@ -284,13 +295,34 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 appSettings_.Shadps4InstallDirectory = line.Substring("shadps4_install_directory=".Length).Trim();
                             }
+                            else if (line.StartsWith("orbis_temp_directory="))
+                            {
+                                appSettings_.OrbisTempDirectory = line.Substring("orbis_temp_directory=".Length).Trim();
+                                loadedGlobalOrbisTemp = true;
+                            }
+                            // Migration from the short-lived shadPS4-only setting.
+                            else if (line.StartsWith("shadps4_orbis_temp_directory=")
+                                && !loadedGlobalOrbisTemp)
+                            {
+                                appSettings_.OrbisTempDirectory = line.Substring("shadps4_orbis_temp_directory=".Length).Trim();
+                            }
                             else if (line.StartsWith("shadps4_core_exe="))
                             {
                                 appSettings_.Shadps4CoreExePath = line.Substring("shadps4_core_exe=".Length).Trim();
                             }
+                            else if (line.StartsWith("shadps4_config_detection_dismissed="))
+                            {
+                                bool.TryParse(line.Substring("shadps4_config_detection_dismissed=".Length).Trim(), out bool dismissed);
+                                appSettings_.Shadps4ConfigDetectionDismissed = dismissed;
+                            }
                             else if (line.StartsWith("shadps4_launcher_exe="))
                             {
                                 appSettings_.Shadps4LauncherExePath = line.Substring("shadps4_launcher_exe=".Length).Trim();
+                            }
+                            else if (line.StartsWith("shell_integration_installed="))
+                            {
+                                bool.TryParse(line.Substring("shell_integration_installed=".Length).Trim(), out bool installed);
+                                appSettings_.ShellIntegrationInstalled = installed;
                             }
                         }
                     }
@@ -335,6 +367,85 @@ namespace PS4PKGTool.Utilities.Settings
                 if (!string.IsNullOrWhiteSpace(launcher))
                     s.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(launcher);
             }
+        }
+
+        /// <summary>
+        /// True when the shadPS4 setup can be offered for reuse: settings
+        /// have no active core/launcher AND the managed store holds builds
+        /// AND the user has not previously declined the prompt. The caller
+        /// shows a confirmation dialog before applying (AutoHealShadps4Settings).
+        /// </summary>
+        public static bool CanHealShadps4Settings(AppSettings s, Shadps4ManagedBuilds? store = null)
+        {
+            if (s.Shadps4ConfigDetectionDismissed) return false;
+            if (!string.IsNullOrWhiteSpace(s.Shadps4ActiveCore)
+                || !string.IsNullOrWhiteSpace(s.Shadps4ActiveLauncher))
+                return false;
+
+            store ??= new Shadps4ManagedBuilds(s.Shadps4ManagedRoot);
+            return store.ListBuilds(Shadps4Component.Core).Count > 0
+                || store.ListBuilds(Shadps4Component.QtLauncher).Count > 0;
+        }
+
+        /// <summary>
+        /// Rebuilds the shadPS4 setup from the managed store when settings
+        /// are missing or empty (wiped file, fresh machine, copied install).
+        /// Each field is healed only when it is empty - a value the user set
+        /// is never overridden. Rules are deterministic, never guessed:
+        /// newest installed core/launcher build wins, install dir falls back
+        /// to &lt;managed root&gt;\Data, and the root is recorded explicitly so the
+        /// config stays self-describing.
+        /// </summary>
+        public static bool AutoHealShadps4Settings(AppSettings s, Shadps4ManagedBuilds? store = null)
+        {
+            store ??= new Shadps4ManagedBuilds(s.Shadps4ManagedRoot);
+            bool changed = false;
+
+            var cores = store.ListBuilds(Shadps4Component.Core);
+            var launchers = store.ListBuilds(Shadps4Component.QtLauncher);
+
+            if (string.IsNullOrWhiteSpace(s.Shadps4ManagedRoot))
+            {
+                // Record the root only when there is content to anchor - on a
+                // fresh machine an empty store means nothing was recovered.
+                if (cores.Count > 0 || launchers.Count > 0)
+                {
+                    s.Shadps4ManagedRoot = store.RootPath;
+                    changed = true;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(s.Shadps4ActiveCore))
+            {
+                var core = cores.FirstOrDefault();
+                if (core != null)
+                {
+                    s.Shadps4ActiveCore = Shadps4ActiveCore.ForManaged(core.BuildId);
+                    changed = true;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(s.Shadps4ActiveLauncher))
+            {
+                var launcher = launchers.FirstOrDefault();
+                if (launcher != null)
+                {
+                    s.Shadps4ActiveLauncher = Shadps4ActiveCore.ForManaged(launcher.BuildId);
+                    changed = true;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(s.Shadps4InstallDirectory))
+            {
+                string data = Path.Combine(store.RootPath, "Data");
+                if (Directory.Exists(data))
+                {
+                    s.Shadps4InstallDirectory = data;
+                    changed = true;
+                }
+            }
+
+            return changed;
         }
 
         private static bool IsCoreFileName(string? path)

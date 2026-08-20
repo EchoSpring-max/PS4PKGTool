@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
@@ -33,12 +35,30 @@ namespace PS4PKGTool.Utilities.Shadps4
     /// - The positional argument (or -g/--game) accepts a game ID (CUSAxxxxx)
     ///   which is searched in the configured install dirs (depth 5), or an
     ///   existing filesystem path to boot directly.
-    /// - PS4PKGTool never waits for the emulator, so no exit codes are
-    ///   interpreted - only process-start failures are reported.
+    /// - Launch returns immediately (PS4PKGTool never blocks on the emulator);
+    ///   a background watcher keeps the process handle, classifies the exit
+    ///   code when the core terminates and raises <see cref="Terminated"/>
+    ///   from a thread-pool thread. UI subscribers marshal to the UI thread.
     /// </summary>
     public sealed class Shadps4Launcher
     {
         private static readonly Regex CusaId = new(@"^CUSA\d{5}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// Raised on a thread-pool thread when a launched core process exits.
+        /// The launcher never touches WinForms - subscribers own marshaling
+        /// (see the Logger_OnLog BeginInvoke pattern in the main form).
+        /// </summary>
+        public event EventHandler<Shadps4TerminationReport>? Terminated;
+
+        /// <summary>Test seam: time source for the launch timestamp.</summary>
+        public IClock Clock { get; set; } = new SystemClock();
+
+        /// <summary>Test seam: diagnostics enrichment (classification, log tail, WER discovery).</summary>
+        public Shadps4TerminationAnalyzer Analyzer { get; set; } = new(new SystemClock(), new TaskDelay());
+
+        /// <summary>Test seam: process spawn; when set, replaces Process.Start.</summary>
+        public Func<ProcessStartInfo, Process>? ProcessStartOverride { get; set; }
 
         /// <summary>True when a shadPS4 process appears to be running.</summary>
         public static bool IsEmulatorRunning()
@@ -156,7 +176,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 Logger.LogWarning($"Shadps4Launch: {plan.Status}: {plan.Message}");
                 return (plan.Status, plan.Message);
             }
-            return Start(plan.Exe, plan.Arguments);
+            return Start(plan.Exe, plan.Arguments, titleId, env.UserDirectory);
         }
 
         /// <summary>Boots a specific executable (extracted game) directly.</summary>
@@ -183,7 +203,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                     "shadPS4 is already running. Only one emulator instance can run at a time. Close the running shadPS4 to launch another game.");
             }
 
-            return Start(exe, BuildExecutableArguments(executablePath));
+            return Start(exe, BuildExecutableArguments(executablePath), executablePath, env.UserDirectory);
         }
 
         /// <summary>Locates eboot.bin inside an extracted game folder (depth-limited).</summary>
@@ -268,14 +288,21 @@ namespace PS4PKGTool.Utilities.Shadps4
             return psi;
         }
 
-        private static (Shadps4LaunchStatus Status, string Message) Start(string exe, string[] arguments)
+        private (Shadps4LaunchStatus Status, string Message) Start(string exe, string[] arguments, string? target, string? userDirectory)
         {
             try
             {
                 var psi = BuildProcessStartInfo(exe, arguments);
                 Logger.LogInformation($"Shadps4Launch: starting {exe} {string.Join(" ", arguments)} (cwd: {psi.WorkingDirectory})");
-                Process.Start(psi);
+                Process proc = ProcessStartOverride != null
+                    ? ProcessStartOverride(psi)
+                    : Process.Start(psi) ?? throw new InvalidOperationException("Process.Start returned null.");
                 string version = CoreVersion(exe);
+                // The watcher owns the process handle from here on: it waits
+                // for the exit, classifies it, and disposes the handle.
+                var context = new Shadps4LaunchContext(target, exe, arguments,
+                    string.IsNullOrWhiteSpace(version) ? null : version, userDirectory, Clock.UtcNow);
+                _ = WatchAsync(proc, context);
                 return (Shadps4LaunchStatus.Started,
                     string.IsNullOrWhiteSpace(version) ? "shadPS4 launched." : $"shadPS4 launched [v{version}]");
             }
@@ -283,6 +310,48 @@ namespace PS4PKGTool.Utilities.Shadps4
             {
                 Logger.LogError("Shadps4Launch: Process.Start failed: " + ex);
                 return (Shadps4LaunchStatus.StartFailed, ex.Message);
+            }
+        }
+
+        private sealed record Shadps4LaunchContext(
+            string? Target, string Executable, string[] Arguments, string? CoreVersion,
+            string? UserDirectory, DateTime StartTimeUtc);
+
+        /// <summary>
+        /// Background watcher: waits for the core to exit, builds a structured
+        /// termination report (exit code, runtime, log tail, WER evidence),
+        /// logs it and raises <see cref="Terminated"/>. Fire and forget - the
+        /// task closure keeps the launcher instance alive until the exit.
+        /// </summary>
+        private async Task WatchAsync(Process proc, Shadps4LaunchContext context)
+        {
+            try
+            {
+                await proc.WaitForExitAsync().ConfigureAwait(false);
+                DateTime exitTimeUtc = DateTime.UtcNow;
+                var report = await Analyzer.AnalyzeAsync(context.Target, context.Executable,
+                    context.Arguments, context.CoreVersion, context.UserDirectory,
+                    context.StartTimeUtc, exitTimeUtc, proc.ExitCode).ConfigureAwait(false);
+
+                string targetPart = string.IsNullOrEmpty(context.Target) ? "" : $", target {context.Target}";
+                Logger.LogInformation(
+                    $"Shadps4Launch: shadPS4 exited with code {report.ExitCodeText} after {report.RuntimeText}{targetPart}");
+                if (!string.IsNullOrWhiteSpace(report.WerReportFolder))
+                    Logger.LogInformation($"Shadps4Launch: WER report folder: {report.WerReportFolder}");
+                if (!string.IsNullOrWhiteSpace(report.LogTail))
+                    Logger.LogInformation("Shadps4Launch: emulator log tail:\n" + report.LogTail);
+
+                Terminated?.Invoke(this, report);
+            }
+            catch (Exception ex)
+            {
+                // Never an unobserved task exception; a broken watch is a log
+                // line, not a user-facing failure.
+                Logger.LogWarning("Shadps4Launch: termination watch failed: " + ex.Message);
+            }
+            finally
+            {
+                proc.Dispose();
             }
         }
 

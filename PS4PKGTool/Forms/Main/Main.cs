@@ -11,6 +11,8 @@ using PS4_Tools.LibOrbis.Util;
 using PS4_Trophy_xdpx;
 using PS4PKGTool.Util;
 using PS4PKGTool.Util.Constants;
+using PS4PKGTool.Utilities.Constants;
+using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using PS4PKGTool.Utilities.Shadps4;
@@ -53,7 +55,7 @@ namespace PS4PKGTool
 {
     public partial class Main : DarkUI.Forms.DarkForm
     {
-        private const string DefaultOrbisPasscode = "00000000000000000000000000000000";
+        private const string DefaultOrbisPasscode = PkgFileListingService.DefaultPasscode;
         private MemoryMappedFile pkgFile;
         private dynamic send_pkg_json;
         private string TEMPFILENAMESENDPKG;
@@ -102,6 +104,9 @@ namespace PS4PKGTool
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _pkgDirectories = new();   // paths that are directories (from orbis D lines)
         private int _glvGroupHeaderIndex = -1;   // group header row index last right-clicked in GLV
+        private readonly int _pkgListTabTopGap;
+        private readonly int _pkgListTabBottomGap;
+        private bool _pkgListLayoutInitialized;
 
         [DllImport("winmm.dll")]
         private static extern int waveOutSetVolume(IntPtr hwo, uint dwVolume);
@@ -128,6 +133,12 @@ namespace PS4PKGTool
         public Main()
         {
             InitializeComponent();
+            // Preserve the visual spacing set in Main.Designer.cs when the
+            // filter group changes height at runtime (for example, when its
+            // filter controls reflow after the maximized form becomes wider).
+            _pkgListTabTopGap = Math.Max(0, subTabControl.Top - grpFilter.Bottom);
+            _pkgListTabBottomGap = Math.Max(0, tabPage1.ClientSize.Height - subTabControl.Bottom);
+            _pkgListLayoutInitialized = true;
             this.Icon = AppIcon;
 
             listView1.Columns.AddRange(new ColumnHeader[] { columnHeader7, columnHeader8, columnHeader9, columnHeader10 });
@@ -163,7 +174,6 @@ namespace PS4PKGTool
             TrophyGridView.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             TrophyGridView.ScrollBars = ScrollBars.Vertical;
 
-            this.MinimumSize = new System.Drawing.Size(1000, 700);
             this.ActiveControl = null;  //this = form
             toolStripProgressBar1.MarqueeAnimationSpeed = 30;
 
@@ -301,7 +311,11 @@ namespace PS4PKGTool
                     {
                         try
                         {
-                            _tbLogBox.AppendText(line + Environment.NewLine);
+                            // Multi-line messages (e.g. the emulator log tail)
+                            // arrive with LF-only breaks - normalize so the
+                            // box always renders line breaks.
+                            string text = Logger.NormalizeNewlines(line).TrimEnd('\r', '\n');
+                            _tbLogBox.AppendText(text + Environment.NewLine);
                             if (_tbLogBox.Text.Length > 50000)
                                 _tbLogBox.Text = _tbLogBox.Text.Substring(_tbLogBox.Text.Length - 40000);
                         }
@@ -309,6 +323,84 @@ namespace PS4PKGTool
                     }));
             }
             catch { }
+        }
+
+        private void Shadps4Launcher_Terminated(object? sender, Shadps4TerminationReport report)
+        {
+            // The watcher reports from a thread-pool thread - marshal to the
+            // UI thread and silently abandon delivery when the form is gone
+            // (same discipline as Logger_OnLog).
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                BeginInvoke((Action)(() =>
+                {
+                    var feedback = BuildGameFeedbackContext(report);
+                    Shadps4TerminationUi.ShowIfNeeded(report, feedback);
+                }));
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Resolves the game's title/version from the grid and the active
+        /// core/launcher display names for the post-session feedback form.
+        /// Null when the target is unknown (feedback is skipped).
+        /// </summary>
+        private GameFeedbackContext? BuildGameFeedbackContext(Shadps4TerminationReport report)
+        {
+            string titleId = report.Target ?? "";
+            if (string.IsNullOrWhiteSpace(titleId)) return null;
+
+            string title = "", version = "";
+            DataTable? dt = (PKGGridView.DataSource as DataTable)
+                ?? (PKGGridView.DataSource as DataView)?.Table;
+            if (dt != null)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    if (!string.Equals(row[PkgColumns.TitleId]?.ToString(), titleId, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    title = row[PkgColumns.Title]?.ToString() ?? "";
+                    version = row[PkgColumns.AppVersion]?.ToString() ?? "";
+                    break;
+                }
+            }
+
+            // The installed game's own param.sfo is the authoritative source
+            // for name and version - the grid values only fill gaps.
+            string installDir = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(installDir))
+            {
+                string sfoPath = Path.Combine(installDir, titleId, "sce_sys", "param.sfo");
+                var info = ParamSfoReader.ReadGameInfo(sfoPath);
+                if (info != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(info.Value.Title)) title = info.Value.Title;
+                    if (!string.IsNullOrWhiteSpace(info.Value.AppVersion)) version = info.Value.AppVersion;
+                }
+            }
+
+            var coreSetting = Shadps4ActiveCore.Parse(appSettings_.Shadps4ActiveCore ?? "");
+            string coreId = coreSetting.Source == Shadps4ComponentSource.Managed ? coreSetting.Value : "";
+
+            return new GameFeedbackContext(
+                titleId, title, version,
+                Shadps4Compat.Lookup(titleId, appSettings_.Shadps4Os),
+                Shadps4SetupDisplay.ComponentDisplayName(appSettings_.Shadps4ActiveCore, Shadps4Component.Core, appSettings_.Shadps4ManagedRoot),
+                Shadps4SetupDisplay.ComponentDisplayName(appSettings_.Shadps4ActiveLauncher, Shadps4Component.QtLauncher, appSettings_.Shadps4ManagedRoot),
+                Shadps4Compat.OsDisplay(appSettings_.Shadps4Os),
+                Shadps4SetupDisplay.EmulatorVersion(appSettings_.Shadps4ActiveCore, appSettings_.Shadps4ManagedRoot),
+                Shadps4ExitStatus.IsErrorStatus(report.Category) ? report.LogTail ?? "" : "",
+                report.LogPath,
+                (long)report.Runtime.TotalSeconds,
+                report.Category.ToString(),
+                unchecked((int)report.ExitCode),
+                string.IsNullOrEmpty(report.StatusName) ? null : report.StatusName,
+                coreId,
+                Shadps4SetupDisplay.ShortBuildCommit(coreId),
+                report.CoreVersion,
+                "LaunchSession");
         }
 
         private static void SafeMoveDirectory(string src, string dst)
@@ -428,12 +520,23 @@ namespace PS4PKGTool
                 downloadOfficialUpdateToolStripMenuItem2.Enabled = canOpen;
         }
 
+        private bool _wasMaximized;
+
+        /// <summary>Restoring from maximized lands on the minimum width (1150).</summary>
+        private void Main_Resize(object sender, EventArgs e)
+        {
+            if (_wasMaximized && WindowState == FormWindowState.Normal)
+                Width = 1150;
+            _wasMaximized = WindowState == FormWindowState.Maximized;
+        }
+
         private async void Form1_Load(object sender, EventArgs e)
         {
             Logger.LogInformation("App started.");
             try
             {
-                RecoverOrphanedOrbisTempDirs();
+                SetupFilterChecklists();
+                ScanForStagedPkgsLeftovers();
                 WindowState = FormWindowState.Maximized;
                 this.Text = "PS4 PKG Tool " + ApplicationVersion;
                 await Task.Run(() =>
@@ -676,33 +779,23 @@ namespace PS4PKGTool
         {
             try
             {
-                List<string> array = pkg.Param.Tables
+                string pubToolInfo = pkg.Param.Tables
                     .Where(item => item.Name == "PUBTOOLINFO")
                     .Select(item => item.Value)
-                    .FirstOrDefault()
-                    ?.Split(',')
-                    .Reverse()
-                    .ToList();
-
-                List<string> value = array?.Select(item => item.Substring(item.LastIndexOf('=') + 1)).ToList();
-                List<string> type = array?.Select(items => items.Split('=')[0]).ToList();
+                    .FirstOrDefault();
+                IReadOnlyList<PkgInspectionField> fields = PkgBuildInfoParser.Parse(pubToolInfo);
 
                 DataTable dtPubtool = new DataTable();
-                foreach (var tv in type)
-                {
-                    dtPubtool.Columns.Add(tv.Replace("c_date", "Creation Date")
-                        .Replace("sdk_ver", "PS4 SDK Version")
-                        .Replace("st_type", "Storage Type")
-                        .Replace("c_time", "Creation Time"));
-                }
+                foreach (PkgInspectionField field in fields)
+                    dtPubtool.Columns.Add(field.Name);
 
-                var row = dtPubtool.NewRow();
-
-                for (int i = 0; i < value?.Count; i++)
+                if (fields.Count > 0)
                 {
-                    row[i] = value[i];
+                    var row = dtPubtool.NewRow();
+                    for (int i = 0; i < fields.Count; i++)
+                        row[i] = fields[i].Value;
+                    dtPubtool.Rows.Add(row);
                 }
-                dtPubtool.Rows.Add(row);
 
                 darkDataGridView4.DataSource = dtPubtool;
             }
@@ -1504,7 +1597,7 @@ namespace PS4PKGTool
 
         private void RefreshPkgList()
         {
-            flatTabControl1.SelectedIndex = 0;
+            mainTabControl.SelectedIndex = 0;
             Logger.LogInformation("Refreshing PKG list..");
             Logger.LogInformation("Refreshing PKG list...");
 
@@ -1666,23 +1759,9 @@ namespace PS4PKGTool
             }
         }
 
-        private static string GetRenameFormat(int formatIndex)
-        {
-            return formatIndex switch
-            {
-                1 => NamingFormat.TITLE,
-                2 => $"{NamingFormat.TITLE} [{NamingFormat.TITLE_ID}]",
-                3 => $"{NamingFormat.TITLE} [{NamingFormat.TITLE_ID}] [{NamingFormat.APP_VERSION}]",
-                4 => $"{NamingFormat.TITLE} [{NamingFormat.CATEGORY}]",
-                5 => NamingFormat.TITLE_ID,
-                6 => $"{NamingFormat.TITLE_ID} [{NamingFormat.TITLE}]",
-                7 => $"[{NamingFormat.TITLE_ID}] [{NamingFormat.CATEGORY}] [{NamingFormat.APP_VERSION}] {NamingFormat.TITLE}",
-                8 => $"{NamingFormat.TITLE} [{NamingFormat.CATEGORY}] [{NamingFormat.VERSION}]",
-                9 => NamingFormat.CONTENT_ID,
-                10 => NamingFormat.CONTENT_ID2,
-                _ => null, // 11 = custom
-            };
-        }
+        /// <summary>Delegates to the shared format source of truth (also used by the Mini Viewer and the Explorer shell integration).</summary>
+        private string GetRenameFormat(int formatIndex)
+            => PkgRenameFormats.GetFormat(formatIndex, appSettings_.RenameCustomName);
 
         private void RenamePkg_Click(object sender, EventArgs e)
         {
@@ -1704,6 +1783,11 @@ namespace PS4PKGTool
             // Format 12 = Sort by Install Priority (handled by RenamePKGByPriority)
             if (fmtNum == 12)
             {
+                if (Shadps4Manager.IsInstallationActive)
+                {
+                    ShowWarning("A shadPS4 installation is in progress.", false);
+                    return;
+                }
                 var priorityList = GetSelectedPKGDirectoryList(selectionType);
                 if (priorityList.Count == 0) { ShowError("No PKG files to rename.", false); return; }
                 var priorityConfirm = DialogResultYesNo(
@@ -2066,7 +2150,9 @@ namespace PS4PKGTool
                 try
                 {
                     var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-                    pkgFiles = Directory.EnumerateFiles(folderPath, "*.PKG", searchOption).ToList();
+                    pkgFiles = Directory.EnumerateFiles(folderPath, "*.PKG", searchOption)
+                        .Where(p => !OrbisTempRecovery.IsStagingArtifact(p))
+                        .ToList();
                 }
                 catch (UnauthorizedAccessException ex)
                 {
@@ -2181,11 +2267,29 @@ namespace PS4PKGTool
                         // Backport check
                         string pkgIsBackported = (backportCache2 != null && backportCache2.TryGetValue(pkgFile, out var bp2)) ? bp2 : "No";
 
-                        dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
-                            pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
-                            pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc,
-                            pkgDirectoryName, pkgIsBackported, "NA",
-                            ps4Pkg.Region, PkgColumns.ParseSystemVersionNum(pkgMinFirmware));
+                        // Columns assigned by name (never positionally) so a
+                        // new column in PkgColumns cannot shift data.
+                        var row = dt.NewRow();
+                        row[PkgColumns.Filename] = pkgFileName;
+                        row[PkgColumns.Title] = ps4Pkg.PS4_Title;
+                        row[PkgColumns.TitleId] = ps4Pkg.Param.TITLEID;
+                        row[PkgColumns.ContentId] = ps4Pkg.Param.ContentID;
+                        row[PkgColumns.Region] = pkgRegionIcon;
+                        row[PkgColumns.SystemVersion] = pkgMinFirmware;
+                        row[PkgColumns.AppVersion] = pkgVersion + $" [{pkgAppVersion}]";
+                        row[PkgColumns.PkgType] = pkgState;
+                        row[PkgColumns.Category] = pkgType;
+                        row[PkgColumns.Size] = pkgSize;
+                        row[PkgColumns.Psvr] = psVr;
+                        row[PkgColumns.Ps4ProEnhanced] = neoEnable;
+                        row[PkgColumns.Ps5Bc] = ps5bc;
+                        row[PkgColumns.Directory] = pkgDirectoryName;
+                        row[PkgColumns.Backported] = pkgIsBackported;
+                        row[PkgColumns.LatestUpdate] = "NA";
+                        row[PkgColumns.Shadps4] = ""; // filled by ApplyShadps4Status
+                        row[PkgColumns.RegionName] = ps4Pkg.Region;
+                        row[PkgColumns.SystemVersionNum] = PkgColumns.ParseSystemVersionNum(pkgMinFirmware);
+                        dt.Rows.Add(row);
 
                         // Update type counts
                         switch (ps4Pkg.PKG_Type.ToString())
@@ -2268,7 +2372,6 @@ namespace PS4PKGTool
                 this.Invoke((MethodInvoker)delegate
                 {
                     GetDrivesFreeSpace();
-                    RebuildFilterDropDown();
                     labelDisplayTotalPKG.Text = $"Displaying {PKGGridView.Rows.Count} PS4 PKG";
                     SetBackgroundMusicVolume();
                     SetDataGridViewCellStyle();
@@ -2373,7 +2476,8 @@ namespace PS4PKGTool
 
                             try
                             {
-                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption);
+                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption)
+                                    .Where(p => !OrbisTempRecovery.IsStagingArtifact(p));
                                 PkgFileList.AddRange(pkgFiles);
                             }
                             catch (UnauthorizedAccessException e)
@@ -2524,8 +2628,29 @@ namespace PS4PKGTool
                     // add items to datatable
                     string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : $"{pkgSystemVersion}";
                     pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
-                    dttemp.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported, "NA",
-                        region, PkgColumns.ParseSystemVersionNum(pkgMinFirmware));
+                    // Columns assigned by name (never positionally) so a
+                    // new column in PkgColumns cannot shift data.
+                    var row = dttemp.NewRow();
+                    row[PkgColumns.Filename] = pkgFileName;
+                    row[PkgColumns.Title] = ps4Pkg.PS4_Title;
+                    row[PkgColumns.TitleId] = pkgTitleId;
+                    row[PkgColumns.ContentId] = ps4Pkg.Param.ContentID;
+                    row[PkgColumns.Region] = pkgRegionIcon;
+                    row[PkgColumns.SystemVersion] = pkgMinFirmware;
+                    row[PkgColumns.AppVersion] = pkgVersion + $" [{pkgAppVersion}]";
+                    row[PkgColumns.PkgType] = pkgState;
+                    row[PkgColumns.Category] = pkgType;
+                    row[PkgColumns.Size] = pkgSize;
+                    row[PkgColumns.Psvr] = psVr;
+                    row[PkgColumns.Ps4ProEnhanced] = neoEnable;
+                    row[PkgColumns.Ps5Bc] = ps5bc;
+                    row[PkgColumns.Directory] = pkgDirectoryName;
+                    row[PkgColumns.Backported] = pkgIsBackported;
+                    row[PkgColumns.LatestUpdate] = "NA";
+                    row[PkgColumns.Shadps4] = ""; // filled by ApplyShadps4Status
+                    row[PkgColumns.RegionName] = region;
+                    row[PkgColumns.SystemVersionNum] = PkgColumns.ParseSystemVersionNum(pkgMinFirmware);
+                    dttemp.Rows.Add(row);
 
                     switch (ps4Pkg.PKG_Type.ToString())
                     {
@@ -2894,6 +3019,11 @@ namespace PS4PKGTool
 
         private void GlvRenameByPriority()
         {
+            if (Shadps4Manager.IsInstallationActive)
+            {
+                ShowWarning("A shadPS4 installation is in progress.", false);
+                return;
+            }
             // Always target the whole group - right-click an item or a header,
             // the entire group gets renamed by install priority.
             if (_glvGroupHeaderIndex < 0 && !string.IsNullOrEmpty(groupedListView?.SelectedFilePath))
@@ -3133,11 +3263,9 @@ namespace PS4PKGTool
                 // File->Manage
                 if (managePS4PKGToolStripMenuItem != null) managePS4PKGToolStripMenuItem.Enabled = enabled;
                 // Status bar
-                ToolStripSplitButtonTotalPKG.Enabled = enabled;
                 // TabPage7 buttons
                 if (btnExtractFullPKG != null) btnExtractFullPKG.Enabled = enabled;
                 if (btnViewPKGData != null) btnViewPKGData.Enabled = enabled;
-                if (btnSearchFileInTreeView != null) btnSearchFileInTreeView.Enabled = enabled;
                 // All context menus
                 if (contextMenuPKGGridView != null) contextMenuPKGGridView.Enabled = enabled;
                 if (contextMenuGLV != null) contextMenuGLV.Enabled = enabled;
@@ -3285,22 +3413,7 @@ namespace PS4PKGTool
             catch (Exception ex) { Logger.LogWarning("Error updating column visibility: " + ex.Message); }
         }
 
-        private void RebuildFilterDropDown()
-        {
-            ToolStripSplitButtonTotalPKG.DropDownItems.Clear();
-            if (PKG.game != 0)
-                ToolStripSplitButtonTotalPKG.DropDownItems.Add($"Show only Game PKG ({PKG.game})", null, new System.EventHandler(GridViewFilterPKG_Click));
-            if (PKG.patch != 0)
-                ToolStripSplitButtonTotalPKG.DropDownItems.Add($"Show only Patch PKG ({PKG.patch})", null, new System.EventHandler(GridViewFilterPKG_Click));
-            if (PKG.addon != 0)
-                ToolStripSplitButtonTotalPKG.DropDownItems.Add($"Show only Addon PKG ({PKG.addon})", null, new System.EventHandler(GridViewFilterPKG_Click));
-            if (PKG.app != 0)
-                ToolStripSplitButtonTotalPKG.DropDownItems.Add($"Show only App PKG ({PKG.app})", null, new System.EventHandler(GridViewFilterPKG_Click));
-            if (PKG.unknown != 0)
-                ToolStripSplitButtonTotalPKG.DropDownItems.Add($"Show only Unknown PKG ({PKG.unknown})", null, new System.EventHandler(GridViewFilterPKG_Click));
-            ToolStripSplitButtonTotalPKG.DropDownItems.Add("Show all PKG", null, new System.EventHandler(GridViewFilterPKG_Click));
-        }
-
+      
         private void FinalizePkgLoadingProcess()
         {
             if (FinalizePkgProcess)
@@ -3320,9 +3433,7 @@ namespace PS4PKGTool
                     BGM.extractAt9Done = true;
                 };
                 bgw.RunWorkerAsync();
-                toolStripSplitButton1.DropDownItems.Clear();
                 GetDrivesFreeSpace();
-                RebuildFilterDropDown();
                 labelDisplayTotalPKG.Text = $"Displaying {PKGGridView.Rows.Count} PS4 PKG";
                 Logger.LogInformation($"Loading PKG done. {PKGGridView.Rows.Count} PKG found.");
             }
@@ -3343,7 +3454,6 @@ namespace PS4PKGTool
                     string formattedFreeSpace = $"{freeSpaceGB:F2} GB";
                     string formattedTotalSpace = $"{totalSpaceGB:F2} GB";
 
-                    toolStripSplitButton1.DropDownItems.Add($"[{drive}] Free Space: {formattedFreeSpace}/{formattedTotalSpace}");
                     Logger.LogInformation($"[{drive}] Free Space: {formattedFreeSpace}/{formattedTotalSpace}");
                 }
             }
@@ -3402,40 +3512,62 @@ namespace PS4PKGTool
 
         // ── filter bar ──
 
-        private void btnFilterCategory_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Populates the four aspect combos (Category / Region / Type /
+        /// ShadPS4) and wires each to its filter-state list, exactly like the
+        /// DarkUI TestApp usage: CheckedItemsChanged re-applies the filter
+        /// live; the closed box shows the checked values comma-separated.
+        /// </summary>
+        private void SetupFilterChecklists()
         {
-            new Controls.FilterCheckPopup(
-                new[] { PKGCategory.GAME, PKGCategory.PATCH, PKGCategory.ADDON, PKGCategory.APP, "Unknown" },
-                _filterState.Categories,
-                sel => { _filterState.Categories.Clear(); _filterState.Categories.AddRange(sel); ApplyFilters(); })
-                .Show(btnFilterCategory, new System.Drawing.Point(0, btnFilterCategory.Height));
+            ccbCategory.Items.AddRange(new object[] { PKGCategory.GAME, PKGCategory.PATCH, PKGCategory.ADDON, PKGCategory.APP, PKGCategory.UNKNOWN });
+            ccbRegion.Items.AddRange(PkgFilter.RegionOptions);
+            ccbType.Items.AddRange(new object[] { "Official", "Fake" });
+            ccbShadps4.Items.AddRange(PkgFilter.CompatOptions);
+
+            WireCheckedCombo(ccbCategory, _filterState.Categories);
+            WireCheckedCombo(ccbRegion, _filterState.Regions);
+            WireCheckedCombo(ccbType, _filterState.PkgTypes);
+            WireCheckedCombo(ccbShadps4, _filterState.CompatStatuses);
         }
 
-        private void btnFilterRegion_Click(object sender, EventArgs e)
+        /// <summary>Live filter wiring for one aspect combo.</summary>
+        private void WireCheckedCombo(DarkUI.Controls.DarkCheckedComboBox combo, List<string> state)
         {
-            new Controls.FilterCheckPopup(
-                PkgFilter.RegionOptions,
-                _filterState.Regions,
-                sel => { _filterState.Regions.Clear(); _filterState.Regions.AddRange(sel); ApplyFilters(); })
-                .Show(btnFilterRegion, new System.Drawing.Point(0, btnFilterRegion.Height));
+            combo.CheckedItemsChanged += (_, _) =>
+            {
+                // While SyncCombo drives the combos, the state list is already
+                // the source of truth — refilling it from the combo's remaining
+                // checked items mid-sync would make every later index look
+                // "in sync" and only ONE item could ever be unchecked per pass
+                // (the Clear button cleared one tag per click).
+                if (_syncingFilterCombos) return;
+                state.Clear();
+                state.AddRange(combo.CheckedItems.Cast<string>());
+                ApplyFilters();
+            };
         }
 
-        private void btnFilterType_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Reflects the filter state back into a combo (Clear button, chip
+        /// removal). The guard suppresses the live refill so a state-side
+        /// clear unchecks all items in this single pass.
+        /// </summary>
+        private void SyncCombo(DarkUI.Controls.DarkCheckedComboBox combo, List<string> state)
         {
-            new Controls.FilterCheckPopup(
-                new[] { "Official", "Fake", "Addon_Unlocker" },
-                _filterState.PkgTypes,
-                sel => { _filterState.PkgTypes.Clear(); _filterState.PkgTypes.AddRange(sel); ApplyFilters(); })
-                .Show(btnFilterType, new System.Drawing.Point(0, btnFilterType.Height));
-        }
-
-        private void btnFilterCompat_Click(object sender, EventArgs e)
-        {
-            new Controls.FilterCheckPopup(
-                PkgFilter.CompatOptions,
-                _filterState.CompatStatuses,
-                sel => { _filterState.CompatStatuses.Clear(); _filterState.CompatStatuses.AddRange(sel); ApplyFilters(); })
-                .Show(btnFilterCompat, new System.Drawing.Point(0, btnFilterCompat.Height));
+            _syncingFilterCombos = true;
+            try
+            {
+                for (int i = 0; i < combo.Items.Count; i++)
+                {
+                    bool on = state.Contains((string)combo.Items[i]);
+                    if (combo.GetItemChecked(i) != on) combo.SetItemChecked(i, on);
+                }
+            }
+            finally
+            {
+                _syncingFilterCombos = false;
+            }
         }
 
         private void tbFilterSysVer_TextChanged(object sender, EventArgs e)
@@ -3453,37 +3585,54 @@ namespace PS4PKGTool
         }
 
         /// <summary>Rebuilds the active-filter chips and the match counter after a filter change.</summary>
+        private bool _syncingFilterCombos;
+
         private void RefreshFilterBar()
         {
             try
             {
-                flowChips.Controls.Clear();
+                // Mirror the state back into the combos (Clear / chip removal)
+                SyncCombo(ccbCategory, _filterState.Categories);
+                SyncCombo(ccbRegion, _filterState.Regions);
+                SyncCombo(ccbType, _filterState.PkgTypes);
+                SyncCombo(ccbShadps4, _filterState.CompatStatuses);
 
-                void AddChip(string label, Action remove)
+                // DarkChipsPanel (DarkUI): chips reconcile diff-style (DarkUI
+                // TestApp pattern) — only chips that actually changed are
+                // added/removed, never clear + rebuild the whole row (which
+                // flashed on every change). Desired set: (text, remove action)
+                // in display order; × on a chip removes that condition.
+                var desired = new List<(string Text, Action Remove)>();
+                foreach (string c in _filterState.Categories)
+                    desired.Add((c, () => { _filterState.Categories.Remove(c); ApplyFilters(); }));
+                foreach (string r in _filterState.Regions)
+                    desired.Add((r, () => { _filterState.Regions.Remove(r); ApplyFilters(); }));
+                if (_filterState.MinSystemVersion is double min)
+                    desired.Add(($"≥ {min:0.##}", () => { _filterState.MinSystemVersion = null; tbFilterSysVer.Text = ""; ApplyFilters(); }));
+                foreach (string t in _filterState.PkgTypes)
+                    desired.Add((t, () => { _filterState.PkgTypes.Remove(t); ApplyFilters(); }));
+                foreach (string s in _filterState.CompatStatuses)
+                    desired.Add((s, () => { _filterState.CompatStatuses.Remove(s); ApplyFilters(); }));
+                if (!string.IsNullOrWhiteSpace(_filterState.SearchText))
+                    desired.Add(($"\"{_filterState.SearchText.Trim()}\"", () => { tbSearchGame.Text = ""; tbSearchGame.SearchText = ""; ApplyFilters(); }));
+
+                // Remove chips whose filter is no longer active.
+                foreach (DarkChip chip in flowChips.Controls.OfType<DarkChip>().ToList())
                 {
-                    var chip = new DarkUI.Controls.DarkButton
+                    if (desired.All(d => d.Text != chip.Text))
                     {
-                        Text = label + "  ×",
-                        Height = 22,
-                        AutoSize = true,
-                        Padding = new Padding(6, 0, 6, 0),
-                    };
-                    chip.Click += (_, _) => { remove(); ApplyFilters(); };
-                    flowChips.Controls.Add(chip);
+                        flowChips.Controls.Remove(chip);
+                        chip.Dispose();
+                    }
                 }
 
-                foreach (string c in _filterState.Categories)
-                    AddChip(c, () => _filterState.Categories.Remove(c));
-                foreach (string r in _filterState.Regions)
-                    AddChip(r, () => _filterState.Regions.Remove(r));
-                if (_filterState.MinSystemVersion is double min)
-                    AddChip($"≥ {min:0.##}", () => { _filterState.MinSystemVersion = null; tbFilterSysVer.Text = ""; });
-                foreach (string t in _filterState.PkgTypes)
-                    AddChip(t, () => _filterState.PkgTypes.Remove(t));
-                foreach (string s in _filterState.CompatStatuses)
-                    AddChip(s, () => _filterState.CompatStatuses.Remove(s));
-                if (!string.IsNullOrWhiteSpace(_filterState.SearchText))
-                    AddChip($"\"{_filterState.SearchText.Trim()}\"", () => { tbSearchGame.Text = ""; tbSearchGame.SearchText = ""; });
+                // Add chips for newly active filters, then fix display order
+                // (new chips append at the end; order must follow `desired`).
+                foreach (var (text, remove) in desired)
+                {
+                    if (flowChips.Controls.OfType<DarkChip>().All(c => c.Text != text))
+                        flowChips.Controls.SetChildIndex(flowChips.AddChip(text, (_, _) => remove()), desired.FindIndex(d => d.Text == text));
+                }
 
                 if (PKGGridView.DataSource is DataTable dt)
                 {
@@ -3494,7 +3643,8 @@ namespace PS4PKGTool
                     // grouped view too - say so there.
                     bool active = !_filterState.IsEmpty;
                     lblGlvFilterHint.Text = active ? $"filtered: {visible} / {total}" : "";
-                    btnGlvFilterClear.Visible = active;
+                    // Clear is only meaningful while a filter is active.
+                    btnFilterClear.Enabled = active;
                 }
             }
             catch (Exception ex)
@@ -3503,13 +3653,62 @@ namespace PS4PKGTool
             }
         }
 
-        private void btnGlvFilterClear_Click(object sender, EventArgs e)
+        /// <summary>Filter bar Clear button: resets every aspect and the search.</summary>
+        /// <summary>
+        /// Responsive filter layout: the flow panel spans the groupbox width
+        /// and its height is measured from the wrapped content (one line when
+        /// maximized, wrapped lines otherwise); the chips row sits below and
+        /// the groupbox height follows the content. AutoSize is NOT used:
+        /// GrowOnly never shrinks, so a wrap at a narrow width would stick.
+        /// </summary>
+        private void grpFilter_Resize(object sender, EventArgs e)
+        {
+            if (!_pkgListLayoutInitialized)
+                return;
+
+            flpFilter.Width = grpFilter.ClientSize.Width - 16;
+            flpFilter.Height = flpFilter.GetPreferredSize(new Size(flpFilter.Width, 0)).Height;
+            RepositionFilterRows();
+        }
+
+        private void RepositionFilterRows()
+        {
+            flowChips.Width = grpFilter.ClientSize.Width - 16 - lblFilterCount.Width - 8;
+            flowChips.Top = flpFilter.Bottom + 8;
+            lblFilterCount.Top = flowChips.Top + 3;
+            grpFilter.Height = flowChips.Bottom + 8;
+            // Keep the PKG-list sub-tab glued below the filter group: it has
+            // a fixed designer Top and would leave a gap when the groupbox
+            // shrinks to one line on maximize.
+            subTabControl.Top = grpFilter.Bottom + _pkgListTabTopGap;
+            // Preserve the same bottom inset as the right-side Param.sfo
+            // section rather than pushing the nested tab control lower when
+            // the form is maximized.
+            subTabControl.Height = Math.Max(0,
+                tabPage1.ClientSize.Height - subTabControl.Top - _pkgListTabBottomGap);
+        }
+
+        /// <summary>Shows the current window width (helper for layout tuning).</summary>
+        private void btnShowWindowWidth_Click(object sender, EventArgs e)
+        {
+            AppMessageBox.Show("Window Width",
+                $"Current window width: {this.Width} px\nClient width: {this.ClientSize.Width} px",
+                AppMessageType.Info, AppMessageButtons.OK);
+        }
+
+        private void btnFilterClear_Click(object sender, EventArgs e) => ResetAllFilters();
+
+        private void btnGlvFilterClear_Click(object sender, EventArgs e) => ResetAllFilters();
+
+        /// <summary>Clears every filter condition (aspects, sysver, search) and re-applies.</summary>
+        private void ResetAllFilters()
         {
             _filterState.Categories.Clear();
             _filterState.Regions.Clear();
             _filterState.MinSystemVersion = null;
             _filterState.PkgTypes.Clear();
             _filterState.CompatStatuses.Clear();
+            _filterState.SearchText = "";
             tbFilterSysVer.Text = "";
             tbSearchGame.Text = "";
             tbSearchGame.SearchText = "";
@@ -3540,7 +3739,47 @@ namespace PS4PKGTool
 
         private void toolStripMenuItemShadps4Configure_Click(object sender, EventArgs e)
         {
-            OpenProgramSettings();
+            // shadPS4 paths now live in the manager's Settings tab.
+            OpenShadps4Manager(Shadps4Manager.SettingsTabIndex);
+        }
+
+        /// <summary>Tools > shadPS4 Manager (menu bar entry).</summary>
+        private void toolStripMenuItemShadps4Manager_Click(object sender, EventArgs e) => OpenShadps4Manager();
+
+        /// <summary>PKG context menu: shadPS4 > Open shadPS4 Manager.</summary>
+        private void toolStripMenuItemShadps4OpenManager_Click(object sender, EventArgs e) => OpenShadps4Manager();
+
+        /// <summary>
+        /// Opens the shadPS4 Manager hub (overview, games, builds, saves,
+        /// settings). The manager owns all shadPS4 operational tasks; Program
+        /// Settings only keeps the compatibility database section.
+        /// </summary>
+        private Shadps4Manager? _shadps4Manager;
+
+        private void OpenShadps4Manager(int initialTabIndex = 0, Shadps4Manager.InstallRequest? installRequest = null)
+        {
+            // Single-instance, modeless: installs run inside the manager while
+            // this window stays usable. A closed manager is recreated; a live
+            // one is restored (if minimized), focused and handed the request.
+            if (_shadps4Manager == null || _shadps4Manager.IsDisposed)
+            {
+                _shadps4Manager = new Shadps4Manager(appSettings_,
+                    installRequest != null ? Shadps4Manager.GamesTabIndex : initialTabIndex,
+                    installRequest);
+                _shadps4Manager.Disposed += (_, _) => _shadps4Manager = null;
+                _shadps4Manager.Show(this);
+                return;
+            }
+
+            if (_shadps4Manager.WindowState == FormWindowState.Minimized)
+                _shadps4Manager.WindowState = FormWindowState.Normal;
+            _shadps4Manager.Activate();
+            _shadps4Manager.BringToFront();
+
+            if (installRequest != null)
+                _shadps4Manager.RequestInstall(installRequest);
+            else if (initialTabIndex != 0)
+                _shadps4Manager.ShowTab(initialTabIndex);
         }
 
         /// <summary>Opens the first-run setup wizard (install recommended / specific version / adopt existing).</summary>
@@ -3550,7 +3789,7 @@ namespace PS4PKGTool
             wizard.ShowDialog(this);
             if (wizard.Tag as string == "use-existing")
             {
-                OpenProgramSettings();
+                OpenShadps4Manager(Shadps4Manager.SettingsTabIndex);
                 return;
             }
             // After a successful install the wizard persists the active
@@ -3586,7 +3825,7 @@ namespace PS4PKGTool
                         $"{error}\n\n" +
                         $"External shadPS4 core detected:\n{candidate}\n\n" +
                         "This core was not verified as belonging to the selected QtLauncher build.\n\n" +
-                        "Use This Core?",
+                        "Adopt This Core?",
                         AppMessageType.Warning, AppMessageButtons.YesNoCancel);
                     if (adopt != DialogResult.Yes) return;
                     appSettings_.Shadps4ActiveCore = Shadps4ActiveCore.ForAdopted(candidate);
@@ -3615,16 +3854,19 @@ namespace PS4PKGTool
             var extraSearchDirs = new List<string>();
             string toolInstallDir = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
             if (!string.IsNullOrWhiteSpace(toolInstallDir)) extraSearchDirs.Add(toolInstallDir);
-            var (status, message) = new Shadps4Launcher().LaunchInstalledTitle(launchEnv, titleId, extraSearchDirs);
+            var launcher = new Shadps4Launcher();
+            launcher.Terminated += Shadps4Launcher_Terminated;
+            var (status, message) = launcher.LaunchInstalledTitle(launchEnv, titleId, extraSearchDirs);
             switch (status)
             {
                 case Shadps4LaunchStatus.Started:
-                    ShowInformation(message, false);
+                    // No success dialog - the status bar already says the
+                    // game is running.
                     break;
                 case Shadps4LaunchStatus.GameNotFound:
                     // No extract-and-boot fallback: installing into the
                     // library is the supported path.
-                    ShowWarning(message + "\n\nUse shadPS4 > Install Game to shadPS4 Library first.", false);
+                    ShowWarning(message + "\n\nUse shadPS4 > Install to shadPS4 Library first.", false);
                     break;
                 default:
                     ShowWarning(message, false);
@@ -3650,7 +3892,7 @@ namespace PS4PKGTool
                     var adopt = AppMessageBox.Show("shadPS4",
                         $"{error}\n\n" +
                         $"A QtLauncher was detected:\n{candidate}\n\n" +
-                        "Use This Launcher?",
+                        "Adopt This Launcher?",
                         AppMessageType.Warning, AppMessageButtons.YesNoCancel);
                     if (adopt != DialogResult.Yes) return;
                     appSettings_.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(candidate);
@@ -3856,52 +4098,18 @@ namespace PS4PKGTool
                 if (go != DialogResult.Yes) return;
             }
 
-            var bg = new BackgroundWorker();
-            bg.DoWork += (_, _) =>
-            {
-                var svc = new Shadps4InstallService
-                {
-                    OrbisExePath = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                };
-                var progress = new Progress<string>(s =>
-                {
-                    this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = s; });
-                });
-                Logger.LogInformation($"Shadps4InstallUI: starting background install into {library} (replace={replace})");
-                var result = svc.Install(pkgPath, titleId, library, replace, progress, CancellationToken.None,
-                    mergeIntoExisting: isPatch);
-                Logger.LogInformation($"Shadps4InstallUI: install finished: {result.Status} - {result.Message}");
+            // All safety decisions are done - hand the operation to the
+            // shadPS4 Manager (Games tab), which runs it in the background
+            // with progress and cancel. This window stays usable.
+            string requestVersion = row[PkgColumns.AppVersion]?.ToString() ?? "";
+            string requestInstalledVersion = Directory.Exists(finalDir)
+                ? (ParamSfoReader.ReadAppVersion(Path.Combine(finalDir, "sce_sys", "param.sfo")) ?? "")
+                : "";
 
-                this.Invoke((MethodInvoker)delegate
-                {
-                    switch (result.Status)
-                    {
-                        case Shadps4InstallStatus.Success:
-                            ShowInformation(result.Message, false);
-                            break;
-                        case Shadps4InstallStatus.ExistingInstall:
-                        case Shadps4InstallStatus.Cancelled:
-                            ShowWarning(result.Message, false);
-                            break;
-                        default:
-                            Logger.LogError("Shadps4InstallUI: install failed: " + result.Message);
-                            ShowError(result.Message, false);
-                            break;
-                    }
-                });
-            };
-            bg.RunWorkerCompleted += (_, _) =>
-            {
-                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
-                toolStripProgressBar1.Visible = false;
-                toolStripStatusLabel2.Text = "...";
-                this.Enabled = true;
-            };
-            this.Enabled = false;
-            toolStripStatusLabel2.Text = "Installing game to shadPS4 library...";
-            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
-            toolStripProgressBar1.Visible = true;
-            bg.RunWorkerAsync();
+            OpenShadps4Manager(Shadps4Manager.GamesTabIndex,
+                new Shadps4Manager.InstallRequest(
+                    pkgPath, titleId, title, isPatch, library, replace,
+                    requestVersion, requestInstalledVersion));
         }
 
         #endregion Shadps4Integration
@@ -3922,6 +4130,11 @@ namespace PS4PKGTool
 
         private void DeletePkg()
         {
+            if (Shadps4Manager.IsInstallationActive)
+            {
+                ShowWarning("A shadPS4 installation is in progress.", false);
+                return;
+            }
             var pkgList = GetSelectedPKGDirectoryList(PKGSelectionType.SELECTED);
             DialogResult dialog = DialogResultYesNo("PKG file will be permanently deleted. This operation cannot be undone. Are you sure you want to continue?");
 
@@ -4121,7 +4334,7 @@ namespace PS4PKGTool
         {
             if (RpiSendPkgtoolStripMenuItem2.Text == "Send PKG to PS4")
             {
-                DisableTabPages(flatTabControl1, "tabPage1");
+                DisableTabPages(mainTabControl, "tabPage1");
                 DisableControls(darkMenuStrip1);
                 DisableControls_PkgSender();
 
@@ -4147,7 +4360,7 @@ namespace PS4PKGTool
                     {
                         ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
                         EnableControls_PkgSender();
-                        EnableTabPages(flatTabControl1);
+                        EnableTabPages(mainTabControl);
                         EnableControls(darkMenuStrip1);
                         return;
                     }
@@ -4163,7 +4376,7 @@ namespace PS4PKGTool
                             {
                                 ShowInformation("PKG already installed.", true);
                                 EnableControls_PkgSender();
-                                EnableTabPages(flatTabControl1);
+                                EnableTabPages(mainTabControl);
                                 EnableControls(darkMenuStrip1);
                                 return;
                             }
@@ -4206,7 +4419,7 @@ namespace PS4PKGTool
                 {
                     ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     return;
                 }
@@ -4224,7 +4437,7 @@ namespace PS4PKGTool
                     {
                         ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
                         EnableControls_PkgSender();
-                        EnableTabPages(flatTabControl1);
+                        EnableTabPages(mainTabControl);
                         EnableControls(darkMenuStrip1);
                         return;
                     }
@@ -4235,7 +4448,7 @@ namespace PS4PKGTool
                     PKGSENDER.MonitorPkgSenderTaskBackgroundWorker.CancelAsync();
                     SendPKG();
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     darkStatusStrip1.Invoke((MethodInvoker)delegate
                     {
@@ -4259,7 +4472,7 @@ namespace PS4PKGTool
 
             Logger.LogInformation("Checking if base PKG installed on PS4 (" + read.PS4_Title + ")..");
 
-            DisableTabPages(flatTabControl1, "tabPage1");
+            DisableTabPages(mainTabControl, "tabPage1");
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
@@ -4272,7 +4485,7 @@ namespace PS4PKGTool
                 {
                     ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     return;
                 }
@@ -4282,7 +4495,7 @@ namespace PS4PKGTool
                 if (PKGSENDER.JSON.CHECKAPPEXISTS.status == "success")
                 {
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     PKGSENDER.JSON.CHECKAPPEXISTS.exists = app_exists_json.exists.ToString();
                     if (PKGSENDER.JSON.CHECKAPPEXISTS.exists == "true")
@@ -4355,7 +4568,7 @@ namespace PS4PKGTool
                 {
                     ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     toolStripMenuItem18.Text = "Remote PKG Installer | Status : Idle";
                     RpiSendPkgtoolStripMenuItem2.Text = "Send PKG to PS4";
@@ -4389,7 +4602,7 @@ namespace PS4PKGTool
                     toolStripStatusLabel2.Text = "...";
                     toolStripProgressBar1.Value = 0;
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     return;
                 }
@@ -4443,7 +4656,7 @@ namespace PS4PKGTool
             {
                 ShowError(CheckRequirement, true);
                 EnableControls_PkgSender();
-                EnableTabPages(flatTabControl1);
+                EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
                 return;
             }
@@ -4615,7 +4828,7 @@ namespace PS4PKGTool
                 this.Invoke((MethodInvoker)delegate
                 {
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     toolStripStatusLabel2.Text = "...";
                     toolStripProgressBar1.Value = 0;
@@ -4653,7 +4866,7 @@ namespace PS4PKGTool
 
         private void UninstallDlcPkgFromPs4()
         {
-            DisableTabPages(flatTabControl1, "tabPage1");
+            DisableTabPages(mainTabControl, "tabPage1");
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
@@ -4671,13 +4884,13 @@ namespace PS4PKGTool
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
                 EnableControls_PkgSender();
-                EnableTabPages(flatTabControl1);
+                EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
                 return;
             }
 
             EnableControls_PkgSender();
-            EnableTabPages(flatTabControl1);
+            EnableTabPages(mainTabControl);
             EnableControls(darkMenuStrip1);
             PKGSENDER.JSON.UNINTSALLADDON.status = uninstall_patch_json.status.ToString();
 
@@ -4693,7 +4906,7 @@ namespace PS4PKGTool
 
         private void UninstallThemePkgFromPs4()
         {
-            DisableTabPages(flatTabControl1, "tabPage1");
+            DisableTabPages(mainTabControl, "tabPage1");
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
@@ -4711,7 +4924,7 @@ namespace PS4PKGTool
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
                 EnableControls_PkgSender();
-                EnableTabPages(flatTabControl1);
+                EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
                 return;
             }
@@ -4719,7 +4932,7 @@ namespace PS4PKGTool
             PKGSENDER.JSON.UNINTSALLTHEME.status = uninstall_theme_json.status.ToString();
 
             EnableControls_PkgSender();
-            EnableTabPages(flatTabControl1);
+            EnableTabPages(mainTabControl);
             EnableControls(darkMenuStrip1);
 
             if (PKGSENDER.JSON.UNINTSALLTHEME.status == "success")
@@ -4744,7 +4957,7 @@ namespace PS4PKGTool
 
         private void UninstallBasePkgFromPs4()
         {
-            DisableTabPages(flatTabControl1, "tabPage1");
+            DisableTabPages(mainTabControl, "tabPage1");
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
@@ -4761,7 +4974,7 @@ namespace PS4PKGTool
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
                 EnableControls_PkgSender();
-                EnableTabPages(flatTabControl1);
+                EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
                 return;
             }
@@ -4785,13 +4998,13 @@ namespace PS4PKGTool
                     {
                         ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
                         EnableControls_PkgSender();
-                        EnableTabPages(flatTabControl1);
+                        EnableTabPages(mainTabControl);
                         EnableControls(darkMenuStrip1);
                         return;
                     }
 
                     EnableControls_PkgSender();
-                    EnableTabPages(flatTabControl1);
+                    EnableTabPages(mainTabControl);
                     EnableControls(darkMenuStrip1);
                     PKGSENDER.JSON.UNINTSALLAPP.status = uninstall_app_json.status.ToString();
 
@@ -4809,7 +5022,7 @@ namespace PS4PKGTool
 
         private void UninstallPatchPkgFromPs4()
         {
-            DisableTabPages(flatTabControl1, "tabPage1");
+            DisableTabPages(mainTabControl, "tabPage1");
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
@@ -4827,7 +5040,7 @@ namespace PS4PKGTool
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
                 EnableControls_PkgSender();
-                EnableTabPages(flatTabControl1);
+                EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
                 return;
             }
@@ -4835,7 +5048,7 @@ namespace PS4PKGTool
             PKGSENDER.JSON.UNINTSALLPATCH.status = uninstall_patch_json.status.ToString();
 
             EnableControls_PkgSender();
-            EnableTabPages(flatTabControl1);
+            EnableTabPages(mainTabControl);
             EnableControls(darkMenuStrip1);
 
             if (PKGSENDER.JSON.UNINTSALLPATCH.status == "success")
@@ -5303,171 +5516,27 @@ namespace PS4PKGTool
 
         private void PopulatePKGDataToTreeView()
         {
-            string orbisPubCmdErrorMessage = "";
-            bool renamed = false;
-            string origPath = null;
-            string tempPath = null;
+            PkgFileListingResult listingResult = null;
             var bg = new BackgroundWorker();
             bg.DoWork += delegate (object sender, DoWorkEventArgs e)
             {
                 Logger.LogInformation("Viewing PKG file list..");
                 DisableControls(darkMenuStrip1);
                 DisableControls(PKGTreeView);
-
-                List<string> allFilePaths = new List<string>();
-                List<string> fileListWithExtensions = new List<string>();
-                List<string> dirList = new List<string>();
-
-                origPath = PKG.SelectedPKGFilename;
-                string dir = GetOrbisTempDirFor(origPath);
-                tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                try
+                listingResult = new PkgFileListingService().ListAsync(
+                    PKG.SelectedPKGFilename,
+                    DefaultOrbisPasscode,
+                    CancellationToken.None).GetAwaiter().GetResult();
+                if (!listingResult.Succeeded)
                 {
-                    OrbisTempRecovery.MoveIntoOrbisTemp(origPath, dir, tempPath);
-                    renamed = true;
+                    e.Cancel = true;
+                    return;
                 }
-                catch
-                {
-                    OrbisTempRecovery.DeleteOrbisTempDirSafe(tempPath); // a failed move must not leak the temp dir
-                    throw;
-                }
-                string safePkgPath = tempPath;
 
-                try
-                {
-
-                    var pkgListStartInfo = new ProcessStartInfo
-                    {
-                        FileName = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    pkgListStartInfo.ArgumentList.Add("img_file_list");
-                    pkgListStartInfo.ArgumentList.Add("--passcode");
-                    pkgListStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
-                    pkgListStartInfo.ArgumentList.Add("--oformat");
-                    pkgListStartInfo.ArgumentList.Add("long+original_size");
-                    pkgListStartInfo.ArgumentList.Add(safePkgPath);
-                    using Process pkgListProcess = new Process { StartInfo = pkgListStartInfo };
-
-                    pkgListProcess.Start();
-                    // Drain stdout concurrently so a stalled process can't deadlock the pipe,
-                    // then bound the wait and kill on timeout.
-                    Task<string> listReadTask = pkgListProcess.StandardOutput.ReadToEndAsync();
-                    if (!pkgListProcess.WaitForExit(30000))
-                    {
-                        try { pkgListProcess.Kill(); pkgListProcess.WaitForExit(); } catch { }
-                    }
-                    _fileSizes.Clear();
-                    string stdoutText = listReadTask.Result;
-                    int exitCode = pkgListProcess.ExitCode;
-                    // Only flag as error on non-zero exit OR explicit [Error] tag (not filenames containing "error")
-                    bool hasError = exitCode != 0 || stdoutText.Contains("[Error]");
-                    if (hasError)
-                    {
-                        e.Cancel = true;
-                        orbisPubCmdErrorMessage = !string.IsNullOrWhiteSpace(stdoutText)
-                            ? stdoutText.Trim()
-                            : $"(exit code {exitCode}, no output)";
-                        Logger.LogInformation($"ERROR: orbis exit={exitCode}: {orbisPubCmdErrorMessage}");
-                        return;
-                    }
-
-                    // Parse stdout lines for file listing
-                    _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (string line in stdoutText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        if (line.Contains("[Error]"))
-                            continue;
-                        if (string.IsNullOrWhiteSpace(line))
-                            continue;
-                        // Format: "F  12345678 2018-11-21 06:00:00 Image0/path/file.bin"
-                        //     or: "D            0                     Image0/path/dir"
-                        char entryType = line[0];
-                        string entryPath = line;
-                        long size = 0;
-                        int pathIdx = line.IndexOf("Image0");
-                        if (pathIdx < 0) pathIdx = line.IndexOf("Sc0");
-                        if (pathIdx >= 0)
-                        {
-                            entryPath = line.Substring(pathIdx);
-                            string prefix = line.Substring(0, pathIdx).Trim();
-                            string[] parts = prefix.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                            if (parts.Length >= 2 && long.TryParse(parts[1], out long s))
-                                size = s;
-                            _fileSizes[entryPath] = size;
-                        }
-                        if (entryType == 'D' || entryType == 'd')
-                            _pkgDirectories.Add(entryPath);
-                        allFilePaths.Add(entryPath);
-                    }
-
-                    var array = allFilePaths.ToArray();
-
-                    // Build tree on UI thread in a single batch - not per-node Invoke
-                    PKGTreeView.Invoke((MethodInvoker)delegate
-                    {
-                        PKGTreeView.BeginUpdate();
-                        PKGTreeView.PathSeparator = @"/";
-                        PKGTreeView.ImageList = imageList1;
-                        TreeNode lastNode = null;
-                        string subPathAgg;
-                        int count = 0;
-                        foreach (string path in array)
-                        {
-                            subPathAgg = string.Empty;
-                            string[] segments = path.Split('/');
-                            for (int i = 0; i < segments.Length; i++)
-                            {
-                                string subPath = segments[i];
-                                subPathAgg += subPath + '/';
-                                TreeNode[] nodes = PKGTreeView.Nodes.Find(subPathAgg, true);
-                                if (nodes.Length == 0)
-                                {
-                                    lastNode = lastNode == null
-                                        ? PKGTreeView.Nodes.Add(subPathAgg, subPath)
-                                        : lastNode.Nodes.Add(subPathAgg, subPath);
-                                    bool isDir = i < segments.Length - 1 || _pkgDirectories.Contains(path);
-                                    int iconIdx = isDir ? 0 : IconFor(subPath);
-                                    lastNode.ImageIndex = iconIdx;
-                                    lastNode.SelectedImageIndex = iconIdx;
-                                }
-                                else
-                                {
-                                    lastNode = nodes[0];
-                                    lastNode.ImageIndex = 0;
-                                    lastNode.SelectedImageIndex = 0;
-                                }
-                            }
-                            lastNode = null;
-                            count++;
-                            if (count % 100 == 0)
-                                toolStripStatusLabel2.Text = $"Reading {count}/{array.Length}";
-                        }
-                        PKGTreeView.EndUpdate();
-                    });
-                    toolStripStatusLabel2.Text = $"...";
-                }
-                finally
-                {
-                    if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
-                    {
-                        try { File.Move(tempPath, origPath); } catch { }
-                    }
-                    DeleteOrbisTempDir(tempPath);
-                }
+                PKGTreeView.Invoke((MethodInvoker)(() => PopulateMainFileTree(listingResult)));
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
             {
-                // Restore original filename
-                if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
-                {
-                    try { File.Move(tempPath, origPath); }
-                    catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover from " + tempPath + ": " + ex.Message); }
-                }
-                DeleteOrbisTempDir(tempPath);
-
                 if (e.Error != null)
                 {
                     Logger.LogError($"View PKG list worker failed: {e.Error.Message}");
@@ -5475,8 +5544,9 @@ namespace PS4PKGTool
                 }
                 else if (e.Cancelled)
                 {
-                    string msg = FormatOrbisError(orbisPubCmdErrorMessage);
-                    ShowError($"orbis-pub-cmd error:\n{msg}", true);
+                    string message = listingResult?.ErrorMessage ?? "Package files could not be listed.";
+                    Logger.LogError("View PKG list failed: " + message);
+                    ShowError(message, true);
                 }
                 Logger.LogInformation("PKG file list loaded.");
                 EnableControls(darkMenuStrip1);
@@ -5506,6 +5576,46 @@ namespace PS4PKGTool
                 }
             };
             bg.RunWorkerAsync();
+        }
+
+        private void PopulateMainFileTree(PkgFileListingResult listing)
+        {
+            PKGTreeView.BeginUpdate();
+            try
+            {
+                PKGTreeView.Nodes.Clear();
+                PKGTreeView.PathSeparator = @"/";
+                PKGTreeView.ImageList = imageList1;
+                _fileSizes.Clear();
+                _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (PkgFileEntry entry in listing.Entries)
+                {
+                    if (entry.IsDirectory)
+                        _pkgDirectories.Add(entry.FullPath);
+                    else
+                        _fileSizes[entry.FullPath] = entry.Size;
+                }
+
+                foreach (PkgFileNode root in listing.Roots)
+                    AddMainFileNode(PKGTreeView.Nodes, root);
+            }
+            finally
+            {
+                PKGTreeView.EndUpdate();
+            }
+            toolStripStatusLabel2.Text = "...";
+        }
+
+        private void AddMainFileNode(TreeNodeCollection collection, PkgFileNode model)
+        {
+            TreeNode node = collection.Add(model.FullPath, model.Name);
+            int icon = model.IsDirectory ? 0 : IconFor(model.Name);
+            node.ImageIndex = icon;
+            node.SelectedImageIndex = icon;
+            if (model.IsDirectory)
+                _pkgDirectories.Add(model.FullPath);
+            foreach (PkgFileNode child in model.Children)
+                AddMainFileNode(node.Nodes, child);
         }
 
         private void extractToToolStripMenuItem_Click(object sender, EventArgs e)
@@ -5654,24 +5764,14 @@ namespace PS4PKGTool
                         string tempOutputDir = CreateOrbisTempDir("e");
                         Directory.CreateDirectory(tempOutputDir);
 
-                        // Temp rename for Unicode-safe orbis-pub-cmd path (input)
-                        string dir = GetOrbisTempDirFor(origPath);
-                        string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                        bool renamed = false;
+                        // Unicode-safe staging for the orbis-pub-cmd input path.
+                        // Prepare decides the mode: a safe path is passed through
+                        // untouched (no move, no rename, no p4t_v_* directory).
+                        OrbisSafePkgOperation safePkg = null;
                         try
                         {
-                            OrbisTempRecovery.MoveIntoOrbisTemp(origPath, dir, tempPath);
-                            renamed = true;
-                        }
-                        catch
-                        {
-                            OrbisTempRecovery.DeleteOrbisTempDirSafe(tempPath); // a failed move must not leak the temp dir
-                            throw;
-                        }
-                        string pkgPath = tempPath;
-
-                        try
-                        {
+                            safePkg = OrbisSafePkgOperation.Prepare(origPath);
+                            string pkgPath = safePkg.OrbisPath;
                             var extractStartInfo = new ProcessStartInfo
                             {
                                 FileName = AppDataDirectory + "orbis-pub-cmd.exe",
@@ -5682,6 +5782,7 @@ namespace PS4PKGTool
                             extractStartInfo.ArgumentList.Add("img_extract");
                             extractStartInfo.ArgumentList.Add("--passcode");
                             extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
+                            OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
                             extractStartInfo.ArgumentList.Add(pkgPath);
                             extractStartInfo.ArgumentList.Add(tempOutputDir);
                             using Process extract = new Process { StartInfo = extractStartInfo };
@@ -5734,21 +5835,18 @@ namespace PS4PKGTool
                         }
                         finally
                         {
-                            if (renamed && File.Exists(tempPath))
+                            // Staging restoration must run on every exit path -
+                            // success, orbis failure, timeout and cancellation.
+                            if (safePkg != null)
                             {
-                                try
+                                OrbisSafePkgRestoreResult restore = safePkg.Restore();
+                                if (!restore.Succeeded)
                                 {
-                                    if (File.Exists(origPath))
-                                        Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + tempPath);
-                                    else
-                                        File.Move(tempPath, origPath);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Logger.LogError("Failed to restore PKG filename. Recover the PKG from " + tempPath + ": " + ex.Message);
+                                    Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
+                                    if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
+                                        Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
                                 }
                             }
-                            DeleteOrbisTempDir(tempPath);
                         }
                     };
                     _extractWorker.RunWorkerCompleted += (sender, e) =>
@@ -5876,21 +5974,14 @@ namespace PS4PKGTool
                     Logger.LogInformation($"Extracting {targ_path} ({in_path})..");
                     toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
 
-                    // Temp rename PKG for Unicode-safe orbis-pub-cmd path
-                    string renameDir = GetOrbisTempDirFor(in_path);
-                    string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                    bool wasRenamed = false;
+                    // Unicode-safe staging for the orbis-pub-cmd input path.
+                    // Prepare decides the mode: a safe path is passed through
+                    // untouched (no move, no rename, no p4t_v_* directory).
+                    OrbisSafePkgOperation safePkg = null;
                     try
                     {
-                        OrbisTempRecovery.MoveIntoOrbisTemp(in_path, renameDir, renameTmp);
-                        wasRenamed = true;
-                    }
-                    catch
-                    {
-                        OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
-                        throw;
-                    }
-                    string safeIn = renameTmp;
+                        safePkg = OrbisSafePkgOperation.Prepare(in_path);
+                        string safeIn = safePkg.OrbisPath;
 
                     // Create ASCII-safe temp output path (orbis-pub-cmd garbles non-ANSI paths)
                     // Short temp root - see ExtractFullPKG: deep AppData paths + long PKG paths exceed MAX_PATH.
@@ -5910,6 +6001,7 @@ namespace PS4PKGTool
                     extractStartInfo.ArgumentList.Add("img_extract");
                     extractStartInfo.ArgumentList.Add("--passcode");
                     extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
+                    OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
                     extractStartInfo.ArgumentList.Add(safeIn + ":" + targ_path);
                     extractStartInfo.ArgumentList.Add(tempOutPath.Replace(@"/", @"\"));
                     using Process extract = new Process { StartInfo = extractStartInfo };
@@ -5921,7 +6013,6 @@ namespace PS4PKGTool
                     }
                     string extractOutput = extractReadTask.Result;
 
-                    try
                     {
                         int exitCode = extract.ExitCode;
                         // exit -1 = killed process (Stop button or timeout) - see ExtractFullPKG.
@@ -5971,28 +6062,24 @@ namespace PS4PKGTool
                             this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
                         }
                     }
-                    finally
-                    {
-                        if (wasRenamed && File.Exists(renameTmp))
-                        {
-                            try
-                            {
-                                if (File.Exists(in_path))
-                                    Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                                else
-                                    File.Move(renameTmp, in_path);
-                            }
-                            catch (Exception rex)
-                            {
-                                Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
-                                Logger.LogError($"Rename-back failed: {renameTmp} → {in_path}: {rex.Message}");
-                            }
-                        }
-                        DeleteOrbisTempDir(renameTmp);
-                    }
-
                     // Clean up temp dir
                     try { if (Directory.Exists(tempBase)) Directory.Delete(tempBase, true); } catch (Exception ex) { Logger.LogWarning("Failed to clean temp base dir: " + ex.Message); }
+                    }
+                    finally
+                    {
+                        // Staging restoration must run on every exit path - success,
+                        // orbis failure, timeout, cancellation and unexpected exceptions.
+                        if (safePkg != null)
+                        {
+                            OrbisSafePkgRestoreResult restore = safePkg.Restore();
+                            if (!restore.Succeeded)
+                            {
+                                Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
+                                if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
+                                    Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
+                            }
+                        }
+                    }
                 }
             };
             bgw.RunWorkerCompleted += delegate (object s, RunWorkerCompletedEventArgs e)
@@ -6032,23 +6119,14 @@ namespace PS4PKGTool
         private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
         {
             string inPath = PKG.SelectedPKGFilename;
-            string renameDir = GetOrbisTempDirFor(inPath);
-            string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-            bool wasRenamed = false;
+            // Unicode-safe staging for the orbis-pub-cmd input path.
+            // Prepare decides the mode: a safe path is passed through
+            // untouched (no move, no rename, no p4t_v_* directory).
+            OrbisSafePkgOperation safePkg = null;
             try
             {
-                OrbisTempRecovery.MoveIntoOrbisTemp(inPath, renameDir, renameTmp);
-                wasRenamed = true;
-            }
-            catch
-            {
-                OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
-                throw;
-            }
-            string safeIn = renameTmp;
-
-            try
-            {
+                safePkg = OrbisSafePkgOperation.Prepare(inPath);
+                string safeIn = safePkg.OrbisPath;
                 foreach (string targ_path in nodeList)
                 {
                     bool isDirectory = targ_path.EndsWith("/") || targ_path.EndsWith("\\");
@@ -6074,6 +6152,7 @@ namespace PS4PKGTool
                     extractStartInfo.ArgumentList.Add("img_extract");
                     extractStartInfo.ArgumentList.Add("--passcode");
                     extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
+                    OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
                     extractStartInfo.ArgumentList.Add(safeIn + ":" + arcPath);
                     extractStartInfo.ArgumentList.Add(out_path);
                     using var proc = new Process { StartInfo = extractStartInfo };
@@ -6088,22 +6167,18 @@ namespace PS4PKGTool
             }
             finally
             {
-                if (wasRenamed && File.Exists(renameTmp))
+                // Staging restoration must run on every exit path - success,
+                // orbis failure, timeout, cancellation and unexpected exceptions.
+                if (safePkg != null)
                 {
-                    try
+                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
+                    if (!restore.Succeeded)
                     {
-                        if (File.Exists(inPath))
-                            Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                        else
-                            File.Move(renameTmp, inPath);
-                    }
-                    catch (Exception rex)
-                    {
-                        Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
-                        Logger.LogError($"Rename-back failed: {renameTmp} → {inPath}: {rex.Message}");
+                        Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
+                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
+                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
                     }
                 }
-                DeleteOrbisTempDir(renameTmp);
             }
         }
 
@@ -6202,7 +6277,7 @@ namespace PS4PKGTool
 
         private void DisableTabPages(Control con, string name)
         {
-            foreach (Control tab in flatTabControl1.TabPages)
+            foreach (Control tab in mainTabControl.TabPages)
             {
                 if (tab.Name != name)
                 {
@@ -6213,7 +6288,7 @@ namespace PS4PKGTool
 
         private void EnableTabPages(Control con)
         {
-            foreach (Control tab in flatTabControl1.TabPages)
+            foreach (Control tab in mainTabControl.TabPages)
             {
                 tab.Enabled = true;
             }
@@ -6253,67 +6328,27 @@ namespace PS4PKGTool
         }
 
         /// <summary>
-        /// Returns a writable directory on the same drive for the orbis temp rename.
-        /// If the PKG's own directory is already ASCII, it's used (in-place rename).
-        /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
-        /// short temp dir there - the drive root is NOT used (not writable without
-        /// admin on C:).
+        /// Startup staged-PKG recovery: a lightweight scan of the configured
+        /// package locations. When nothing is staged, this is completely
+        /// silent. When leftovers exist (crash / kill / power loss / older
+        /// versions), the recovery dialog is shown - it is the ONLY place
+        /// that may move staged PKGs back.
         /// </summary>
-        private static string GetOrbisTempDirFor(string pkgPath)
-        {
-            string dir = Path.GetDirectoryName(pkgPath);
-            if (!string.IsNullOrEmpty(dir) && dir.All(c => c < 128))
-                return dir;
-
-            while (!string.IsNullOrEmpty(dir) && !dir.All(c => c < 128))
-                dir = Path.GetDirectoryName(dir);
-
-            if (string.IsNullOrEmpty(dir))
-                dir = Path.GetTempPath(); // fallback - rare, all-ancestors-Unicode
-
-            string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
-            Directory.CreateDirectory(temp);
-            return temp;
-        }
-
-        /// <summary>
-        /// Deletes the temp dir created by GetOrbisTempDirFor (only the "p4t_v_" ones).
-        /// No-op when the file was renamed in place (its parent is a real directory).
-        /// Never deletes a temp dir that still holds a PKG (data-loss guard).
-        /// </summary>
-        private static void DeleteOrbisTempDir(string tempFilePath)
-            => OrbisTempRecovery.DeleteOrbisTempDirSafe(tempFilePath);
-
-        /// <summary>
-        /// Startup recovery for crashed orbis temp-rename operations: restores
-        /// PKGs left in "p4t_v_" temp dirs to their original locations (via
-        /// the original_path.txt sidecar) and removes empty leftover temp dirs.
-        /// Scans the configured PKG directories and their drive roots.
-        /// </summary>
-        private void RecoverOrphanedOrbisTempDirs()
+        private void ScanForStagedPkgsLeftovers()
         {
             try
             {
                 var roots = new List<string>(appSettings_.PkgDirectories ?? new List<string>());
-                foreach (string d in appSettings_.PkgDirectories ?? new List<string>())
-                    if (!string.IsNullOrWhiteSpace(d)) roots.Add(Path.GetPathRoot(d));
+                List<StagedPkgRecoveryItem> items = StagedPkgRecoveryScanner.Scan(roots);
+                if (items.Count == 0)
+                    return;
 
-                var result = OrbisTempRecovery.Recover(roots);
-                if (result.Restored > 0 || result.EmptyDirsRemoved > 0)
-                    Logger.LogInformation($"Orbis temp recovery: {result.Restored} PKG(s) restored, {result.EmptyDirsRemoved} leftover temp folder(s) removed.");
-                if (result.Unresolvable.Count > 0)
-                {
-                    Logger.LogWarning("Orbis temp leftovers could not be restored automatically: " + string.Join(" | ", result.Unresolvable));
-                    ShowWarning(
-                        $"Found {result.Unresolvable.Count} leftover temp folder(s) from a crashed operation:\n\n" +
-                        string.Join("\n", result.Unresolvable) +
-                        "\n\nCheck them and move any PKGs back manually if needed.",
-                        false);
-                }
+                Logger.LogInformation($"Staged PKG recovery: found {items.Count} leftover item(s) from previous operations.");
+                StagedPkgRecoveryForm.ShowRecoveryDialog(this, items, roots);
             }
             catch (Exception ex)
             {
-                Logger.LogWarning("Orbis temp recovery failed: " + ex.Message);
+                Logger.LogWarning("Staged PKG recovery scan failed: " + ex.Message);
             }
         }
 
@@ -6515,16 +6550,17 @@ namespace PS4PKGTool
         private void ViewUpdateChangelog()
         {
             string origPath = PKG.SelectedPKGFilename;
-            string renameDir = GetOrbisTempDirFor(origPath);
-            string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-            bool renamed = false;
-            string safePath = renameTmp;
+            // Unicode-safe staging for the orbis-pub-cmd input path.
+            // Prepare decides the mode: a safe path is passed through
+            // untouched (no move, no rename, no p4t_v_* directory).
+            OrbisSafePkgOperation safePkg = null;
+            string safePath = origPath;
             string tempDir = null;
 
             try
             {
-                OrbisTempRecovery.MoveIntoOrbisTemp(origPath, renameDir, renameTmp);
-                renamed = true;
+                safePkg = OrbisSafePkgOperation.Prepare(origPath);
+                safePath = safePkg.OrbisPath;
                 tempDir = CreateOrbisTempDir("c"); // short ASCII temp root (see CreateOrbisTempDir)
                 string orbisPubCmdErrorMessage = "";
                 var extractStartInfo = new ProcessStartInfo
@@ -6538,6 +6574,7 @@ namespace PS4PKGTool
                 extractStartInfo.ArgumentList.Add("img_extract");
                 extractStartInfo.ArgumentList.Add("--passcode");
                 extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
+                OrbisCommandOptions.AddConfiguredTempPath(extractStartInfo);
                 extractStartInfo.ArgumentList.Add(safePath + ":Sc0/changeinfo/changeinfo.xml");
                 extractStartInfo.ArgumentList.Add(tempDir);
                 using Process extract = new Process { StartInfo = extractStartInfo };
@@ -6587,22 +6624,18 @@ namespace PS4PKGTool
             }
             finally
             {
-                if (renamed && File.Exists(renameTmp))
+                // Staging restoration must run on every exit path - success,
+                // orbis failure, timeout, cancellation and unexpected exceptions.
+                if (safePkg != null)
                 {
-                    try
+                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
+                    if (!restore.Succeeded)
                     {
-                        if (File.Exists(origPath))
-                            Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                        else
-                            File.Move(renameTmp, origPath);
-                    }
-                    catch (Exception rex)
-                    {
-                        Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
-                        Logger.LogError($"Rename-back failed: {renameTmp} → {origPath}: {rex.Message}");
+                        Logger.LogError("Failed to restore PKG: " + restore.ErrorMessage);
+                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
+                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
                     }
                 }
-                DeleteOrbisTempDir(renameTmp);
                 try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
             }
         }
@@ -6680,24 +6713,7 @@ namespace PS4PKGTool
             PKGTreeView.ExpandAll();
         }
 
-        private void SearchFileInTreeView_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(tbSearchTreeView.Text))
-                return;
-
-            TreeNode selectedNode = SearchFileInTreeView(tbSearchTreeView.Text, PKGTreeView.Nodes);
-            if (selectedNode != null)
-            {
-                PKGTreeView.SelectedNode = selectedNode;
-                PKGTreeView.Focus();
-            }
-            else
-            {
-                // Handle case when no matching node is found
-                // For example, display a message to the user
-            }
-        }
-
+      
         private void collapseAllNodeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             PKGTreeView.CollapseAll();
@@ -6751,6 +6767,12 @@ namespace PS4PKGTool
 
         private void RenamePKG(string namingFormat, List<string> pkgList)
         {
+            if (Shadps4Manager.IsInstallationActive)
+            {
+                ShowWarning("A shadPS4 installation is in progress.", false);
+                return;
+            }
+
             var bg = new BackgroundWorker();
             bg.DoWork += delegate
             {
@@ -7021,6 +7043,11 @@ namespace PS4PKGTool
 
         private void MovePkg_Click(object sender, EventArgs e)
         {
+            if (Shadps4Manager.IsInstallationActive)
+            {
+                ShowWarning("A shadPS4 installation is in progress.", false);
+                return;
+            }
             if (!(sender is ToolStripMenuItem clickedMenuItem))
                 return;
 
@@ -8219,20 +8246,12 @@ namespace PS4PKGTool
         private string ExtractSingleEntryForPreview(string pkgPath, string entryPath, string tempDir)
         {
             // Use the same orbis img_extract call pattern as ExtractFilesSync,
-            // extracting a single entry path into tempDir.
-            string dir = GetOrbisTempDirFor(pkgPath);
-            string renameTmp = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
+            // extracting a single entry path into tempDir. Prepare decides the
+            // staging mode: a safe path is passed through untouched.
+            OrbisSafePkgOperation safePkg = null;
             try
             {
-                OrbisTempRecovery.MoveIntoOrbisTemp(pkgPath, dir, renameTmp);
-            }
-            catch
-            {
-                OrbisTempRecovery.DeleteOrbisTempDirSafe(renameTmp); // a failed move must not leak the temp dir
-                throw;
-            }
-            try
-            {
+                safePkg = OrbisSafePkgOperation.Prepare(pkgPath);
                 var psi = new ProcessStartInfo
                 {
                     FileName = Helper.AppDataDirectory + "orbis-pub-cmd.exe",
@@ -8243,7 +8262,8 @@ namespace PS4PKGTool
                 psi.ArgumentList.Add("img_extract");
                 psi.ArgumentList.Add("--passcode");
                 psi.ArgumentList.Add(DefaultOrbisPasscode);
-                psi.ArgumentList.Add(renameTmp + ":" + entryPath);
+                OrbisCommandOptions.AddConfiguredTempPath(psi);
+                psi.ArgumentList.Add(safePkg.OrbisPath + ":" + entryPath);
                 psi.ArgumentList.Add(tempDir);
                 using var proc = new Process { StartInfo = psi };
                 proc.Start();
@@ -8258,9 +8278,18 @@ namespace PS4PKGTool
             }
             finally
             {
-                try { if (File.Exists(renameTmp) && !File.Exists(pkgPath)) File.Move(renameTmp, pkgPath); }
-                catch (Exception rex) { Logger.LogError($"Preview rename-back failed: {renameTmp} -> {pkgPath}: {rex.Message}"); }
-                DeleteOrbisTempDir(renameTmp);
+                // Staging restoration must run on every exit path - success,
+                // orbis failure, timeout, cancellation and unexpected exceptions.
+                if (safePkg != null)
+                {
+                    OrbisSafePkgRestoreResult restore = safePkg.Restore();
+                    if (!restore.Succeeded)
+                    {
+                        Logger.LogError("Preview failed to restore PKG: " + restore.ErrorMessage);
+                        if (!string.IsNullOrEmpty(restore.RecoveryDirectory))
+                            Logger.LogError("Recovery data remains in: " + restore.RecoveryDirectory);
+                    }
+                }
             }
         }
 

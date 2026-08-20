@@ -229,7 +229,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         // ── cache ──
 
-        private IReadOnlyList<Shadps4ReleaseInfo>? LoadCached(Shadps4FeedKind feed)
+        internal IReadOnlyList<Shadps4ReleaseInfo>? LoadCached(Shadps4FeedKind feed)
         {
             try
             {

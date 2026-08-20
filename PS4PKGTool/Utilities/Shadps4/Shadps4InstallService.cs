@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.Shadps4
@@ -49,6 +50,21 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         public string OrbisExePath { get; set; } = "";
 
+        /// <summary>
+        /// Optional user-selected directory passed to orbis-pub-cmd as
+        /// --tmp_path. Empty means the tool keeps its normal %TEMP% default.
+        /// This is orbis-pub-cmd's INTERNAL scratch path; it is separate from
+        /// the extraction destination and from an ASCII-safe PKG alias.
+        /// </summary>
+        public string OrbisTempPath { get; set; } = "";
+
+        /// <summary>
+        /// The passcode handed to orbis-pub-cmd img_extract. Defaults to the
+        /// standard all-zero code; callers that already know a package uses
+        /// a custom one (e.g. a shell passcode prompt) set it before Install.
+        /// </summary>
+        public string Passcode { get; set; } = DefaultPasscode;
+
         /// <summary>Test seam: replaces the orbis-based extraction. (pkg, destDir, ct) -> success.</summary>
         public Func<string, string, CancellationToken, bool>? ExtractOverride { get; set; }
 
@@ -76,6 +92,10 @@ namespace PS4PKGTool.Utilities.Shadps4
                 return Fail(Shadps4InstallStatus.PkgMissing, $"PKG not found: {pkgPath}");
             if (string.IsNullOrWhiteSpace(libraryDir) || !Directory.Exists(libraryDir))
                 return Fail(Shadps4InstallStatus.LibraryMissing, $"shadPS4 library not found: {libraryDir}");
+
+            if (ExtractOverride == null
+                && !TryValidateConfiguredOrbisTemp(pkgPath, out string? tempError))
+                return Fail(Shadps4InstallStatus.ValidationFailed, tempError!);
 
             string finalDir = Path.Combine(libraryDir, titleId);
             if (Directory.Exists(finalDir) && !replaceExisting && !mergeIntoExisting)
@@ -378,11 +398,12 @@ namespace PS4PKGTool.Utilities.Shadps4
         }
 
         /// <summary>
-        /// Real extraction: orbis-pub-cmd bare img_extract (whole image), with the
-        /// same ASCII-rename + short-temp-root pattern as the app's existing
-        /// full-PKG extraction. Captures BOTH stdout and stderr and returns a
-        /// short detail string so a failure shows the real orbis error instead
-        /// of pointing at an empty log.
+        /// Real extraction: orbis-pub-cmd bare img_extract (whole image).
+        /// ANSI-safe input/output paths are used directly. Only an unsafe PKG
+        /// path is temporarily relocated through OrbisSafePkgOperation, whose
+        /// sidecar makes a process or machine crash recoverable. An unsafe
+        /// output path is routed through a same-volume ASCII workspace and
+        /// moved into the requested staging folder after extraction.
         /// </summary>
         private (bool Ok, string Detail) ExtractWithOrbis(string pkgPath, string destinationDir, CancellationToken ct)
         {
@@ -392,31 +413,36 @@ namespace PS4PKGTool.Utilities.Shadps4
                 return (false, "orbis-pub-cmd.exe was not found at " + OrbisExePath);
             }
 
-            string tempRoot = Path.Combine(Path.GetTempPath(), "p4t_x_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempRoot);
-            string tempPkg = Path.Combine(tempRoot, "pkg.pkg");
-            string tempOut = Path.Combine(tempRoot, "out");
-            Directory.CreateDirectory(tempOut);
-
-            bool renamed = false;
+            OrbisSafePkgOperation? safePackage = null;
+            OrbisSafePkgRestoreResult? restoreResult = null;
+            string? outputWorkspace = null;
+            bool ok = false;
+            string detail = "";
             try
             {
-                File.Move(pkgPath, tempPkg);
-                renamed = true;
+                string inputPath = Path.GetFullPath(pkgPath);
+                // Prepare decides the mode itself: Direct for already-safe
+                // paths (no move), RenameInPlace / DriveRootStaging otherwise.
+                safePackage = OrbisSafePkgOperation.Prepare(inputPath);
+                inputPath = safePackage.OrbisPath;
+                if (safePackage.IsStaged)
+                    Logger.LogInformation($"Shadps4Install: using recoverable ASCII PKG path {inputPath}");
+                else
+                    Logger.LogInformation("Shadps4Install: PKG path is ASCII-safe; extracting directly without relocation.");
 
-                var psi = new ProcessStartInfo
+                string outputPath = Path.GetFullPath(destinationDir);
+                if (!OrbisSafePkgOperation.IsAsciiSafePath(outputPath))
                 {
-                    FileName = OrbisExePath,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                };
-                psi.ArgumentList.Add("img_extract");
-                psi.ArgumentList.Add("--passcode");
-                psi.ArgumentList.Add(DefaultPasscode);
-                psi.ArgumentList.Add(tempPkg);
-                psi.ArgumentList.Add(tempOut);
+                    string asciiParent = OrbisSafePkgOperation.FindAsciiParentDirectory(outputPath);
+                    outputWorkspace = Path.Combine(asciiParent,
+                        "p4t_o_" + Guid.NewGuid().ToString("N")[..12]);
+                    Directory.CreateDirectory(outputWorkspace);
+                    outputPath = outputWorkspace;
+                    Logger.LogInformation($"Shadps4Install: using ASCII extraction workspace {outputPath}");
+                }
+
+                var psi = BuildOrbisExtractStartInfo(
+                    OrbisExePath, inputPath, outputPath, OrbisTempPath, Passcode);
 
                 using var extract = new Process { StartInfo = psi };
                 extract.Start();
@@ -429,7 +455,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                     {
                         try { extract.Kill(); extract.WaitForExit(); } catch { }
                         Logger.LogWarning("Shadps4Install: orbis killed by cancellation.");
-                        return (false, "cancelled");
+                        throw new OperationCanceledException(ct);
                     }
                 }
                 string stdout = stdoutTask.Result;
@@ -440,37 +466,118 @@ namespace PS4PKGTool.Utilities.Shadps4
                     Logger.LogError($"Shadps4Install: orbis img_extract exited {extract.ExitCode}.");
                     Logger.LogError("Shadps4Install: orbis stdout: " + Tail(stdout));
                     Logger.LogError("Shadps4Install: orbis stderr: " + Tail(stderr));
-                    return (false, $"orbis-pub-cmd img_extract exited {extract.ExitCode}. {Tail(stderr)}".Trim());
+                    // orbis-pub-cmd prints its diagnostics (including
+                    // "Passcode mismatch.") to STDOUT; stderr is usually
+                    // empty. Include both so callers can detect the reason
+                    // (the shell flow prompts for the passcode on it).
+                    string toolOutput = !string.IsNullOrWhiteSpace(stderr)
+                        ? stderr
+                        : stdout;
+                    detail = $"orbis-pub-cmd img_extract exited {extract.ExitCode}. {Tail(toolOutput)}".Trim();
                 }
-                Logger.LogInformation("Shadps4Install: orbis img_extract completed.");
-
-                // Move the extracted entries into the destination.
-                foreach (string entry in Directory.GetFileSystemEntries(tempOut))
+                else
                 {
-                    string dest = Path.Combine(destinationDir, Path.GetFileName(entry));
-                    if (Directory.Exists(entry))
-                        Directory.Move(entry, dest);
-                    else
-                        File.Move(entry, dest);
+                    Logger.LogInformation("Shadps4Install: orbis img_extract completed.");
+                    if (outputWorkspace != null)
+                        MoveExtractedEntries(outputWorkspace, destinationDir);
+                    ok = true;
                 }
-                return (true, "");
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
                 Logger.LogError("Shadps4Install: orbis extraction threw: " + ex);
-                return (false, ex.Message);
+                detail = ex.Message;
             }
             finally
             {
-                if (renamed && File.Exists(tempPkg))
+                if (safePackage != null)
+                    restoreResult = safePackage.Restore();
+                if (outputWorkspace != null)
+                    Cleanup(outputWorkspace);
+            }
+
+            if (restoreResult is { Succeeded: false })
+            {
+                return (false,
+                    restoreResult.ErrorMessage + " The PKG and recovery metadata remain in:\n" +
+                    restoreResult.RecoveryDirectory);
+            }
+            return (ok, detail);
+        }
+
+        internal static ProcessStartInfo BuildOrbisExtractStartInfo(
+            string orbisExePath, string packagePath, string outputPath, string? configuredTempPath,
+            string? passcode = null)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = orbisExePath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            psi.ArgumentList.Add("img_extract");
+            PkgInspection.PkgFileListingService.AddPasscodeArgument(psi, passcode);
+            OrbisCommandOptions.AddTempPath(psi, configuredTempPath);
+            psi.ArgumentList.Add(packagePath);
+            psi.ArgumentList.Add(outputPath);
+            return psi;
+        }
+
+        private bool TryValidateConfiguredOrbisTemp(string pkgPath, out string? error)
+        {
+            error = null;
+            if (string.IsNullOrWhiteSpace(OrbisTempPath)) return true;
+
+            string path;
+            try { path = Path.GetFullPath(OrbisTempPath.Trim()); }
+            catch (Exception ex)
+            {
+                error = "The configured Orbis temporary directory is invalid: " + ex.Message;
+                return false;
+            }
+            if (!OrbisSafePkgOperation.IsAsciiSafePath(path))
+            {
+                error = "The configured Orbis temporary directory must use an ASCII-only path:\n" + path;
+                return false;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(path);
+                string probe = Path.Combine(path, ".ps4pkgtool-write-test-" + Guid.NewGuid().ToString("N"));
+                using (File.Create(probe)) { }
+                File.Delete(probe);
+
+                long needed = EstimatedExtractedSize(pkgPath) + SpaceMarginBytes;
+                long free = FreeSpace(path);
+                if (free < needed)
                 {
-                    try
-                    {
-                        if (!File.Exists(pkgPath)) File.Move(tempPkg, pkgPath);
-                    }
-                    catch { }
+                    error = $"The configured Orbis temporary directory does not have enough free space: {path}\n" +
+                        $"Needs ~{HelperBytes(needed)}, has {HelperBytes(free)}.";
+                    return false;
                 }
-                try { if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true); } catch { }
+            }
+            catch (Exception ex)
+            {
+                error = "The configured Orbis temporary directory is not writable: " + path + "\n" + ex.Message;
+                return false;
+            }
+
+            OrbisTempPath = path;
+            return true;
+        }
+
+        private static void MoveExtractedEntries(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+            foreach (string entry in Directory.GetFileSystemEntries(source))
+            {
+                string target = Path.Combine(destination, Path.GetFileName(entry));
+                if (Directory.Exists(entry)) Directory.Move(entry, target);
+                else File.Move(entry, target);
             }
         }
 
@@ -491,15 +598,24 @@ namespace PS4PKGTool.Utilities.Shadps4
     }
 
     /// <summary>
-    /// Minimal PSF (param.sfo) reader for the APP_VER string, used to show the
-    /// installed version when a game folder already exists. Deterministic
-    /// format: header (magic/version/key/data offsets/count) + entry table.
+    /// Minimal PSF (param.sfo) reader for TITLE and APP_VER, used to show the
+    /// installed version and to pre-fill the feedback form from the game's
+    /// own param.sfo. Deterministic format: header (magic/version/key/data
+    /// offsets/count) + entry table.
     /// </summary>
     public static class ParamSfoReader
     {
         private const int HeaderSize = 20;
 
+        /// <summary>Legacy: APP_VER only; null when absent or unreadable.</summary>
         public static string? ReadAppVersion(string paramSfoPath)
+        {
+            var info = ReadGameInfo(paramSfoPath);
+            return string.IsNullOrEmpty(info?.AppVersion) ? null : info.Value.AppVersion;
+        }
+
+        /// <summary>Reads TITLE and APP_VER from a game's param.sfo; null when unreadable.</summary>
+        public static (string Title, string AppVersion)? ReadGameInfo(string paramSfoPath)
         {
             try
             {
@@ -512,9 +628,14 @@ namespace PS4PKGTool.Utilities.Shadps4
                 int count = BitConverter.ToInt32(data, 16);
                 if (count <= 0 || count > 1000) return null;
 
+                string title = "", appVersion = "";
+                // Real layout: header (20) -> entry table -> key table (at
+                // the keyOffset field) -> data table (at the dataOffset
+                // field). Entry offsets are relative to their table starts.
+                int entryBase = HeaderSize;
                 for (int i = 0; i < count; i++)
                 {
-                    int entry = (int)keyOffset + i * 16;
+                    int entry = entryBase + i * 16;
                     if (entry + 16 > data.Length) break;
                     ushort keyOff = BitConverter.ToUInt16(data, entry);
                     ushort fmt = BitConverter.ToUInt16(data, entry + 2);
@@ -526,12 +647,14 @@ namespace PS4PKGTool.Utilities.Shadps4
                     while (keyEnd < data.Length && data[keyEnd] != 0) keyEnd++;
                     string key = Encoding.ASCII.GetString(data, keyStart, keyEnd - keyStart);
 
-                    if (key != "APP_VER") continue;
                     if (fmt != 0x0204) continue; // PSF string
                     if (length <= 0 || dataOffset + valueOff + length > data.Length) return null;
-                    return Encoding.UTF8.GetString(data, (int)dataOffset + valueOff, length).TrimEnd('\0');
+                    string value = Encoding.UTF8.GetString(data, (int)dataOffset + valueOff, length).TrimEnd('\0');
+
+                    if (key == "APP_VER") appVersion = value;
+                    else if (key == "TITLE") title = value;
                 }
-                return null;
+                return (title, appVersion);
             }
             catch
             {

@@ -24,6 +24,13 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
     public static class Shadps4Compat
     {
         private const string RepoApi = "https://api.github.com/repos/shadps4-compatibility/shadps4-game-compatibility/issues";
+        /// <summary>
+        /// The upstream project publishes an aggregated JSON dump as a release
+        /// asset (one CDN download instead of many rate-limited API calls).
+        /// "latest" always resolves to the newest release.
+        /// </summary>
+        private const string ReleaseAssetUrl =
+            "https://github.com/shadps4-compatibility/shadps4-game-compatibility/releases/latest/download/compatibility_data.json";
         private static readonly string CachePath = Helper.AppDataDirectory + "shadps4.json";
         private static readonly Regex CusaRegex = new(@"^(CUSA\d{5})", RegexOptions.Compiled);
         private static readonly string[] Labels =
@@ -100,10 +107,92 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         }
 
         /// <summary>
-        /// Downloads the compatibility database from GitHub Issues and writes the
-        /// cache file. Returns (count, error) - error is null on success.
+        /// Downloads the compatibility database and writes the cache file.
+        /// Primary source: the aggregated release asset (one CDN download).
+        /// Fallback: scrape the source GitHub issues as before. Returns
+        /// (count, error) - error is null on success. The cache shape is
+        /// unchanged ({CUSA -> {os -> status}}), so LoadCache is untouched.
         /// </summary>
         public static async Task<(int count, string error)> DownloadAsync(IProgress<string> progress = null)
+        {
+            progress?.Report("Downloading the compatibility database...");
+            var (result, error) = await TryDownloadReleaseAssetAsync();
+            if (error == null && result.Count > 0)
+            {
+                _cache = result;
+                File.WriteAllText(CachePath, JsonConvert.SerializeObject(result, Formatting.Indented));
+                progress?.Report($"Compatibility database updated: {result.Count} games");
+                return (result.Count, null);
+            }
+
+            // The aggregated release is unavailable (network, HTTP, parse or
+            // empty) - fall back to scraping the source issues.
+            return await DownloadFromIssuesAsync(progress);
+        }
+
+        /// <summary>Downloads the release asset once; null error on success.</summary>
+        private static async Task<(Dictionary<string, Dictionary<string, string>> result, string? error)>
+            TryDownloadReleaseAssetAsync()
+        {
+            var empty = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.Add("User-Agent", "PS4-PKG-Tool");
+                http.Timeout = TimeSpan.FromSeconds(90);
+
+                using var resp = await http.GetAsync(ReleaseAssetUrl);
+                if (!resp.IsSuccessStatusCode)
+                    return (empty, $"GitHub download error: {(int)resp.StatusCode}");
+                string json = await resp.Content.ReadAsStringAsync();
+                return ParseReleaseAsset(json);
+            }
+            catch (Exception ex)
+            {
+                return (empty, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Parses the aggregated release asset:
+        /// {CUSA -> {"os-windows" -> {status, name, version, ...}}} into the
+        /// cache shape {CUSA -> {os -> status}}. Entries with unknown OS keys
+        /// or unknown status labels are skipped (never guessed).
+        /// </summary>
+        internal static (Dictionary<string, Dictionary<string, string>> result, string? error) ParseReleaseAsset(string json)
+        {
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var db = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, JObject>>>(json);
+                if (db == null || db.Count == 0)
+                    return (result, "The compatibility database is empty or unreadable.");
+
+                foreach (var game in db)
+                {
+                    var byOs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var osEntry in game.Value)
+                    {
+                        string os = OsFromLabel(osEntry.Key);
+                        if (os == null) continue; // not an os-* key - ignore
+
+                        string statusLabel = osEntry.Value?["status"]?.ToString() ?? "";
+                        string status = LabelToStatus(statusLabel);
+                        if (string.IsNullOrEmpty(status) || status == statusLabel) continue; // unknown status
+                        byOs[os] = status;
+                    }
+                    if (byOs.Count > 0) result[game.Key] = byOs;
+                }
+                return (result, null);
+            }
+            catch (Exception ex)
+            {
+                return (result, ex.Message);
+            }
+        }
+
+        /// <summary>Legacy source: scrape the repository's status-labeled issues.</summary>
+        private static async Task<(int count, string error)> DownloadFromIssuesAsync(IProgress<string> progress = null)
         {
             var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             try

@@ -140,7 +140,8 @@ namespace PS4PKGTool
 
         private void btnWizardUseExisting_Click(object sender, EventArgs e)
         {
-            // Close with a marker: the caller opens Program Settings.
+            // Close with a marker: the caller opens the shadPS4 Manager's
+            // Settings tab (adoption and detection live there now).
             Tag = "use-existing";
             Close();
         }
@@ -369,9 +370,9 @@ namespace PS4PKGTool
             lblComplete.Text =
                 "shadPS4 Setup Complete\n\n" +
                 $"Active Core:\n{(_installedCore?.ExecutablePath ?? "(none)")}\n" +
-                $"Build: {(_installedCore?.BuildId ?? "-")}\n\n" +
+                $"Build: {(_installedCore?.DisplayName ?? "-")}\n\n" +
                 $"QtLauncher:\n{(_installedLauncher?.ExecutablePath ?? "Not installed")}\n" +
-                $"Build: {(_installedLauncher?.BuildId ?? "-")}\n\n" +
+                $"Build: {(_installedLauncher?.DisplayName ?? "-")}\n\n" +
                 $"Configuration: {configState}\n" +
                 $"Game libraries: {libs}\n" +
                 $"PS4 PKG Tool install target: {installTarget}\n\n" +

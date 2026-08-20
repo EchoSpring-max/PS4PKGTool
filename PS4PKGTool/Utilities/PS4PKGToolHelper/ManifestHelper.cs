@@ -139,7 +139,9 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         }
 
         /// <summary>
-        /// Reconstructs the 16-column DataTable from manifest entries.
+        /// Reconstructs the PKG DataTable from manifest entries. Columns are
+        /// assigned by name (never positionally) so adding or removing a
+        /// column in PkgColumns can never shift data into the wrong cell.
         /// </summary>
         public static DataTable BuildDataTableFromManifest(List<ManifestEntry> entries)
         {
@@ -154,26 +156,27 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             {
                 byte[] regionIcon = GetRegionIconBytes(entry.Region, imageConverter);
 
-                dt.Rows.Add(
-                    entry.Filename ?? "",
-                    entry.Title ?? "",
-                    entry.TitleId ?? "",
-                    entry.ContentId ?? "",
-                    regionIcon,
-                    FormatSystemVersion(entry.SystemVersion),
-                    entry.Version ?? "",
-                    entry.PkgType ?? "",
-                    entry.Category ?? "",
-                    entry.Size ?? "",
-                    entry.Psvr ?? "",
-                    entry.Ps4ProEnhanced ?? "",
-                    entry.Ps5Bc ?? "",
-                    entry.Directory ?? "",
-                    entry.Backported ?? "",
-                    entry.LatestUpdate ?? "",
-                    entry.Region ?? "",
-                    PkgColumns.ParseSystemVersionNum(entry.SystemVersion)
-                );
+                var row = dt.NewRow();
+                row[PkgColumns.Filename] = entry.Filename ?? "";
+                row[PkgColumns.Title] = entry.Title ?? "";
+                row[PkgColumns.TitleId] = entry.TitleId ?? "";
+                row[PkgColumns.ContentId] = entry.ContentId ?? "";
+                row[PkgColumns.Region] = regionIcon;
+                row[PkgColumns.SystemVersion] = FormatSystemVersion(entry.SystemVersion);
+                row[PkgColumns.AppVersion] = entry.Version ?? "";
+                row[PkgColumns.PkgType] = entry.PkgType ?? "";
+                row[PkgColumns.Category] = entry.Category ?? "";
+                row[PkgColumns.Size] = entry.Size ?? "";
+                row[PkgColumns.Psvr] = entry.Psvr ?? "";
+                row[PkgColumns.Ps4ProEnhanced] = entry.Ps4ProEnhanced ?? "";
+                row[PkgColumns.Ps5Bc] = entry.Ps5Bc ?? "";
+                row[PkgColumns.Directory] = entry.Directory ?? "";
+                row[PkgColumns.Backported] = entry.Backported ?? "";
+                row[PkgColumns.LatestUpdate] = entry.LatestUpdate ?? "";
+                row[PkgColumns.Shadps4] = ""; // filled later by ApplyShadps4Status
+                row[PkgColumns.RegionName] = entry.Region ?? "";
+                row[PkgColumns.SystemVersionNum] = PkgColumns.ParseSystemVersionNum(entry.SystemVersion);
+                dt.Rows.Add(row);
             }
 
             return dt;

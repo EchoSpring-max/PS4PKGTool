@@ -822,6 +822,51 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void Settings_OrbisTempDirectory_RoundTrips()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        string previous = PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory;
+        try
+        {
+            var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+            {
+                OrbisTempDirectory = @"D:\Orbis Temp",
+            };
+            PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+
+            var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+            Assert.AreEqual(@"D:\Orbis Temp", loaded.OrbisTempDirectory);
+            StringAssert.Contains(File.ReadAllText(file), "orbis_temp_directory=D:\\Orbis Temp");
+            Assert.IsFalse(File.ReadAllText(file).Contains("shadps4_orbis_temp_directory="));
+            Assert.AreEqual("", new PS4PKGTool.Utilities.Settings.AppSettings().OrbisTempDirectory);
+        }
+        finally
+        {
+            PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory = previous;
+        }
+    }
+
+    [TestMethod]
+    public void Settings_LegacyShadps4OrbisTempDirectory_MigratesToGlobalSetting()
+    {
+        string file = Path.Combine(_tempRoot, "LegacySettings.conf");
+        string previous = PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory;
+        try
+        {
+            File.WriteAllText(file, "shadps4_orbis_temp_directory=E:\\OrbisScratch\n");
+
+            var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+            Assert.AreEqual(@"E:\OrbisScratch", loaded.OrbisTempDirectory);
+        }
+        finally
+        {
+            PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.OrbisTempDirectory = previous;
+        }
+    }
+
+    [TestMethod]
     public void Settings_PkgDirectories_NestedEntriesAreDroppedOnLoad()
     {
         string file = Path.Combine(_tempRoot, "Settings.conf");
@@ -1117,6 +1162,66 @@ public class Shadps4IntegrationTests
         Assert.IsTrue(Shadps4Compat.StatusRank("Nothing") > Shadps4Compat.StatusRank(""));
     }
 
+    [TestMethod]
+    public void Compat_ReleaseAssetParsesIntoCacheShape()
+    {
+        // Real release-asset format: {CUSA -> {"os-<os>" -> {status, name, ...}}}.
+        const string assetJson = """
+        {
+          "CUSA01810": {
+            "os-windows": { "issue_number": "2771", "name": "Tom Clancy's The Division", "serial": "CUSA01810", "status": "status-boots", "version": "v0.17.0" }
+          },
+          "CUSA09125": {
+            "os-windows": { "status": "status-nothing", "name": "DOOM VFR" },
+            "os-linux": { "status": "status-nothing", "name": "DOOM VFR" },
+            "os-macos": { "status": "status-playable", "name": "DOOM VFR" }
+          }
+        }
+        """;
+
+        var (result, error) = PS4PKGTool.Utilities.PS4PKGToolHelper.Shadps4Compat.ParseReleaseAsset(assetJson);
+
+        Assert.IsNull(error);
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("Boots", result["CUSA01810"]["windows"]);
+        Assert.AreEqual("Nothing", result["CUSA09125"]["windows"]);
+        Assert.AreEqual("Nothing", result["CUSA09125"]["linux"]);
+        Assert.AreEqual("Playable", result["CUSA09125"]["macos"]);
+    }
+
+    [TestMethod]
+    public void Compat_ReleaseAssetSkipsUnknownStatusAndNonOsKeys()
+    {
+        const string assetJson = """
+        {
+          "CUSA00001": {
+            "os-windows": { "status": "status-playable" },
+            "os-windows_extra": { "status": "status-playable" },
+            "os-linux": { "status": "status-mystery" }
+          }
+        }
+        """;
+
+        var (result, error) = PS4PKGTool.Utilities.PS4PKGToolHelper.Shadps4Compat.ParseReleaseAsset(assetJson);
+
+        Assert.IsNull(error);
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual(1, result["CUSA00001"].Count, "non os-* keys and unknown statuses are skipped, never guessed");
+        Assert.AreEqual("Playable", result["CUSA00001"]["windows"]);
+    }
+
+    [TestMethod]
+    public void Compat_ReleaseAssetEmptyOrCorruptReturnsError()
+    {
+        var (emptyResult, emptyError) = PS4PKGTool.Utilities.PS4PKGToolHelper.Shadps4Compat.ParseReleaseAsset("{}");
+        Assert.AreEqual(0, emptyResult.Count);
+        Assert.IsNotNull(emptyError, "an empty database is an error - the caller falls back");
+
+        var (badResult, badError) = PS4PKGTool.Utilities.PS4PKGToolHelper.Shadps4Compat.ParseReleaseAsset("{not json");
+        Assert.AreEqual(0, badResult.Count);
+        Assert.IsNotNull(badError);
+    }
+
     // ── install service ──
 
     // Real orbis extraction produces the PKG tree: Image0/ (game files) + Sc0/
@@ -1150,6 +1255,39 @@ public class Shadps4IntegrationTests
             ExtractOverride = extractor,
             FreeSpaceOverride = _ => 100L * 1024 * 1024 * 1024,
         };
+
+    [TestMethod]
+    public void OrbisCommand_EmptyConfiguredTemp_OmitsTmpPath()
+    {
+        var psi = Shadps4InstallService.BuildOrbisExtractStartInfo(
+            @"C:\tools\orbis-pub-cmd.exe", @"D:\games\game.pkg", @"D:\games\stage", "");
+
+        CollectionAssert.AreEqual(new[]
+        {
+            "img_extract", "--passcode", Shadps4InstallService.DefaultPasscode,
+            @"D:\games\game.pkg", @"D:\games\stage",
+        }, psi.ArgumentList.ToArray());
+    }
+
+    [TestMethod]
+    public void OrbisCommand_ConfiguredTemp_AddsTmpPath()
+    {
+        string temp = Path.Combine(_tempRoot, "orbis temp");
+        var psi = Shadps4InstallService.BuildOrbisExtractStartInfo(
+            @"C:\tools\orbis-pub-cmd.exe", @"D:\games\game.pkg", @"D:\games\stage", temp);
+
+        CollectionAssert.Contains(psi.ArgumentList.ToArray(), "--tmp_path");
+        int index = psi.ArgumentList.ToList().IndexOf("--tmp_path");
+        Assert.AreEqual(Path.GetFullPath(temp), psi.ArgumentList[index + 1]);
+    }
+
+    [TestMethod]
+    public void OrbisPathSafety_RejectsNonAsciiInFilenameOrParent()
+    {
+        Assert.IsTrue(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\Games Folder\game (1).pkg"));
+        Assert.IsFalse(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\Games\ゲーム.pkg"));
+        Assert.IsFalse(OrbisSafePkgOperation.IsAsciiSafePath(@"D:\游戏\game.pkg"));
+    }
 
     [TestMethod]
     public void Install_StagingSuccess_ProducesDumpLayoutCusaFolder()
@@ -1339,6 +1477,41 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
+    public void Install_CancelDuringExtract_LeavesExistingTargetUntouched()
+    {
+        // The "No game files were changed." claim: a cancel mid-extraction
+        // must never touch the existing target (replace path: the final
+        // delete+move commit only runs after extraction, and no cancellation
+        // is observed past it).
+        string lib = Path.Combine(_tempRoot, "lib");
+        Directory.CreateDirectory(lib);
+        string game = Path.Combine(lib, "CUSA12345");
+        Directory.CreateDirectory(Path.Combine(game, "sce_sys"));
+        File.WriteAllText(Path.Combine(game, "eboot.bin"), "original eboot");
+        string marker = Path.Combine(game, "existing.txt");
+        File.WriteAllText(marker, "original");
+
+        string pkg = MakeFakePkg(_tempRoot);
+        using var cts = new CancellationTokenSource();
+        bool CancelAfterPartialExtract(string p, string dest, CancellationToken ct)
+        {
+            Directory.CreateDirectory(Path.Combine(dest, "Image0"));
+            File.WriteAllText(Path.Combine(dest, "Image0", "partial.bin"), "partial");
+            cts.Cancel(); // cancel mid-extraction, before any commit
+            ct.ThrowIfCancellationRequested();
+            return true;
+        }
+
+        var result = MakeService(CancelAfterPartialExtract).Install(
+            pkg, "CUSA12345", lib, replaceExisting: true, ct: cts.Token);
+
+        Assert.AreEqual(Shadps4InstallStatus.Cancelled, result.Status);
+        Assert.IsFalse(Directory.Exists(Path.Combine(lib, ".ps4pkgtool-CUSA12345.tmp")), "staging must be removed");
+        Assert.IsTrue(File.Exists(marker), "existing target must be untouched");
+        Assert.AreEqual("original eboot", File.ReadAllText(Path.Combine(game, "eboot.bin")));
+    }
+
+    [TestMethod]
     public void Install_ValidationFails_WhenNoEboot()
     {
         string lib = Path.Combine(_tempRoot, "lib");
@@ -1361,25 +1534,27 @@ public class Shadps4IntegrationTests
     [TestMethod]
     public void ParamSfo_ReadsAppVersion()
     {
-        // Minimal PSF layout:
-        //   header (20 bytes)
-        //   key table  @32: entry (16 bytes) + key string "APP_VER\0" (8 bytes)
-        //   data table @56: value "1.09"
+        // Real PSF layout (verified against an extracted game's sfo):
+        //   header (20) -> entry table (16) -> key table -> data table.
+        //   The keyOffset/dataOffset fields point at their tables; entry
+        //   offsets are relative to those table starts.
         var keyBytes = System.Text.Encoding.ASCII.GetBytes("APP_VER\0");
         var dataBytes = System.Text.Encoding.ASCII.GetBytes("1.09");
-        var buf = new byte[56 + dataBytes.Length];
+        uint keyOffset = 20 + 16;                                             // after the entry table
+        uint dataOffset = keyOffset + (uint)keyBytes.Length;
+        var buf = new byte[dataOffset + dataBytes.Length];
         buf[0] = 0x00; buf[1] = 0x50; buf[2] = 0x53; buf[3] = 0x46;          // magic
         BitConverter.GetBytes((uint)0x0101).CopyTo(buf, 4);                   // version
-        BitConverter.GetBytes((uint)0x20).CopyTo(buf, 8);                     // key table offset = 32
-        BitConverter.GetBytes((uint)56).CopyTo(buf, 12);                      // data table offset = 56
+        BitConverter.GetBytes(keyOffset).CopyTo(buf, 8);                      // key table offset
+        BitConverter.GetBytes(dataOffset).CopyTo(buf, 12);                    // data table offset
         BitConverter.GetBytes((uint)1).CopyTo(buf, 16);                       // entries = 1
-        BitConverter.GetBytes((ushort)16).CopyTo(buf, 32);                    // entry: key offset (after the 16-byte entry)
-        BitConverter.GetBytes((ushort)0x0204).CopyTo(buf, 34);                // entry: string type
-        BitConverter.GetBytes((uint)4).CopyTo(buf, 36);                       // entry: length
-        BitConverter.GetBytes((uint)4).CopyTo(buf, 40);                       // entry: max length
-        BitConverter.GetBytes((uint)0).CopyTo(buf, 44);                       // entry: data offset (relative to data table)
-        keyBytes.CopyTo(buf, 48);                                             // key table string
-        dataBytes.CopyTo(buf, 56);                                            // data table value
+        BitConverter.GetBytes((ushort)0).CopyTo(buf, 20);                     // entry: key offset (relative to the key table start)
+        BitConverter.GetBytes((ushort)0x0204).CopyTo(buf, 22);                // entry: string type
+        BitConverter.GetBytes((uint)4).CopyTo(buf, 24);                       // entry: length
+        BitConverter.GetBytes((uint)4).CopyTo(buf, 28);                       // entry: max length
+        BitConverter.GetBytes((uint)0).CopyTo(buf, 32);                       // entry: data offset (relative to data table)
+        keyBytes.CopyTo(buf, (int)keyOffset);                                 // key table string
+        dataBytes.CopyTo(buf, (int)dataOffset);                               // data table value
 
         string path = Path.Combine(_tempRoot, "param.sfo");
         File.WriteAllBytes(path, buf);

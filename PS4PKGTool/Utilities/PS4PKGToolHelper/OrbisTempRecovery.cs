@@ -25,6 +25,39 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public const string TempDirPrefix = "p4t_v_";
         public const string SidecarName = "original_path.txt";
         public const string TempPkgPattern = "ps4pkgtool_orbis_*.pkg";
+        public const string TempPkgNamePrefix = "ps4pkgtool_orbis_";
+
+        /// <summary>True when any path segment starts with "p4t_v_" (a staging directory).</summary>
+        public static bool IsUnderTempDirectory(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            string segment = Path.GetFileName(path);
+            while (!string.IsNullOrEmpty(segment))
+            {
+                if (segment.StartsWith(TempDirPrefix, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                path = Path.GetDirectoryName(path) ?? "";
+                segment = Path.GetFileName(path);
+            }
+            return false;
+        }
+
+        /// <summary>True when the file name is a staged orbis rename ("ps4pkgtool_orbis_*.pkg").</summary>
+        public static bool IsTempPkgFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            string name = Path.GetFileName(path);
+            return name.StartsWith(TempPkgNamePrefix, StringComparison.OrdinalIgnoreCase)
+                && name.EndsWith(".pkg", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// True when the path is a staging artifact (inside a "p4t_v_*" directory
+        /// or a "ps4pkgtool_orbis_*.pkg" rename). Recursive PKG scanners must
+        /// skip these - a staged PKG is a moved original, not a new package.
+        /// </summary>
+        public static bool IsStagingArtifact(string path) =>
+            IsUnderTempDirectory(path) || IsTempPkgFile(path);
 
         /// <summary>Result of a recovery scan.</summary>
         public sealed record RecoverySummary(

@@ -56,6 +56,17 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public static string AppDataDirectory = AppContext.BaseDirectory + @"AppData\";
 
         /// <summary>
+        /// Per-user settings location outside the build output folder.
+        /// AppDataDirectory sits next to the exe and a clean rebuild wipes
+        /// it, silently resetting every saved option. Settings persist in
+        /// %APPDATA%\PS4PKGTool instead so rebuilds, clean installs and
+        /// moved folders never lose them.
+        /// </summary>
+        public static string UserSettingsDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "PS4PKGTool");
+
+        /// <summary>
         /// Creates a short ASCII temp directory for orbis-pub-cmd working files.
         /// The system temp root plus a short name keeps paths under MAX_PATH even for
         /// games with deep internal structures (e.g. Ultrawings' StreamingAssets schemas).

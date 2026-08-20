@@ -31,3 +31,7 @@ artifacts/
 *.tmp
 Thumbs.db
 .aider*
+
+## Manual backup snapshots (not source)
+PS4PKGTool-source.zip
+PS4PKGTool/Utilities.zip

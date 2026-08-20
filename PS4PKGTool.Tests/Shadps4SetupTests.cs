@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using PS4PKGTool.Utilities.Settings;
 using PS4PKGTool.Utilities.Shadps4;
 using System;
 using System.Collections.Generic;
@@ -194,6 +195,257 @@ namespace PS4PKGTool.Tests
         }
 
         // ── managed build store ──
+
+        [TestMethod]
+        public void Store_EmptyManagedRootFallsBackToDefaultRoot()
+        {
+            // Settings load an unset managed root as "" - a bare "" would
+            // resolve the store to a relative "builds" folder and list
+            // nothing. It must behave like null: default %LOCALAPPDATA% root.
+            var store = new Shadps4ManagedBuilds("");
+
+            Assert.AreEqual(Shadps4ManagedBuilds.DefaultRootPath(), store.RootPath);
+        }
+
+        [TestMethod]
+        public void Store_DisplayName_StableTagUsedAsIs()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+            string staging = Path.Combine(_tempRoot, "staging");
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, "shadPS4.exe"), "x");
+
+            var build = store.Commit(Parse(StableJson, Shadps4FeedKind.CoreStable)[1], staging);
+
+            Assert.AreEqual("v.0.17.0", build.DisplayName);
+        }
+
+        [TestMethod]
+        public void Store_DisplayName_NightlyShowsDateThenShortSha()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+            string staging = Path.Combine(_tempRoot, "staging");
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, "shadPS4.exe"), "x");
+
+            var build = store.Commit(Parse(NightlyJson, Shadps4FeedKind.CoreNightly)[0], staging);
+
+            Assert.AreEqual("2026-08-13 (e81418b4)", build.DisplayName);
+        }
+
+        [TestMethod]
+        public void Store_DisplayName_LauncherShowsDateThenShortSha()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+            string staging = Path.Combine(_tempRoot, "staging");
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, "shadPS4QtLauncher.exe"), "x");
+
+            var build = store.Commit(Parse(LauncherJson, Shadps4FeedKind.QtLauncher)[0], staging);
+
+            Assert.AreEqual("2026-08-08 (a12b988e)", build.DisplayName);
+        }
+
+        [TestMethod]
+        public void Store_DeleteBuild_RemovesOnlyThatBuild()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+            CommitCoreAt(store, index: 0);
+            CommitCoreAt(store, index: 1);
+
+            var ids = store.ListBuilds(Shadps4Component.Core).Select(b => b.BuildId).ToList();
+            Assert.AreEqual(2, ids.Count);
+
+            store.DeleteBuild(Shadps4Component.Core, ids[0]);
+
+            var remaining = store.ListBuilds(Shadps4Component.Core).ToList();
+            Assert.AreEqual(1, remaining.Count);
+            Assert.AreEqual(ids[1], remaining[0].BuildId);
+            Assert.IsFalse(Directory.Exists(store.BuildDirectory(Shadps4Component.Core, ids[0])));
+            Assert.IsTrue(Directory.Exists(store.BuildDirectory(Shadps4Component.Core, ids[1])));
+        }
+
+        [TestMethod]
+        public void Store_DeleteBuild_MissingBuildIsNoOp()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            var store = new Shadps4ManagedBuilds(root, new SystemClock());
+            CommitCoreAt(store);
+
+            store.DeleteBuild(Shadps4Component.Core, "0000000000000000000000000000000000000000");
+
+            Assert.AreEqual(1, store.ListBuilds(Shadps4Component.Core).Count);
+        }
+
+        // ── display helpers ──
+
+        [TestMethod]
+        public void Display_DescribeActiveSetting_ManagedShowsBuildPrefix()
+        {
+            Assert.AreEqual("Build e81418b4", Shadps4SetupDisplay.DescribeActiveSetting("managed:e81418b4"));
+        }
+
+        [TestMethod]
+        public void Display_DescribeActiveSetting_AdoptedShowsPath()
+        {
+            Assert.AreEqual(@"C:\emu\shadPS4.exe",
+                Shadps4SetupDisplay.DescribeActiveSetting(@"adopted:C:\emu\shadPS4.exe"));
+        }
+
+        [TestMethod]
+        public void Display_DescribeActiveSetting_EmptyShowsNotSet()
+        {
+            Assert.AreEqual("(not set)", Shadps4SetupDisplay.DescribeActiveSetting(""));
+            Assert.AreEqual("(not set)", Shadps4SetupDisplay.DescribeActiveSetting(null));
+        }
+
+        [TestMethod]
+        public void Display_ShortenPath_KeepsShortPathAndTruncatesLong()
+        {
+            string shortPath = @"C:\emu\shadPS4.exe";
+            Assert.AreEqual(shortPath, Shadps4SetupDisplay.ShortenPath(shortPath));
+
+            string longPath = @"C:\Users\VeryLongUserName\AppData\Roaming\shadPS4\custom-very-long-folder-name\config\settings-that-go-on-forever.json";
+            string shortened = Shadps4SetupDisplay.ShortenPath(longPath);
+            Assert.IsTrue(shortened.Length <= 70);
+            Assert.IsTrue(shortened.EndsWith(longPath.Substring(longPath.Length - 20)));
+        }
+
+        [TestMethod]
+        public void Display_ShortenPath_BlankShowsNotFound()
+        {
+            Assert.AreEqual("(not found)", Shadps4SetupDisplay.ShortenPath(""));
+            Assert.AreEqual("(not found)", Shadps4SetupDisplay.ShortenPath(null));
+        }
+
+        // ── settings auto heal ──
+
+        [TestMethod]
+        public void Heal_EmptySettingsRestoresCoreLauncherRootAndInstallDirFromStore()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            Directory.CreateDirectory(Path.Combine(root, "Data"));
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new FakeClock(new DateTime(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc))));
+            CommitLauncherAt(new Shadps4ManagedBuilds(root, new FakeClock(new DateTime(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc))));
+
+            var s = new AppSettings();
+            bool changed = SettingsManager.AutoHealShadps4Settings(s, new Shadps4ManagedBuilds(root));
+
+            Assert.IsTrue(changed);
+            Assert.AreEqual(root, s.Shadps4ManagedRoot);
+            Assert.AreEqual(Shadps4ActiveCore.ForManaged("e81418b46ea2b2ad8822d5d98b2210cf118d159e"), s.Shadps4ActiveCore);
+            Assert.AreEqual(Shadps4ActiveCore.ForManaged("a12b988ef35d98f2222a614c05498b27fef87121"), s.Shadps4ActiveLauncher);
+            Assert.AreEqual(Path.Combine(root, "Data"), s.Shadps4InstallDirectory);
+        }
+
+        [TestMethod]
+        public void Heal_NewestInstalledBuildWins()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            // two cores installed at different times; NightlyJson[0] is the newer install
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new FakeClock(new DateTime(2026, 8, 12, 1, 0, 0, DateTimeKind.Utc))), index: 1);
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new FakeClock(new DateTime(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc))), index: 0);
+
+            var s = new AppSettings();
+            SettingsManager.AutoHealShadps4Settings(s, new Shadps4ManagedBuilds(root));
+
+            Assert.AreEqual("e81418b46ea2b2ad8822d5d98b2210cf118d159e",
+                Shadps4ActiveCore.Parse(s.Shadps4ActiveCore!).Value);
+        }
+
+        [TestMethod]
+        public void Heal_NeverOverridesValuesTheUserSet()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            Directory.CreateDirectory(Path.Combine(root, "Data"));
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+            CommitLauncherAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+
+            var s = new AppSettings
+            {
+                Shadps4ManagedRoot = root,
+                Shadps4ActiveCore = "adopted:C:\\tools\\shadPS4.exe",
+                Shadps4ActiveLauncher = "adopted:C:\\tools\\shadPS4QtLauncher.exe",
+                Shadps4InstallDirectory = "D:\\games",
+            };
+            bool changed = SettingsManager.AutoHealShadps4Settings(s, new Shadps4ManagedBuilds(root));
+
+            Assert.IsFalse(changed, "values the user set are never touched");
+            Assert.AreEqual("adopted:C:\\tools\\shadPS4.exe", s.Shadps4ActiveCore);
+            Assert.AreEqual("D:\\games", s.Shadps4InstallDirectory);
+        }
+
+        [TestMethod]
+        public void Heal_EmptyStoreDoesNothing()
+        {
+            string root = Path.Combine(_tempRoot, "managed"); // no builds, no Data dir
+
+            var s = new AppSettings();
+            bool changed = SettingsManager.AutoHealShadps4Settings(s, new Shadps4ManagedBuilds(root));
+
+            Assert.IsFalse(changed);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(s.Shadps4ActiveCore));
+            Assert.IsTrue(string.IsNullOrWhiteSpace(s.Shadps4InstallDirectory));
+        }
+
+        [TestMethod]
+        public void Heal_DetectionOffer_TrueWhenSettingsEmptyAndStoreHasBuilds()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+            CommitLauncherAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+
+            var s = new AppSettings();
+            Assert.IsTrue(SettingsManager.CanHealShadps4Settings(s, new Shadps4ManagedBuilds(root)));
+        }
+
+        [TestMethod]
+        public void Heal_DetectionOffer_FalseWhenDismissed()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+
+            var s = new AppSettings { Shadps4ConfigDetectionDismissed = true };
+            Assert.IsFalse(SettingsManager.CanHealShadps4Settings(s, new Shadps4ManagedBuilds(root)),
+                "the user declined once - never ask again while settings persist");
+        }
+
+        [TestMethod]
+        public void Heal_DetectionOffer_FalseWhenActiveCoreSet()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+            CommitCoreAt(new Shadps4ManagedBuilds(root, new SystemClock()));
+
+            var s = new AppSettings { Shadps4ActiveCore = "adopted:C:\\tools\\shadPS4.exe" };
+            Assert.IsFalse(SettingsManager.CanHealShadps4Settings(s, new Shadps4ManagedBuilds(root)),
+                "an already-configured setup is never offered");
+        }
+
+        [TestMethod]
+        public void Heal_DetectionOffer_FalseWhenStoreEmpty()
+        {
+            string root = Path.Combine(_tempRoot, "managed");
+
+            var s = new AppSettings();
+            Assert.IsFalse(SettingsManager.CanHealShadps4Settings(s, new Shadps4ManagedBuilds(root)));
+        }
+
+        [TestMethod]
+        public void Settings_ConfigDetectionDismissedFlag_RoundTrips()
+        {
+            string file = Path.Combine(_tempRoot, "Settings.conf");
+            var settings = new AppSettings { Shadps4ConfigDetectionDismissed = true };
+            SettingsManager.SaveSettings(settings, file);
+
+            var loaded = SettingsManager.LoadSettings(file);
+
+            Assert.IsTrue(loaded.Shadps4ConfigDetectionDismissed);
+            Assert.IsFalse(new AppSettings().Shadps4ConfigDetectionDismissed, "default is not dismissed");
+        }
 
         [TestMethod]
         public void Store_CommitWritesVersionedDirWithManifest()
@@ -647,6 +899,24 @@ namespace PS4PKGTool.Tests
 
         private static IReadOnlyList<Shadps4ReleaseInfo> Parse(string json, Shadps4FeedKind feed)
             => Shadps4ReleaseFeed.ParseReleases(json, feed, "repo");
+
+        /// <summary>Commits a fake core build (NightlyJson, index selectable) to the store.</summary>
+        private void CommitCoreAt(Shadps4ManagedBuilds store, int index = 0)
+        {
+            string staging = Path.Combine(_tempRoot, "stage_core_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, Shadps4EnvironmentResolver.CoreExeFileName), "fake core");
+            store.Commit(Parse(NightlyJson, Shadps4FeedKind.CoreNightly)[index], staging);
+        }
+
+        /// <summary>Commits a fake QtLauncher build (LauncherJson) to the store.</summary>
+        private void CommitLauncherAt(Shadps4ManagedBuilds store)
+        {
+            string staging = Path.Combine(_tempRoot, "stage_launcher_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            Directory.CreateDirectory(staging);
+            File.WriteAllText(Path.Combine(staging, Shadps4EnvironmentResolver.QtLauncherFileName), "fake launcher");
+            store.Commit(Parse(LauncherJson, Shadps4FeedKind.QtLauncher)[0], staging);
+        }
 
         private static Shadps4ReleaseInfo MakeRelease(Shadps4FeedKind feed, string tag, string commit, string asset, long size, bool prerelease = true)
             => new(feed, "shadps4-emu/shadPS4", tag, new DateTime(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc),

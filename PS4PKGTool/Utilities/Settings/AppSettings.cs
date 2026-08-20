@@ -78,15 +78,35 @@ namespace PS4PKGTool.Utilities.Settings
         /// dialog opens without a preselected directory).
         /// </summary>
         public string Shadps4InstallDirectory { get; set; } = "";
+        /// <summary>
+        /// Optional directory passed to orbis-pub-cmd as --tmp_path for every
+        /// PKG extraction. Empty leaves orbis-pub-cmd on its Windows %TEMP%
+        /// default.
+        /// </summary>
+        public string OrbisTempDirectory { get; set; } = "";
         /// <summary>Legacy (superseded by Shadps4ExecutablePath - kept for migration).</summary>
         public string Shadps4CoreExePath { get; set; } = "";
         /// <summary>Legacy (superseded by Shadps4ExecutablePath - kept for migration).</summary>
         public string Shadps4LauncherExePath { get; set; } = "";
+        /// <summary>
+        /// Set when the user declines the "shadPS4 setup detected" prompt.
+        /// The prompt only appears on fresh/wiped settings, so this flag dies
+        /// with the settings file and the prompt naturally returns after a wipe.
+        /// </summary>
+        public bool Shadps4ConfigDetectionDismissed { get; set; } = false;
+
+        /// <summary>True when the Explorer .pkg context menu integration is installed (HKCU).</summary>
+        public bool ShellIntegrationInstalled { get; set; } = false;
 
 
         #endregion columnVisibility
 
         public int ThemeIndex { get; set; } = 0;
+        /// <summary>
+        /// Stable selected theme identity. ThemeIndex is retained for backwards
+        /// compatibility with existing Settings.conf files.
+        /// </summary>
+        public string ThemeName { get; set; } = string.Empty;
 
         public AppSettings()
         {

@@ -35,24 +35,53 @@ namespace PS4PKGTool
         private string HttpServerModulePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\npm\node_modules\http-server";
         private CancellationTokenSource trophyCacheCancellation;
         private string TrophyCachePath => Path.Combine(AppDataDirectory, "TrophyMetadata", "np-communication-ids.json");
+        // Kept outside Designer.cs: the WinForms serializer has previously
+        // dropped this declaration while retaining its InitializeComponent use.
+        private DarkSectionPanel grpStartup;
 
         public bool Refresh = false;
+        private bool _syncingThemeSelection;
         public ProgramSetting()
         {
             InitializeComponent();
             this.Icon = AppIcon;
             FormClosing += ProgramSetting_FormClosing;
+            FormClosed += (_, _) => ThemeManager.ThemeChanged -= ThemeManager_ThemeChanged;
+            RefreshShellIntegrationStatus();
         }
 
-        private void btnOfficialUpdateDownloadFolder_Click(object sender, EventArgs e)
+        // ── File Explorer integration ────────────────────────────────────
+
+        private void RefreshShellIntegrationStatus()
         {
-            if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
-            {
-                tbOfficialUpdateDownloadFolder.Text = fbd.SelectedPath;
-                Logger.LogInformation($"Official update PKG directory set to \"{fbd.SelectedPath}\"");
-            }
+            bool installed = PS4PKGTool.Shell.ShellRegistry.IsInstalled();
+            lblShellIntegrationStatus.Text = ".pkg context menu: " + (installed ? "Installed" : "Not installed");
+            btnShellInstall.Visible = !installed;
+            btnShellRemove.Visible = installed;
+            appSettings_.ShellIntegrationInstalled = installed;
         }
 
+        private void btnShellInstall_Click(object sender, EventArgs e)
+        {
+            PS4PKGTool.Shell.ShellRegistry.Install();
+            appSettings_.ShellIntegrationInstalled = true;
+            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+            RefreshShellIntegrationStatus();
+            MessageBoxHelper.ShowInformation(
+                "File Explorer integration installed.\n\nRight-click a .pkg file and choose PS4 PKG Tool to validate, extract, rename, copy metadata or install to shadPS4.",
+                false);
+        }
+
+        private void btnShellRemove_Click(object sender, EventArgs e)
+        {
+            PS4PKGTool.Shell.ShellRegistry.Remove();
+            appSettings_.ShellIntegrationInstalled = false;
+            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+            RefreshShellIntegrationStatus();
+            MessageBoxHelper.ShowInformation("File Explorer integration removed.", false);
+        }
+
+     
         private void ProgramSetting_Load(object sender, EventArgs e)
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
@@ -67,13 +96,16 @@ namespace PS4PKGTool
             cmbTheme.Items.AddRange(ThemeManager.Presets.Select(p => p.Name).ToArray());
             cmbTheme.SelectedIndexChanged += (_, _) =>
             {
-                ThemeManager.Apply(ThemeManager.Presets[cmbTheme.SelectedIndex]);
+                if (!_syncingThemeSelection && cmbTheme.SelectedIndex >= 0)
+                    ThemeManager.Apply(ThemeManager.Presets[cmbTheme.SelectedIndex]);
             };
+            ThemeManager.ThemeChanged += ThemeManager_ThemeChanged;
 
             #region LoadSetting
             // directory settings
             darkCheckBoxRecursive.Checked = appSettings_.ScanRecursive;
             lbPkgDirectoryList.Items.AddRange(appSettings_.PkgDirectories?.Cast<string>().ToArray() ?? Array.Empty<string>());
+            tbOrbisTemp.Text = appSettings_.OrbisTempDirectory ?? string.Empty;
 
             AutoSortRow.Checked = appSettings_.AutoSortRow;
             PKGColorLabeling.Checked = appSettings_.PkgColorLabel;
@@ -87,7 +119,6 @@ namespace PS4PKGTool
             darkLabelAppPkgColorLabel.BackColor = (appSettings_.AppPkgBackColor == null) ? Color.FromArgb(60, 63, 65) : appSettings_.AppPkgBackColor;
             tbCustomNamePattern.Text = appSettings_.RenameCustomName;
 
-            tbOfficialUpdateDownloadFolder.Text = appSettings_.OfficialUpdateDownloadDirectory;
             tbPS4IP.Text = appSettings_.Ps4Ip;
             darkComboBoxServerIP.Text = appSettings_.LocalServerIp;
             labelPs5BcJsonDownloadDate.Text = (appSettings_.Ps5BcJsonLastDownloadDate == DateTime.MinValue || !File.Exists(Ps5BcJsonFile))
@@ -102,11 +133,6 @@ namespace PS4PKGTool
                 "macos" => 2,
                 _ => 0, // windows (default)
             };
-            tbShadps4ActiveCore.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveCore);
-            tbShadps4ActiveLauncher.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher);
-            tbShadps4InstallDirectory.Text = appSettings_.Shadps4InstallDirectory ?? "";
-            Logger.LogInformation($"Shadps4Settings: install dir field set to '{tbShadps4InstallDirectory.Text}'");
-            RefreshShadps4Detection();
             labelShadps4JsonDate.Text = Shadps4Compat.LastDownload?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? "Not downloaded";
             Location.Checked = appSettings_.pkgDirectoryColumn;
             Size.Checked = appSettings_.pkgsizeColumn;
@@ -120,8 +146,14 @@ namespace PS4PKGTool
             cbBackported.Checked = appSettings_.pkgBackportColumn;
             cbAutoFetchUpdate.Checked = appSettings_.AutoFetchUpdate;
             BGM.Checked = appSettings_.PlayBgm;
-            cmbTheme.SelectedIndex = appSettings_.ThemeIndex >= 0 && appSettings_.ThemeIndex < ThemeManager.Presets.Count
-                ? appSettings_.ThemeIndex : 0;
+            int savedThemeIndex = ThemeManager.Presets
+                .Select((theme, index) => new { theme, index })
+                .Where(item => string.Equals(item.theme.Name, appSettings_.ThemeName, StringComparison.Ordinal))
+                .Select(item => item.index)
+                .DefaultIfEmpty(appSettings_.ThemeIndex)
+                .First();
+            cmbTheme.SelectedIndex = savedThemeIndex >= 0 && savedThemeIndex < ThemeManager.Presets.Count
+                ? savedThemeIndex : 0;
             #endregion LoadSetting
 
             #region nodejs&serve
@@ -172,7 +204,6 @@ namespace PS4PKGTool
         {
             Logger.LogInformation("Saving program settings..");
 
-            appSettings_.OfficialUpdateDownloadDirectory = tbOfficialUpdateDownloadFolder.Text;
             appSettings_.PlayBgm = BGM.Checked;
             appSettings_.AutoSortRow = AutoSortRow.Checked;
             appSettings_.PkgColorLabel =PKGColorLabeling.Checked;
@@ -209,8 +240,10 @@ namespace PS4PKGTool
                 2 => "macos",
                 _ => "windows",
             };
-            appSettings_.Shadps4InstallDirectory = tbShadps4InstallDirectory.Text.Trim();
             appSettings_.ThemeIndex = cmbTheme.SelectedIndex;
+            appSettings_.ThemeName = cmbTheme.SelectedIndex >= 0
+                ? ThemeManager.Presets[cmbTheme.SelectedIndex].Name
+                : string.Empty;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
             appSettings_.Ps4Ip = tbPS4IP.Text;
@@ -220,10 +253,44 @@ namespace PS4PKGTool
             var PkgDirectoryList = lbPkgDirectoryList.Items.Cast<string>().ToList();
             appSettings_.PkgDirectories = PkgDirectoryList;
             appSettings_.ScanRecursive = darkCheckBoxRecursive.Checked;
+            appSettings_.OrbisTempDirectory = tbOrbisTemp.Text.Trim();
 
             if (labelPs5BcJsonDownloadDate.Text != "" || labelPs5BcJsonDownloadDate.Text.Length != 0)
                 appSettings_.Ps5BcJsonLastDownloadDate = DateTime.Parse(labelPs5BcJsonDownloadDate.Text);
 
+            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+        }
+
+        private void ThemeManager_ThemeChanged(object sender, EventArgs e)
+        {
+            if (IsDisposed || Disposing)
+                return;
+
+            int index = ThemeManager.Presets
+                .Select((theme, themeIndex) => new { theme, themeIndex })
+                .Where(item => ReferenceEquals(item.theme, ThemeManager.Active))
+                .Select(item => item.themeIndex)
+                .DefaultIfEmpty(-1)
+                .First();
+            if (index < 0)
+                return;
+
+            appSettings_.ThemeIndex = index;
+            appSettings_.ThemeName = ThemeManager.Active.Name;
+
+            _syncingThemeSelection = true;
+            try
+            {
+                if (cmbTheme.SelectedIndex != index)
+                    cmbTheme.SelectedIndex = index;
+            }
+            finally
+            {
+                _syncingThemeSelection = false;
+            }
+
+            // The category header selector changes ThemeManager directly, so
+            // persist its choice immediately instead of requiring Save & Close.
             SettingsManager.SaveSettings(appSettings_, SettingFilePath);
         }
 
@@ -427,203 +494,15 @@ namespace PS4PKGTool
             }
         }
 
-        private void btnBrowseShadps4Core_Click(object sender, EventArgs e)
-        {
-            using var ofd = new OpenFileDialog
-            {
-                Title = "Select the shadPS4 core (shadPS4.exe)",
-                Filter = "shadPS4 core (shadPS4.exe)|shadPS4.exe|Executables (*.exe)|*.exe",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK) return;
-            // Adopt the chosen installation - reference only, never modified.
-            appSettings_.Shadps4ActiveCore = Shadps4ActiveCore.ForAdopted(ofd.FileName);
-            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
-            RefreshShadps4Detection();
-        }
-
-        private void btnInstallShadps4Launcher_Click(object sender, EventArgs e)
-        {
-            using var ofd = new OpenFileDialog
-            {
-                Title = "Select the shadPS4 QtLauncher (shadPS4QtLauncher.exe)",
-                Filter = "shadPS4 QtLauncher (shadPS4QtLauncher.exe)|shadPS4QtLauncher.exe|Executables (*.exe)|*.exe",
-            };
-            if (ofd.ShowDialog() != DialogResult.OK) return;
-            appSettings_.Shadps4ActiveLauncher = Shadps4ActiveCore.ForAdopted(ofd.FileName);
-            SettingsManager.SaveSettings(appSettings_, SettingFilePath);
-            RefreshShadps4Detection();
-        }
-
-        private void btnOpenShadps4Launcher_Click(object sender, EventArgs e)
-        {
-            var store = new Shadps4ManagedBuilds(appSettings_.Shadps4ManagedRoot);
-            string? path = Shadps4ActiveCore.ResolveExecutable(
-                appSettings_.Shadps4ActiveLauncher, store.ResolveManagedExecutable, out string? error);
-            if (path == null)
-            {
-                MessageBoxHelper.ShowWarning((error ?? "No QtLauncher configured.") + "\n\nUse Install/Change to select or install one.", false);
-                return;
-            }
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = path,
-                    UseShellExecute = false,
-                    WorkingDirectory = Path.GetDirectoryName(path) ?? "",
-                });
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Failed to open the shadPS4 QtLauncher:\n{ex.Message}", false);
-            }
-        }
-
-        private void btnManageShadps4Builds_Click(object sender, EventArgs e)
-        {
-            using var dlg = new Shadps4BuildManager(appSettings_);
-            dlg.ShowDialog(this);
-            tbShadps4ActiveCore.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveCore);
-            tbShadps4ActiveLauncher.Text = DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher);
-            RefreshShadps4Detection();
-        }
-
-        private void btnOpenShadps4ConfigFolder_Click(object sender, EventArgs e)
-        {
-            string configDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "shadPS4");
-            if (!Directory.Exists(configDir))
-            {
-                ShowWarning("The shadPS4 config folder does not exist yet.\n\nStart shadPS4 once and it will be created.", false);
-                return;
-            }
-            Process.Start("explorer.exe", configDir);
-        }
-
-        private async void btnCheckShadps4Updates_Click(object sender, EventArgs e)
-        {
-            btnCheckShadps4Updates.Enabled = false;
-            btnCheckShadps4Updates.Text = "Checking...";
-            try
-            {
-                var feed = new Shadps4ReleaseFeed();
-                var stable = await feed.GetReleasesAsync(Shadps4FeedKind.CoreStable);
-                var nightly = await feed.GetReleasesAsync(Shadps4FeedKind.CoreNightly);
-                var launcher = await feed.GetReleasesAsync(Shadps4FeedKind.QtLauncher);
-
-                string? latestStable = stable.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.Tag;
-                string? latestNightly = nightly.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.BuildId;
-                string? latestLauncher = launcher.Releases?.OrderByDescending(r => r.PublishedUtc).FirstOrDefault()?.BuildId;
-
-                string coreError = stable.Error ?? nightly.Error;
-                if (coreError != null)
-                {
-                    ShowWarning("shadPS4 update check failed:\n" + coreError, false);
-                    return;
-                }
-
-                var message =
-                    "Core\n" +
-                    $"  Installed: {DescribeActiveComponent(appSettings_.Shadps4ActiveCore)}\n" +
-                    $"  Latest stable: {latestStable ?? "unknown"}\n" +
-                    $"  Latest nightly: {latestNightly ?? "unknown"}\n\n" +
-                    "QtLauncher\n" +
-                    $"  Installed: {DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher)}\n" +
-                    $"  Latest: {latestLauncher ?? "unknown"}\n\n" +
-                    "Updates are never installed or activated automatically. Use Manage Builds to install a specific version.";
-
-                var choice = AppMessageBox.Show("shadPS4 Updates", message,
-                    AppMessageType.Info, AppMessageButtons.YesNo);
-                if (choice == DialogResult.Yes)
-                    Tool.OpenWebLink("https://github.com/shadps4-emu/shadPS4/releases");
-            }
-            catch (Exception ex)
-            {
-                ShowWarning("shadPS4 update check failed: " + ex.Message, false);
-            }
-            finally
-            {
-                btnCheckShadps4Updates.Enabled = true;
-                btnCheckShadps4Updates.Text = "Check for Updates";
-            }
-        }
-
-        /// <summary>Human-readable form of an active-component setting for the settings textboxes.</summary>
-        private static string DescribeActiveComponent(string? setting)
-        {
-            var r = Shadps4ActiveCore.Parse(setting);
-            return r.Source switch
-            {
-                Shadps4ComponentSource.Managed => "Build " + r.Value,
-                Shadps4ComponentSource.Adopted => r.Value,
-                _ => "(not set)",
-            };
-        }
-
-        private void btnBrowseShadps4InstallDirectory_Click(object sender, EventArgs e)
-        {
-            using var fbd = new FolderBrowserDialog
-            {
-                Description = "Select the shadPS4 game install directory",
-                ShowNewFolderButton = true,
-            };
-            string current = tbShadps4InstallDirectory.Text.Trim();
-            if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
-                fbd.SelectedPath = current;
-            if (fbd.ShowDialog() != DialogResult.OK) return;
-            tbShadps4InstallDirectory.Text = fbd.SelectedPath;
-            Logger.LogInformation($"shadPS4 install directory set to \"{fbd.SelectedPath}\"");
-        }
-
         /// <summary>
-        /// Re-runs environment detection and shows the resolved paths plus any
-        /// detection warnings. Never throws - detection problems must not
-        /// break the settings form.
+        /// Opens the shadPS4 Manager on its Settings tab - the shadPS4
+        /// paths and detection now live there; this tab only keeps the
+        /// compatibility database controls.
         /// </summary>
-        private void RefreshShadps4Detection()
+        private void btnOpenShadps4Manager_Click(object sender, EventArgs e)
         {
-            try
-            {
-                var env = Shadps4EnvironmentResolver.Resolve(appSettings_.Shadps4ExecutablePath);
-
-                // Auto-fill the install directory from shadPS4's own config
-                // (first enabled library) - only when the user has not set
-                // their own directory. No config -> stays empty.
-                if (string.IsNullOrWhiteSpace(tbShadps4InstallDirectory.Text)
-                    && env.InstallDirectories.Count > 0)
-                {
-                    tbShadps4InstallDirectory.Text = env.InstallDirectories[0];
-                }
-
-                var lines = new List<string>
-                {
-                    $"Active core: {DescribeActiveComponent(appSettings_.Shadps4ActiveCore)}",
-                    $"QtLauncher: {DescribeActiveComponent(appSettings_.Shadps4ActiveLauncher)}",
-                    $"Status: {(env.IsValid ? "Configuration detected successfully" : "shadPS4 not configured or not found")}",
-                    $"Mode: {env.UserDirectoryMode}{(env.DetectionConfidence == Shadps4DetectionConfidence.Low ? " (low confidence)" : "")}",
-                    $"Distribution: {env.DistributionType}",
-                    $"Config: {Shorten(env.ConfigPath)} ({env.ConfigFormat})",
-                    $"Libraries: {(env.InstallDirectories.Count == 0 ? "(none enabled)" : string.Join(" | ", env.InstallDirectories.Select(Shorten)))}",
-                    $"Addon/DLC: {Shorten(env.AddonInstallDirectory)}",
-                    $"Home: {Shorten(env.HomeDirectory)}",
-                    $"Fonts: {Shorten(env.FontDirectory)}",
-                    $"Sys modules: {Shorten(env.SysModulesDirectory)}",
-                };
-                foreach (var warning in env.Warnings)
-                    lines.Add("⚠ " + warning);
-
-                darkLabelShadps4Detect.Text = string.Join(Environment.NewLine, lines);
-            }
-            catch (Exception ex)
-            {
-                darkLabelShadps4Detect.Text = "Detection failed: " + ex.Message;
-            }
-        }
-
-        private static string Shorten(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return "(not found)";
-            return path.Length <= 70 ? path : "..." + path.Substring(path.Length - 67);
+            using var dlg = new Shadps4Manager(appSettings_, Shadps4Manager.SettingsTabIndex);
+            dlg.ShowDialog(this);
         }
 
         private static void ShowTaskbarNotification(string title, string text)
@@ -729,6 +608,62 @@ namespace PS4PKGTool
                 Process.Start("explorer.exe", AppDataDirectory);
         }
 
+        private void btnBrowseOrbisTemp_Click(object sender, EventArgs e)
+        {
+            using var dialog = new FolderBrowserDialog
+            {
+                Description = "Select the internal temporary folder for orbis-pub-cmd",
+                ShowNewFolderButton = true,
+            };
+            string current = tbOrbisTemp.Text.Trim();
+            if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
+                dialog.SelectedPath = current;
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            string selected = Path.GetFullPath(dialog.SelectedPath);
+            if (!OrbisSafePkgOperation.IsAsciiSafePath(selected))
+            {
+                ShowWarning("The orbis temporary folder path must contain ASCII characters only.", false);
+                return;
+            }
+
+            string probe = Path.Combine(selected, ".ps4pkgtool_write_" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(selected);
+                File.WriteAllText(probe, string.Empty);
+                File.Delete(probe);
+            }
+            catch (Exception ex)
+            {
+                try { if (File.Exists(probe)) File.Delete(probe); } catch { }
+                ShowWarning("The selected temporary folder is not writable:\n" + ex.Message, false);
+                return;
+            }
+
+            tbOrbisTemp.Text = selected;
+        }
+
+        private void btnClearOrbisTemp_Click(object sender, EventArgs e)
+            => tbOrbisTemp.Text = string.Empty;
+
+        /// <summary>Opens the same Staged PKG Recovery dialog as startup, on demand.</summary>
+        private void btnScanStagedPkgs_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                List<string> roots = lbPkgDirectoryList.Items.Cast<string>().ToList();
+                List<StagedPkgRecoveryItem> items = StagedPkgRecoveryScanner.Scan(roots);
+                StagedPkgRecoveryForm.ShowRecoveryDialog(this, items, roots);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Staged PKG scan failed: " + ex.Message);
+                ShowWarning("The staged PKG scan failed:\n" + ex.Message, false);
+            }
+        }
+
         private void ProgramSetting_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (btnBuildTrophyCache != null && !btnBuildTrophyCache.Enabled)
@@ -780,7 +715,6 @@ namespace PS4PKGTool
                     darkCheckBoxRecursive.Checked,
                     OrbisPubCmd,
                     TrophyCachePath,
-                    Path.Combine(AppDataDirectory, "TrophyMetadata", "Temp"),
                     progress,
                     trophyCacheCancellation.Token);
 

@@ -1,0 +1,1601 @@
+using GitHubUpdate;
+using PS4PKGTool.Util;
+using PS4PKGTool.Util.Constants;
+using PS4PKGTool.Utilities.PkgInspection;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
+using PS4PKGTool.Utilities.TrophyMetadata;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace PS4PKGTool
+{
+    public partial class MiniPkgViewerForm : DarkUI.Forms.DarkForm
+    {
+        private readonly string _packagePath;
+
+        // The on-disk path of the package. File operations (rename) change it,
+        // so the lazy sessions are rebuilt against the current path afterwards.
+        private string _currentPackagePath;
+        private readonly PkgInspectionService _inspectionService;
+        private readonly IPkgEntryLoader _entryLoader;
+        private readonly ITrophyInspectionLoader _trophyLoader;
+        private readonly IPkgFileListingLoader _fileListingLoader;
+
+        // The passcode used to list package files. Defaults to the standard
+        // all-zero passcode; the user can supply a custom one when the
+        // default is rejected by orbis-pub-cmd.
+        private string _fileListingPasscode = PkgFileListingService.DefaultPasscode;
+        private PkgEntryInspectionSession _entrySession;
+        private TrophyInspectionSession _trophySession;
+        private PkgFileListingSession _fileListingSession;
+        private readonly CancellationTokenSource _loadCancellation = new CancellationTokenSource();
+        // Set on the UI thread when Stop Extract is clicked; read by the
+        // extraction worker after orbis-pub-cmd dies. volatile so the flag
+        // crosses the thread boundary reliably (mirror of Main).
+        private volatile bool _extractionStopRequested;
+        private bool _extracting;
+        private PkgInspectionSnapshot _snapshot;
+        private bool _loadStarted;
+        private bool _resourcesReleased;
+
+        public MiniPkgViewerForm()
+            : this(
+                string.Empty,
+                new PkgInspectionService(),
+                new PkgEntryInspectionService(),
+                new TrophyInspectionService())
+        {
+            // Required by the WinForms designer. Production startup always uses
+            // the package-path constructor after StartupArgumentRouter validation.
+        }
+
+        public MiniPkgViewerForm(string packagePath)
+            : this(
+                packagePath,
+                new PkgInspectionService(),
+                new PkgEntryInspectionService(),
+                new TrophyInspectionService())
+        {
+        }
+
+        internal MiniPkgViewerForm(string packagePath, PkgInspectionService inspectionService)
+            : this(
+                packagePath,
+                inspectionService,
+                new PkgEntryInspectionService(),
+                new TrophyInspectionService())
+        {
+        }
+
+        internal MiniPkgViewerForm(
+            string packagePath,
+            PkgInspectionService inspectionService,
+            IPkgEntryLoader entryLoader)
+            : this(
+                packagePath,
+                inspectionService,
+                entryLoader,
+                new TrophyInspectionService())
+        {
+        }
+
+        internal MiniPkgViewerForm(
+            string packagePath,
+            PkgInspectionService inspectionService,
+            IPkgEntryLoader entryLoader,
+            ITrophyInspectionLoader trophyLoader)
+            : this(
+                packagePath,
+                inspectionService,
+                entryLoader,
+                trophyLoader,
+                new PkgFileListingService())
+        {
+        }
+
+        internal MiniPkgViewerForm(
+            string packagePath,
+            PkgInspectionService inspectionService,
+            IPkgEntryLoader entryLoader,
+            ITrophyInspectionLoader trophyLoader,
+            IPkgFileListingLoader fileListingLoader)
+        {
+            _packagePath = packagePath ?? throw new ArgumentNullException(nameof(packagePath));
+            _currentPackagePath = _packagePath;
+            _inspectionService = inspectionService ?? throw new ArgumentNullException(nameof(inspectionService));
+            _entryLoader = entryLoader ?? throw new ArgumentNullException(nameof(entryLoader));
+            _trophyLoader = trophyLoader ?? throw new ArgumentNullException(nameof(trophyLoader));
+            _fileListingLoader = fileListingLoader ?? throw new ArgumentNullException(nameof(fileListingLoader));
+            _entrySession = new PkgEntryInspectionSession(_currentPackagePath, _entryLoader);
+            _trophySession = new TrophyInspectionSession(_currentPackagePath, _trophyLoader);
+            _fileListingSession = new PkgFileListingSession(
+                _currentPackagePath, _fileListingPasscode, _fileListingLoader);
+
+            InitializeComponent();
+            Icon = Helper.AppIcon;
+            Text = "PS4 PKG Tool - Mini PKG Viewer";
+            toolStripStatusLabel2.Text = _currentPackagePath;
+
+            // The visual designer repeatedly drops the toolbar File/Tools/Help
+            // DropDownItems wiring when it re-serializes this form (same
+            // hazard as the games-list columns). The wiring lives in the
+            // Designer file so it is visible and editable there; these guards
+            // only re-add it if a designer save dropped it again.
+            if (fileToolStripMenuItem.DropDownItems.Count == 0)
+                fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
+                    { tbCopyMenu, tbSepRename, tbRenameMenu, tbSepExit, exitToolStripMenuItem });
+            if (toolsToolStripMenuItem.DropDownItems.Count == 0)
+                toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
+                    { tbArtworkMenu, tbExtractFullPkgItem, tbSepChangeInfo, tbChangeInfoItem, tbDownloadUpdateItem });
+            if (helpToolStripMenuItem.DropDownItems.Count == 0)
+                helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
+                    { helpAboutItem, helpCoffeeItem, helpUpdateItem });
+
+            // Same designer hazard: the Files list's column collection keeps
+            // getting dropped on re-serialization, and a Details ListView with
+            // zero columns renders nothing. Wire it here (guarded so a future
+            // designer save re-adding the line cannot double the columns).
+            if (lvFiles.Columns.Count == 0)
+                lvFiles.Columns.AddRange(new ColumnHeader[]
+                    { colFileName, colFileType, colFilePath, colFileSize });
+
+            // File browser icons from embedded resources, same set and
+            // ordering as the main app (imageList1) so the tree and list
+            // share the same iconography.
+            try
+            {
+                var icons = new (string key, Bitmap bmp)[]
+                {
+                    ("folder",       Properties.Resources.tv_folder),
+                    ("document",     Properties.Resources.tv_document),
+                    ("image",        Properties.Resources.tv_image),
+                    ("config",       Properties.Resources.tv_config),
+                    ("binary",       Properties.Resources.tv_binary),
+                    ("folder-open",  Properties.Resources.tv_folder_open),
+                    ("audio",        Properties.Resources.tv_audio),
+                    ("file-unknown", Properties.Resources.tv_file_unknown),
+                    ("package",      Properties.Resources.tv_package),
+                    ("video",        Properties.Resources.tv_video),
+                    ("code",         Properties.Resources.tv_code),
+                };
+                foreach (var (key, bmp) in icons)
+                    imageListFiles.Images.Add(key, new Bitmap(bmp));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("File browser icon load failed: " + ex.Message);
+            }
+
+            Shown += MiniPkgViewerForm_Shown;
+            FormClosing += MiniPkgViewerForm_FormClosing;
+        }
+
+        private async void MiniPkgViewerForm_Shown(object sender, EventArgs e)
+        {
+            if (_loadStarted)
+                return;
+
+            _loadStarted = true;
+            await LoadPackageAsync();
+        }
+
+        private async Task LoadPackageAsync()
+        {
+            SetLoadingState(true, "Reading package metadata...");
+
+            try
+            {
+                PkgInspectionSnapshot snapshot = await _inspectionService
+                    .InspectAsync(_packagePath, _loadCancellation.Token);
+
+                if (_resourcesReleased || IsDisposed)
+                {
+                    snapshot.Dispose();
+                    return;
+                }
+
+                _snapshot = snapshot;
+                Populate(snapshot);
+                SetLoadingState(false, "Ready");
+
+                // The file browser is the most requested view: populate it
+                // right after the metadata instead of waiting for the tab.
+                await LoadFilesAsync();
+
+                // Trophy metadata needs the NP Communication ID (NPWRxxxxx_00).
+                // Extract it into the same cache the main app reads so the
+                // Trophy tab can decrypt the trophy data.
+                await EnsureNpCommunicationIdExtractedAsync(_loadCancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Closing the viewer while it is loading is expected.
+            }
+            catch (Exception ex)
+            {
+                SetLoadingState(false, "Unable to read package");
+                if (!IsDisposed && !Disposing)
+                {
+                    AppMessageBox.Show(
+                        "Mini PKG Viewer",
+                        "The supplied file could not be read as a PS4 package.\n\n" + ex.Message,
+                        AppMessageType.Error,
+                        AppMessageButtons.OK);
+                    Close();
+                }
+            }
+        }
+
+        private void Populate(PkgInspectionSnapshot snapshot)
+        {
+            string displayTitle = ValueOrFallback(snapshot.Title, snapshot.FileName);
+            Text = displayTitle + " - Mini PKG Viewer";
+            lblTitle.Text = displayTitle;
+            lblSubtitle.Text = string.Join("  •  ", new[]
+            {
+                snapshot.TitleId,
+                snapshot.PackageCategory,
+                snapshot.PackageState,
+                string.IsNullOrWhiteSpace(snapshot.ApplicationVersion) ? string.Empty : "v" + snapshot.ApplicationVersion,
+                snapshot.PackageSize
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            lblContentId.Text = snapshot.ContentId;
+            picIcon.Image = snapshot.Icon0;
+
+            SetOverviewValue(lblOverviewTitle, snapshot.Title);
+            SetOverviewValue(lblOverviewTitleId, snapshot.TitleId);
+            SetOverviewValue(lblOverviewContentId, snapshot.ContentId);
+            SetOverviewValue(lblOverviewCategory, snapshot.PackageCategory);
+            SetOverviewValue(lblOverviewState, snapshot.PackageState);
+            SetOverviewValue(lblOverviewAppVersion, snapshot.ApplicationVersion);
+            SetOverviewValue(lblOverviewPkgVersion, snapshot.PackageVersion);
+            SetOverviewValue(lblOverviewFirmware, snapshot.RequiredFirmware);
+            SetOverviewValue(lblOverviewSize, snapshot.PackageSize);
+
+            dgvSfo.Rows.Clear();
+            foreach (PkgSfoEntry entry in snapshot.SfoEntries)
+                dgvSfo.Rows.Add(entry.Name, entry.Value);
+
+            PopulateInspectionGrid(dgvPackageHeader, snapshot.HeaderFields);
+            PopulateInspectionGrid(dgvBuildInfo, snapshot.BuildInfoFields);
+            if (snapshot.HeaderFields.Count == 0)
+                dgvPackageHeader.Rows.Add("Header information", "Not available");
+            if (snapshot.BuildInfoFields.Count == 0)
+                dgvBuildInfo.Rows.Add("PUBTOOLINFO", "Not available");
+
+            picPic0.Image = snapshot.Pic0;
+            picPic1.Image = snapshot.Pic1;
+            picPic0.Visible = snapshot.Pic0 != null;
+            picPic1.Visible = snapshot.Pic1 != null;
+            lblNoPic0.Visible = snapshot.Pic0 == null;
+            lblNoPic1.Visible = snapshot.Pic1 == null;
+        }
+
+        private static string ValueOrFallback(string value, string fallback) =>
+            string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+        private static void SetOverviewValue(Control label, string value) =>
+            label.Text = string.IsNullOrWhiteSpace(value) ? "Not available" : value;
+
+        private static void PopulateInspectionGrid(
+            DarkUI.Controls.DarkDataGridView grid,
+            System.Collections.Generic.IEnumerable<PkgInspectionField> fields)
+        {
+            grid.Rows.Clear();
+            foreach (PkgInspectionField field in fields)
+                grid.Rows.Add(field.Name, field.Value);
+        }
+
+        private async void packageTabs_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (packageTabs.SelectedTab != tabPackageEntries || _resourcesReleased)
+                return;
+
+            await LoadEntriesAsync();
+        }
+
+        private async Task LoadEntriesAsync()
+        {
+            labelDisplayTotalPKG.Text = "Reading package entries...";
+            try
+            {
+                PkgEntryLoadResult result = await _entrySession.LoadAsync(_loadCancellation.Token);
+                if (_resourcesReleased || IsDisposed)
+                    return;
+
+                dgvEntries.Rows.Clear();
+                if (!result.Succeeded)
+                {
+                    labelDisplayTotalPKG.Text = "Ready (Entries unavailable)";
+                    return;
+                }
+
+                foreach (PkgEntryInfo entry in result.Entries)
+                {
+                    dgvEntries.Rows.Add(
+                        entry.Name, entry.Offset, entry.Size,
+                        entry.Flags1, entry.Flags2, entry.Encrypted);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Viewer lifetime cancellation is expected during close.
+            }
+        }
+
+        private async void tabsViewer_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_resourcesReleased)
+                return;
+
+            if (tabsViewer.SelectedTab == tabTrophy)
+                await LoadTrophiesAsync();
+            else if (tabsViewer.SelectedTab == tabFiles)
+                await LoadFilesAsync();
+        }
+
+        /// <summary>
+        /// Ensures the package's NP Communication ID sits in the shared cache
+        /// the Trophy tab reads (same file the main app writes). Extraction
+        /// uses the main app's method: NpbindExtractor pulls Sc0/npbind.dat
+        /// via orbis-pub-cmd and scans it for the NPWRxxxxx_00 token.
+        /// </summary>
+        private async Task EnsureNpCommunicationIdExtractedAsync(CancellationToken cancellationToken)
+        {
+            string contentId = _snapshot?.ContentId ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(contentId))
+                return;
+
+            var cache = new NpCommunicationIdCache(Path.Combine(
+                Helper.AppDataDirectory, "TrophyMetadata", "np-communication-ids.json"));
+            if (cache.TryGet(contentId, out _))
+                return;
+
+            if (!File.Exists(Helper.OrbisPubCmd))
+                return;
+
+            try
+            {
+                NpbindExtractionResult extraction = await new NpbindExtractor()
+                    .ExtractAsync(Helper.OrbisPubCmd, _currentPackagePath, cancellationToken);
+                if (extraction.Succeeded)
+                {
+                    cache.Set(contentId, extraction.NpCommunicationId);
+                    Logger.LogInformation(
+                        "NP Communication ID extracted for " + contentId + ": " + extraction.NpCommunicationId);
+                }
+                else
+                {
+                    Logger.LogWarning(
+                        "NP Communication ID auto extraction failed: " + extraction.ErrorMessage);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Closing the viewer while extraction runs is expected.
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("NP Communication ID auto extraction failed: " + ex.Message);
+            }
+        }
+
+        private async Task LoadTrophiesAsync()
+        {
+            lblTrophyState.Text = "Loading trophy information...";
+            labelDisplayTotalPKG.Text = "Loading trophy information...";
+            try
+            {
+                string contentId = _snapshot?.ContentId ?? string.Empty;
+                TrophyInspectionResult result = await _trophySession.LoadAsync(
+                    contentId, _loadCancellation.Token);
+                if (_resourcesReleased || IsDisposed)
+                    return;
+
+                dgvTrophies.Rows.Clear();
+                switch (result.Status)
+                {
+                    case TrophyInspectionStatus.Loaded:
+                        foreach (TrophyInspectionItem trophy in result.Trophies)
+                        {
+                            dgvTrophies.Rows.Add(
+                                trophy.Icon,
+                                trophy.Id.ToString("000"),
+                                trophy.Name,
+                                trophy.Description,
+                                trophy.Grade,
+                                trophy.Hidden ? "Yes" : "No");
+                        }
+                        lblTrophyState.Text = BuildTrophySummary(result);
+                        labelDisplayTotalPKG.Text = "Ready";
+                        break;
+
+                    case TrophyInspectionStatus.NoTrophyResource:
+                        lblTrophyState.Text = "No trophy data was found in this package.";
+                        labelDisplayTotalPKG.Text = "Ready (No trophy data)";
+                        break;
+
+                    case TrophyInspectionStatus.Inaccessible:
+                        lblTrophyState.Text = result.Message;
+                        labelDisplayTotalPKG.Text = "Ready (Trophy data inaccessible)";
+                        break;
+
+                    default:
+                        lblTrophyState.Text = string.IsNullOrWhiteSpace(result.Message)
+                            ? "Trophy information could not be read."
+                            : result.Message;
+                        labelDisplayTotalPKG.Text = "Ready (Trophy unavailable)";
+                        break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Viewer lifetime cancellation is expected during close.
+            }
+        }
+
+        private static string BuildTrophySummary(TrophyInspectionResult result)
+        {
+            string counts = string.Join("  •  ", result.Trophies
+                .GroupBy(trophy => trophy.Grade)
+                .OrderBy(group => TrophyGradeOrder(group.Key))
+                .Select(group => $"{group.Count():N0} {group.Key}"));
+            string summary = $"{result.Trophies.Count:N0} trophies";
+            if (!string.IsNullOrWhiteSpace(counts))
+                summary += "  •  " + counts;
+            if (result.IconDecodeFailures > 0)
+                summary += $"  •  {result.IconDecodeFailures:N0} icon(s) unavailable";
+            return summary;
+        }
+
+        private static int TrophyGradeOrder(string grade) => grade switch
+        {
+            "Bronze" => 0,
+            "Silver" => 1,
+            "Gold" => 2,
+            "Platinum" => 3,
+            _ => 4
+        };
+
+        private async Task LoadFilesAsync()
+        {
+            labelDisplayTotalPKG.Text = "Loading package file list...";
+            try
+            {
+                PkgFileListingResult result = await _fileListingSession.LoadAsync(
+                    _loadCancellation.Token);
+                if (_resourcesReleased || IsDisposed)
+                    return;
+
+                tvFiles.BeginUpdate();
+                try
+                {
+                    tvFiles.Nodes.Clear();
+                    foreach (PkgFileNode root in result.Roots)
+                        AddViewerFileNode(tvFiles.Nodes, root);
+                }
+                finally
+                {
+                    tvFiles.EndUpdate();
+                }
+
+                lvFiles.BeginUpdate();
+                try { lvFiles.Items.Clear(); }
+                finally { lvFiles.EndUpdate(); }
+
+                if (!result.Succeeded)
+                {
+                    if (!result.RestoreFailed && IsPasscodeFailure(result.ErrorMessage))
+                    {
+                        labelDisplayTotalPKG.Text = "Ready (Passcode required)";
+                        if (PromptForPasscode(out string passcode))
+                        {
+                            try { _fileListingSession.Dispose(); } catch { }
+                            _fileListingPasscode = passcode;
+                            _fileListingSession = new PkgFileListingSession(
+                                _currentPackagePath, _fileListingPasscode, _fileListingLoader);
+                            await LoadFilesAsync();
+                            return;
+                        }
+                        return;
+                    }
+
+                    labelDisplayTotalPKG.Text = result.RestoreFailed
+                        ? "Package restoration requires attention"
+                        : "Ready (Files unavailable)";
+                    return;
+                }
+
+               
+                labelDisplayTotalPKG.Text = "Ready";
+                if (tvFiles.Nodes.Count > 0)
+                    tvFiles.SelectedNode = tvFiles.Nodes[0];
+            }
+            catch (OperationCanceledException)
+            {
+                // Viewer lifetime cancellation is expected during close.
+            }
+        }
+
+        private static void AddViewerFileNode(
+            TreeNodeCollection collection, PkgFileNode model)
+        {
+            var node = new TreeNode(model.Name) { Tag = model };
+            int icon = model.IsDirectory ? 0 : IconFor(model.Name);
+            node.ImageIndex = icon;
+            node.SelectedImageIndex = icon;
+            collection.Add(node);
+            foreach (PkgFileNode child in model.Children)
+                AddViewerFileNode(node.Nodes, child);
+        }
+
+        /// <summary>
+        /// Same extension-to-icon mapping as the main app (Main.IconFor):
+        /// image list indexes into imageListFiles.
+        /// </summary>
+        private static int IconFor(string path)
+        {
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) return 4; // no extension -> binary
+            return ext switch
+            {
+                ".png" or ".jpg" or ".dds" => 2,                          // image
+                ".txt" => 1,                                              // document
+                ".xml" or ".json" or ".sfo" or ".ini" => 3,              // config
+                ".at9" or ".ogg" or ".mp3" or ".wav" => 6,              // audio
+                ".mp4" or ".avi" => 9,                                    // video
+                ".pkg" => 8,                                              // package
+                _ => 4,                                                   // binary (default)
+            };
+        }
+
+        private void tvFiles_AfterSelect(object sender, TreeViewEventArgs e) => RefreshFileList();
+
+        /// <summary>
+        /// Rebuilds the list view: the selected folder's contents normally,
+        /// or every package match across the whole tree when the filter box
+        /// has text (same behavior as the main app's file browser).
+        /// </summary>
+        private void RefreshFileList()
+        {
+            string query = tbFilterFiles.SearchText.Trim();
+            bool filtering = !string.IsNullOrEmpty(query);
+
+            lvFiles.BeginUpdate();
+            try
+            {
+                lvFiles.Items.Clear();
+                if (!filtering)
+                {
+                    if (tvFiles.SelectedNode != null)
+                        PopulateFileList(tvFiles.SelectedNode);
+                    return;
+                }
+
+                foreach (TreeNode root in tvFiles.Nodes)
+                    CollectFileMatches(root, query);
+            }
+            finally
+            {
+                lvFiles.EndUpdate();
+            }
+        }
+
+        private void PopulateFileList(TreeNode selected)
+        {
+            if (selected?.Tag is not PkgFileNode)
+                return;
+
+            // "..." parent navigation item (same as the main app's file
+            // browser); clicking it selects the parent folder.
+            if (selected.Parent != null)
+            {
+                var upItem = new ListViewItem("...") { ImageIndex = 5 };
+                upItem.Tag = selected.Parent;
+                upItem.SubItems.Add(""); upItem.SubItems.Add(""); upItem.SubItems.Add("");
+                lvFiles.Items.Add(upItem);
+            }
+
+            foreach (TreeNode child in selected.Nodes)
+            {
+                if (child.Tag is not PkgFileNode model)
+                    continue;
+
+                bool isDirectory = model.IsDirectory;
+                string type = isDirectory
+                    ? "Directory"
+                    : string.IsNullOrWhiteSpace(Path.GetExtension(model.Name))
+                        ? "File"
+                        : Path.GetExtension(model.Name).TrimStart('.');
+
+                var item = new ListViewItem(model.Name) { Tag = child };
+                item.SubItems.Add(type);
+                item.SubItems.Add(isDirectory ? "" : model.FullPath);
+                item.SubItems.Add(isDirectory ? "" : Helper.RoundBytes(model.Size));
+                item.ImageIndex = isDirectory ? 0 : IconFor(model.Name);
+                lvFiles.Items.Add(item);
+            }
+        }
+
+        private void tbFilterFiles_SearchTextChanged(object sender, EventArgs e) => RefreshFileList();
+
+        /// <summary>
+        /// Collects every tree entry matching the query (name, type or full
+        /// path) and expands the tree so the matches are visible. Mirrors the
+        /// main app's CollectMatches.
+        /// </summary>
+        private void CollectFileMatches(TreeNode node, string query)
+        {
+            foreach (TreeNode child in node.Nodes)
+            {
+                bool isDirectory = child.Nodes.Count > 0;
+                string type = isDirectory
+                    ? "Directory"
+                    : string.IsNullOrWhiteSpace(Path.GetExtension(child.Text))
+                        ? "File"
+                        : Path.GetExtension(child.Text).TrimStart('.');
+
+                bool matches = child.Text.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || type.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || child.FullPath.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+                if (matches && child.Tag is PkgFileNode model)
+                {
+                    var item = new ListViewItem(child.Text) { Tag = child };
+                    item.SubItems.Add(type);
+                    item.SubItems.Add(isDirectory ? "" : model.FullPath);
+                    item.SubItems.Add(isDirectory ? "" : Helper.RoundBytes(model.Size));
+                    item.ImageIndex = isDirectory ? 0 : IconFor(child.Text);
+                    lvFiles.Items.Add(item);
+                    ExpandFileAncestors(child);
+                }
+
+                if (isDirectory)
+                    CollectFileMatches(child, query);
+            }
+        }
+
+        private static void ExpandFileAncestors(TreeNode node)
+        {
+            TreeNode parent = node.Parent;
+            while (parent != null)
+            {
+                parent.Expand();
+                parent = parent.Parent;
+            }
+        }
+
+        /// <summary>
+        /// Double-click navigation: "..." moves to the parent folder, a
+        /// directory entry opens it (same flow as the main app's file browser).
+        /// </summary>
+        private void lvFiles_ItemActivate(object sender, EventArgs e)
+        {
+            if (lvFiles.SelectedItems.Count == 0)
+                return;
+            if (lvFiles.SelectedItems[0].Tag is not TreeNode node)
+                return;
+
+            tvFiles.SelectedNode = node;
+            node.EnsureVisible();
+        }
+
+        /// <summary>
+        /// Right-click on a file entry opens the extraction/copy menu.
+        /// The "..." navigation item has no context menu (same as Main).
+        /// </summary>
+        private void lvFiles_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
+                return;
+
+            ListViewItem clickedItem = lvFiles.GetItemAt(e.X, e.Y);
+            if (clickedItem != null && clickedItem.Text != "...")
+                ctxFileList.Show(lvFiles, e.Location);
+        }
+
+        private void CtxExtractItem_Click(object sender, EventArgs e) =>
+            ExtractSelectedItemsAsync(preserveStructure: false);
+
+        private void CtxExtractFolderItem_Click(object sender, EventArgs e) =>
+            ExtractSelectedItemsAsync(preserveStructure: true);
+
+        private void CtxCopyPathItem_Click(object sender, EventArgs e)
+        {
+            if (lvFiles.SelectedItems.Count == 0)
+                return;
+            if (lvFiles.SelectedItems[0].Tag is not TreeNode node || node.Tag is not PkgFileNode model)
+                return;
+
+            Clipboard.SetText(model.FullPath);
+        }
+
+        private void CtxCopyNameItem_Click(object sender, EventArgs e)
+        {
+            if (lvFiles.SelectedItems.Count == 0)
+                return;
+
+            Clipboard.SetText(lvFiles.SelectedItems[0].Text);
+        }
+
+        /// <summary>
+        /// Extracts the selected file/folder entry from the package, with or
+        /// without its folder structure (mirror of Main's extract-selected).
+        /// </summary>
+        private async void ExtractSelectedItemsAsync(bool preserveStructure)
+        {
+            if (_extracting)
+            {
+                ShowInformation("Extraction already in progress.", false);
+                return;
+            }
+            if (lvFiles.SelectedItems.Count == 0)
+                return;
+            if (!File.Exists(Helper.OrbisPubCmd))
+            {
+                ShowError($"Missing {Path.GetFileName(Helper.OrbisPubCmd)} in AppData.", true);
+                return;
+            }
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+            if (lvFiles.SelectedItems[0].Tag is not TreeNode node || node.Tag is not PkgFileNode model)
+                return;
+            if (!ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
+                return;
+
+            string target = model.IsDirectory ? model.FullPath + "/" : model.FullPath;
+            string sourcePath = _currentPackagePath;
+            string extractLocation = fbd.SelectedPath;
+
+            BeginExtractionUi();
+            labelDisplayTotalPKG.Text = "Extracting selected data...";
+
+            bool succeeded;
+            string message;
+            try
+            {
+                (succeeded, message) = await Task.Run(() =>
+                    ExtractSelectedCore(sourcePath, target, extractLocation, preserveStructure));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer selected extract failed: " + ex.Message);
+                succeeded = false;
+                message = "Extraction failed: " + ex.Message;
+            }
+            finally
+            {
+                EndExtractionUi();
+            }
+
+            if (_extractionStopRequested)
+            {
+                ShowInformation("Extraction cancelled.", true);
+                return;
+            }
+
+            if (succeeded)
+                ShowInformation("Selected data extracted.", true);
+            else
+                ShowError(message, true);
+        }
+
+        /// <summary>
+        /// Single-entry extraction: orbis-pub-cmd img_extract on one package
+        /// path, results moved to the chosen folder (mirror of Main's
+        /// ExtractSelectedPKGData per-entry flow).
+        /// </summary>
+        private (bool Succeeded, string Message) ExtractSelectedCore(
+            string sourcePath, string targetPath, string extractLocation, bool preserveStructure)
+        {
+            OrbisSafePkgOperation safeOperation = null;
+            string tempOutputDir = null;
+            try
+            {
+                bool isDirectory = targetPath.EndsWith("/") || targetPath.EndsWith("\\");
+                string normalized = targetPath.TrimEnd('/').Replace("/", @"\");
+
+                string outPath;
+                if (isDirectory)
+                {
+                    outPath = preserveStructure
+                        ? Path.Combine(extractLocation, normalized)
+                        : Path.Combine(extractLocation, Path.GetFileName(normalized));
+                }
+                else
+                {
+                    string itemName = Path.GetFileName(normalized);
+                    string itemRelativeDir = Path.GetDirectoryName(normalized);
+                    outPath = preserveStructure && !string.IsNullOrEmpty(itemRelativeDir)
+                        ? Path.Combine(extractLocation, itemRelativeDir, itemName)
+                        : Path.Combine(extractLocation, itemName);
+                }
+
+                string outDir = Path.GetDirectoryName(outPath);
+                if (!string.IsNullOrEmpty(outDir))
+                    Directory.CreateDirectory(outDir);
+
+                safeOperation = OrbisSafePkgOperation.Prepare(sourcePath);
+                tempOutputDir = Helper.CreateOrbisTempDir("x");
+                Directory.CreateDirectory(tempOutputDir);
+                string tempOutPath = isDirectory
+                    ? tempOutputDir
+                    : Path.Combine(tempOutputDir, Path.GetFileName(outPath));
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = Helper.OrbisPubCmd,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                startInfo.ArgumentList.Add("img_extract");
+                PkgFileListingService.AddPasscodeArgument(startInfo, _fileListingPasscode);
+                OrbisCommandOptions.AddConfiguredTempPath(startInfo);
+                startInfo.ArgumentList.Add(safeOperation.OrbisPath + ":" + targetPath);
+                startInfo.ArgumentList.Add(tempOutPath.Replace(@"/", @"\"));
+
+                using Process extract = new Process { StartInfo = startInfo };
+                var stderrBuilder = new StringBuilder();
+                extract.ErrorDataReceived += (_, ev) => { if (ev.Data != null) stderrBuilder.AppendLine(ev.Data); };
+                extract.Start();
+                extract.BeginErrorReadLine();
+                Task<string> stdoutTask = extract.StandardOutput.ReadToEndAsync();
+                if (!extract.WaitForExit(600000))
+                {
+                    try { extract.Kill(); extract.WaitForExit(); } catch { }
+                    return (false, "Extraction timed out after 10 minutes.");
+                }
+                string stdout = stdoutTask.Result;
+
+                if (_extractionStopRequested)
+                    return (false, "Cancelled");
+
+                if (extract.ExitCode != 0)
+                {
+                    string detail = FormatOrbisError(
+                        stderrBuilder.Length > 0 ? stderrBuilder.ToString() : stdout);
+                    return (false, "orbis-pub-cmd error:\n" + detail);
+                }
+
+                // Move the result from the ASCII temp output to the real destination.
+                if (isDirectory)
+                {
+                    if (Directory.Exists(tempOutPath))
+                    {
+                        Directory.CreateDirectory(outPath);
+                        foreach (string entry in Directory.GetFileSystemEntries(tempOutPath))
+                        {
+                            string dest = Path.Combine(outPath, Path.GetFileName(entry));
+                            try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch (Exception ex) { Logger.LogWarning("Failed to delete destination folder: " + ex.Message); }
+                            if (Directory.Exists(entry))
+                                SafeMoveDirectory(entry, dest);
+                            else
+                            {
+                                try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete destination file: " + ex.Message); }
+                                File.Move(entry, dest);
+                            }
+                        }
+                    }
+                }
+                else if (File.Exists(tempOutPath))
+                {
+                    try { if (File.Exists(outPath)) File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete output file: " + ex.Message); }
+                    File.Move(tempOutPath, outPath);
+                }
+
+                Logger.LogInformation($"Mini viewer extracted entry: {targetPath} -> {outPath}");
+                return (true, "");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Extraction failed: " + ex.Message);
+            }
+            finally
+            {
+                if (safeOperation != null)
+                {
+                    OrbisSafePkgRestoreResult restore = safeOperation.Restore();
+                    if (!restore.Succeeded)
+                        Logger.LogError("Mini viewer failed to restore PKG: " + restore.ErrorMessage +
+                            " Recovery data remains in: " + restore.RecoveryDirectory);
+                }
+                try
+                {
+                    if (tempOutputDir != null && Directory.Exists(tempOutputDir))
+                        Directory.Delete(tempOutputDir, true);
+                }
+                catch { }
+            }
+        }
+
+        private void SetLoadingState(bool loading, string message)
+        {
+            // The designer defines the bar's at-rest look (always visible,
+            // static). Animating only while work runs needs a runtime flip,
+            // same as the main app (Main.cs toggles Style at runtime too).
+            if (loading)
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+                toolStripProgressBar1.MarqueeAnimationSpeed = 30;
+            }
+            else
+            {
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Value = 0;
+            }
+
+            labelDisplayTotalPKG.Text = message;
+            tabsViewer.Enabled = !loading;
+        }
+
+        /// <summary>
+        /// Stop Extract kills the running orbis-pub-cmd process (same as the
+        /// main app's stop button); the extraction worker sees the volatile
+        /// flag once the process dies and reports the cancellation.
+        /// </summary>
+        private void BtnStopExtract_Click(object sender, EventArgs e)
+        {
+            if (!_extracting)
+                return;
+
+            _extractionStopRequested = true;
+            KillOrbisProcess();
+            btnStopExtract.Enabled = false;
+            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+            toolStripProgressBar1.Value = 0;
+            labelDisplayTotalPKG.Text = "Extraction cancelled.";
+        }
+
+        private static void KillOrbisProcess()
+        {
+            try
+            {
+                foreach (Process process in Process.GetProcessesByName("orbis-pub-cmd"))
+                {
+                    try { process.Kill(); process.WaitForExit(); } catch { }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// During extraction only the status strip (progress bar, state label,
+        /// Stop Extract) stays enabled - everything else is disabled so no
+        /// other operation can run while the package is temp-renamed (mirror
+        /// of Main's SetExtractionUiEnabled).
+        /// </summary>
+        private void BeginExtractionUi()
+        {
+            _extracting = true;
+            _extractionStopRequested = false;
+            btnStopExtract.Visible = true;
+            btnStopExtract.Enabled = true;
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.MarqueeAnimationSpeed = 30;
+            SetExtractionUiEnabled(false);
+        }
+
+        private void EndExtractionUi()
+        {
+            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+            toolStripProgressBar1.Value = 0;
+            btnStopExtract.Visible = false;
+            SetExtractionUiEnabled(true);
+            _extracting = false;
+            labelDisplayTotalPKG.Text = "Ready";
+        }
+
+        private void SetExtractionUiEnabled(bool enabled)
+        {
+            foreach (Control c in Controls)
+            {
+                if (c is StatusStrip) continue; // keep the progress bar + Stop Extract live
+                if (c is TabControl tabs)
+                {
+                    foreach (TabPage page in tabs.TabPages)
+                        page.Enabled = enabled;
+                    continue;
+                }
+                c.Enabled = enabled;
+            }
+        }
+
+        private void MiniPkgViewerForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_extracting)
+            {
+                e.Cancel = true;
+                ShowInformation("Extraction in progress. Stop it before closing.", false);
+                return;
+            }
+            ReleaseViewerResources();
+        }
+
+        private void ReleaseViewerResources()
+        {
+            if (_resourcesReleased)
+                return;
+
+            _resourcesReleased = true;
+            _entrySession.Dispose();
+            dgvTrophies.Rows.Clear();
+            _trophySession.Dispose();
+            _fileListingSession.Dispose();
+            _loadCancellation.Cancel();
+            picIcon.Image = null;
+            picPic0.Image = null;
+            picPic1.Image = null;
+            _snapshot?.Dispose();
+            _snapshot = null;
+            _loadCancellation.Dispose();
+        }
+
+        #region Exit / Help (toolbar)
+
+        private void ExitToolStripMenuItem_Click(object sender, EventArgs e) => Close();
+
+        private OfficialUpdateForm _officialUpdateForm;
+
+        /// <summary>
+        /// Opens the official update downloader for this package (mirror of
+        /// Main's OpenOfficialUpdateForm). Only Game and Patch PKGs have
+        /// official updates.
+        /// </summary>
+        private void DownloadUpdateItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string titleId = _snapshot?.TitleId ?? string.Empty;
+                string category = _snapshot?.PackageCategory ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(titleId))
+                {
+                    ShowError("Could not read PKG title ID.", false);
+                    return;
+                }
+                if (category != PKGCategory.GAME && category != PKGCategory.PATCH)
+                {
+                    ShowInformation("Official updates are only available for Game and Patch PKGs.", false);
+                    return;
+                }
+
+                if (_officialUpdateForm == null || _officialUpdateForm.IsDisposed)
+                    _officialUpdateForm = new OfficialUpdateForm();
+
+                _officialUpdateForm.SetLogCallback(Logger.LogInformation);
+                _officialUpdateForm.LoadUpdate(
+                    titleId, category, appSettings_.OfficialUpdateDownloadDirectory);
+                _officialUpdateForm.Show();
+                _officialUpdateForm.BringToFront();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error opening official update form: " + ex.Message);
+                ShowError("Error opening official update form: " + ex.Message, true);
+            }
+        }
+
+        private void HelpAboutItem_Click(object sender, EventArgs e)
+        {
+            using (var about = new AboutForm(GetApplicationVersion()))
+                about.ShowDialog(this);
+        }
+
+        private void HelpCoffeeItem_Click(object sender, EventArgs e) =>
+            Helper.Tool.OpenWebLink("https://ko-fi.com/pearlxcore");
+
+        private async void HelpUpdateItem_Click(object sender, EventArgs e)
+        {
+            if (!Helper.Tool.CheckForInternetConnection())
+            {
+                ShowWarning("No internet connection detected. Cannot check for updates.", false);
+                return;
+            }
+
+            try
+            {
+                Logger.LogInformation("Checking for latest PS4 PKG Tool..");
+                ServicePointManager.Expect100Continue = true;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                var checker = new UpdateChecker("pearlxcore", "PS4-PKG-Tool", "v" + GetApplicationVersion());
+
+                UpdateType update = await checker.CheckUpdate();
+                if (update == UpdateType.None)
+                {
+                    ShowInformation("The program is up to date.", true);
+                }
+                else
+                {
+                    var result = new UpdateNotifyDialog(checker).ShowDialog();
+                    if (result == DialogResult.Yes)
+                        Process.Start("https://github.com/pearlxcore/PS4-PKG-Tool/releases");
+                }
+            }
+            catch (Exception ex)
+            {
+                // GitHubUpdate throws on API errors, rate limits (60 req/hr
+                // unauthenticated), or malformed release tags - never crash.
+                Logger.LogError("Update check failed: " + ex.Message);
+                ShowWarning("Could not check for updates. Please try again later.\n\n" + ex.Message, false);
+            }
+        }
+
+        private static string GetApplicationVersion()
+        {
+            Assembly entryAssembly = Assembly.GetEntryAssembly();
+            AssemblyInformationalVersionAttribute versionAttribute =
+                entryAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            return versionAttribute?.InformationalVersion ?? "Version information not available";
+        }
+
+        #endregion
+
+        #region Single package operations (dgv context menu, File / Tools)
+
+        private void CopyInfoItem_Click(object sender, EventArgs e)
+        {
+            if (!(sender is ToolStripMenuItem item) || item.Tag is not string kind)
+                return;
+
+            string value = kind switch
+            {
+                "title_id" => _snapshot?.TitleId,
+                "content_id" => _snapshot?.ContentId,
+                "title" => _snapshot?.Title,
+                "filename" => Path.GetFileName(_currentPackagePath),
+                _ => null
+            };
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                ShowWarning("Package information is not available yet.", false);
+                return;
+            }
+
+            Clipboard.SetText(value);
+            string what = kind switch
+            {
+                "title_id" => "Title ID",
+                "content_id" => "Content ID",
+                "title" => "Title",
+                _ => "Filename"
+            };
+            ShowInformation(what + " copied to clipboard.", true);
+        }
+
+        private void RenamePkgItem_Click(object sender, EventArgs e)
+        {
+            if (!(sender is ToolStripMenuItem item) || item.Tag is not int fmtNum)
+                return;
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+
+            // Same shared format source as the main app and the Explorer
+            // shell integration - one list, no per-UI copy.
+            string format = PS4PKGTool.Utilities.Constants.PkgRenameFormats.GetFormat(fmtNum, appSettings_.RenameCustomName);
+            if (string.IsNullOrWhiteSpace(format))
+            {
+                if (fmtNum == 11)
+                    ShowError("Set custom name format in settings.", true);
+                return;
+            }
+
+            // Preview example, same placeholders as the main app.
+            string previewName = format
+                .Replace("{TITLE}", "{Title}")
+                .Replace("{TITLE_ID}", "CUSA00000")
+                .Replace("{APP_VERSION}", "1.00")
+                .Replace("{VERSION}", "1.00")
+                .Replace("{CATEGORY}", "Game")
+                .Replace("{CONTENT_ID}", "xxxxx")
+                .Replace("{CONTENT_ID2}", "xxxxx")
+                .Replace("{REGION}", "EU")
+                .Replace("{SYSTEM_VERSION}", "9.00");
+
+            if (DialogResultYesNo(
+                $"Rename the PKG file?\n\nFormat: {format}\nExample: {previewName}.pkg") != DialogResult.Yes)
+            {
+                return;
+            }
+
+            labelDisplayTotalPKG.Text = "Renaming PKG...";
+            try
+            {
+                string destinationFolder = Path.GetDirectoryName(_currentPackagePath) + @"\";
+                (_, _, string targetPkg) =
+                    PS4_Tools.PKG.SceneRelated.GetNewPKGName(_currentPackagePath, destinationFolder, format);
+
+                if (File.Exists(targetPkg))
+                {
+                    ShowWarning("A file with the target name already exists. The PKG was not renamed.", false);
+                    labelDisplayTotalPKG.Text = "Ready";
+                    return;
+                }
+
+                File.Move(_currentPackagePath, targetPkg);
+                Logger.LogInformation(
+                    $"Mini viewer renamed: {Path.GetFileName(_currentPackagePath)} -> {Path.GetFileName(targetPkg)}");
+                _currentPackagePath = targetPkg;
+                toolStripStatusLabel2.Text = targetPkg;
+                Text = Path.GetFileName(targetPkg) + " - Mini PKG Viewer";
+                RebuildLazySessions();
+                ShowInformation("PKG renamed.", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer rename failed: " + ex.Message);
+                ShowError("The PKG could not be renamed: " + ex.Message, true);
+            }
+            finally
+            {
+                labelDisplayTotalPKG.Text = "Ready";
+            }
+        }
+
+        private void DeletePkgItem_Click(object sender, EventArgs e)
+        {
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+
+            if (DialogResultYesNo(
+                "PKG file will be permanently deleted. This operation cannot be undone. Are you sure you want to continue?") != DialogResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                File.Delete(_currentPackagePath);
+                Logger.LogInformation("Mini viewer deleted: " + _currentPackagePath);
+                ShowInformation("PKG file deleted.", true);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer delete failed: " + ex.Message);
+                ShowError("The PKG could not be deleted: " + ex.Message, true);
+            }
+        }
+
+        private void SaveArtworkItem_Click(object sender, EventArgs e)
+        {
+            if (!(sender is ToolStripMenuItem item) || item.Tag is not string kind)
+                return;
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+
+            if (!ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
+                return;
+
+            labelDisplayTotalPKG.Text = "Saving artwork...";
+            string pkgName = Path.GetFileNameWithoutExtension(_currentPackagePath);
+            var failures = new List<string>();
+            try
+            {
+                byte[] icon = null, pic0 = null, pic1 = null;
+                icon = PkgImageReader.ReadIcon0Png(_currentPackagePath);
+                pic0 = PkgImageReader.ReadPic0Png(_currentPackagePath);
+                pic1 = PkgImageReader.ReadPic1Png(_currentPackagePath);
+
+                if (icon != null) SavePngFile(icon, Path.Combine(fbd.SelectedPath, $"{pkgName}_ICON.PNG"));
+                if (pic0 != null) SavePngFile(pic0, Path.Combine(fbd.SelectedPath, $"{pkgName}_PIC0.PNG"));
+                if (pic1 != null) SavePngFile(pic1, Path.Combine(fbd.SelectedPath, $"{pkgName}_PIC1.PNG"));
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex.Message);
+            }
+
+            labelDisplayTotalPKG.Text = "Ready";
+            if (failures.Count > 0)
+                ShowWarning("Artwork could not be saved: " + string.Join(" ", failures), true);
+            else
+                ShowInformation("Artwork saved.", true);
+        }
+
+        private static void SavePngFile(byte[] imageBytes, string filePath)
+        {
+            using var ms = new MemoryStream(imageBytes);
+            using var bmp = Image.FromStream(ms);
+            bmp.Save(filePath, ImageFormat.Png);
+        }
+
+        private void ViewChangeInfoItem_Click(object sender, EventArgs e)
+        {
+            if (!File.Exists(Helper.OrbisPubCmd))
+            {
+                ShowError($"Missing {Path.GetFileName(Helper.OrbisPubCmd)} in AppData.", true);
+                return;
+            }
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+
+            OrbisSafePkgOperation safeOperation = null;
+            string tempDir = null;
+            labelDisplayTotalPKG.Text = "Reading package change info...";
+            try
+            {
+                // ASCII-safe temp rename so the external tool never sees the
+                // real filename; the original is restored in the finally block.
+                safeOperation = OrbisSafePkgOperation.Prepare(_currentPackagePath);
+                tempDir = Helper.CreateOrbisTempDir("c");
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = Helper.OrbisPubCmd,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                startInfo.ArgumentList.Add("img_extract");
+                startInfo.ArgumentList.Add("--passcode");
+                startInfo.ArgumentList.Add(PkgFileListingService.DefaultPasscode);
+                OrbisCommandOptions.AddConfiguredTempPath(startInfo);
+                startInfo.ArgumentList.Add(safeOperation.OrbisPath + ":Sc0/changeinfo/changeinfo.xml");
+                startInfo.ArgumentList.Add(tempDir);
+
+                using Process extract = new Process { StartInfo = startInfo };
+                var stderrBuilder = new StringBuilder();
+                extract.ErrorDataReceived += (_, ev) => { if (ev.Data != null) stderrBuilder.AppendLine(ev.Data); };
+                extract.Start();
+                extract.BeginErrorReadLine();
+                Task<string> stdoutTask = extract.StandardOutput.ReadToEndAsync();
+                if (!extract.WaitForExit(600000))
+                {
+                    try { extract.Kill(); extract.WaitForExit(); } catch { }
+                }
+                string stdout = stdoutTask.Result;
+
+                string orbisError = "";
+                foreach (string line in stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (line.Contains("[Error]"))
+                    {
+                        orbisError = line;
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(orbisError))
+                    orbisError = stderrBuilder.ToString().Trim();
+
+                if (orbisError == "[Error]\tCould not find file or directory. (Sc0/changeinfo/changeinfo.xml)")
+                {
+                    ShowInformation("Change info not available.", true);
+                    return;
+                }
+                if (orbisError != "")
+                {
+                    ShowError("orbis-pub-cmd error:\n" + orbisError, true);
+                    return;
+                }
+
+                string found = Directory
+                    .EnumerateFiles(tempDir, "changeinfo.xml", SearchOption.AllDirectories)
+                    .FirstOrDefault();
+                if (found == null)
+                {
+                    ShowInformation("Change info not available.", true);
+                    return;
+                }
+
+                string changeInfoFile = Helper.AppDataDirectory + "changeinfo.xml";
+                File.Copy(found, changeInfoFile, true);
+                string changeInfoData = File.ReadAllText(changeInfoFile);
+                using (var viewer = new PKGChangeInfoViewer(changeInfoData))
+                    viewer.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer change info failed: " + ex.Message);
+                ShowError("An error occurred while viewing the update changelog: " + ex.Message, true);
+            }
+            finally
+            {
+                if (safeOperation != null)
+                {
+                    OrbisSafePkgRestoreResult restore = safeOperation.Restore();
+                    if (!restore.Succeeded)
+                        Logger.LogError("Mini viewer failed to restore PKG: " + restore.ErrorMessage +
+                            " Recovery data remains in: " + restore.RecoveryDirectory);
+                }
+                try
+                {
+                    if (tempDir != null && Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, true);
+                }
+                catch { }
+                labelDisplayTotalPKG.Text = "Ready";
+            }
+        }
+
+        /// <summary>
+        /// The package was renamed on disk: point the lazy sessions at the new
+        /// path and drop their cached results so the tabs reload from there.
+        /// </summary>
+        private void RebuildLazySessions()
+        {
+            try { _entrySession.Dispose(); } catch { }
+            try { _trophySession.Dispose(); } catch { }
+            try { _fileListingSession.Dispose(); } catch { }
+
+            _entrySession = new PkgEntryInspectionSession(_currentPackagePath, _entryLoader);
+            _trophySession = new TrophyInspectionSession(_currentPackagePath, _trophyLoader);
+            _fileListingSession = new PkgFileListingSession(
+                _currentPackagePath, _fileListingPasscode, _fileListingLoader);
+
+            dgvEntries.Rows.Clear();
+            dgvTrophies.Rows.Clear();
+            tvFiles.Nodes.Clear();
+            lvFiles.Items.Clear();
+            lblTrophyState.Text = "Trophy information loads when this page is selected.";
+        }
+
+        private async void ExtractFullPkgItem_Click(object sender, EventArgs e)
+        {
+            if (_extracting)
+            {
+                ShowInformation("Extraction already in progress.", false);
+                return;
+            }
+            if (!File.Exists(Helper.OrbisPubCmd))
+            {
+                ShowError($"Missing {Path.GetFileName(Helper.OrbisPubCmd)} in AppData.", true);
+                return;
+            }
+            if (!File.Exists(_currentPackagePath))
+            {
+                ShowError("PKG file not found.", false);
+                return;
+            }
+            if (!ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
+                return;
+
+            string sourcePath = _currentPackagePath;
+            string extractLocation = Path.Combine(
+                fbd.SelectedPath,
+                SanitizeFolderName(_snapshot?.Title ?? Path.GetFileNameWithoutExtension(sourcePath)));
+
+            // The package is temporarily renamed while orbis-pub-cmd runs;
+            // lock the viewer (the status strip with Stop Extract stays live)
+            // so no other operation touches the file.
+            BeginExtractionUi();
+            labelDisplayTotalPKG.Text = "Extracting PKG...";
+
+            bool succeeded;
+            string message;
+            try
+            {
+                (succeeded, message) = await Task.Run(() => ExtractFullPkgCore(sourcePath, extractLocation));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer extract failed: " + ex.Message);
+                succeeded = false;
+                message = "Extraction failed: " + ex.Message;
+            }
+            finally
+            {
+                EndExtractionUi();
+            }
+
+            if (_extractionStopRequested)
+            {
+                ShowInformation("Extraction cancelled.", true);
+                return;
+            }
+
+            if (succeeded)
+                ShowInformation($"PKG extracted to:\n{extractLocation}", true);
+            else
+                ShowError(message, true);
+        }
+
+        /// <summary>
+        /// Delegates to the shared PkgExtractionService - the exact same
+        /// orbis-pub-cmd pipeline the Explorer shell integration uses (safe
+        /// ASCII rename, temp output, cross-volume move, cleanup).
+        /// </summary>
+        private (bool Succeeded, string Message) ExtractFullPkgCore(string sourcePath, string extractLocation)
+        {
+            var service = new PkgExtractionService(Helper.OrbisPubCmd, _fileListingPasscode);
+            return service.ExtractFullAsync(sourcePath, extractLocation).GetAwaiter().GetResult();
+        }
+
+        /// <summary>Same semantics as the main app's SafeMoveDirectory: Directory.Move with a copy+delete fallback for cross-volume moves.</summary>
+        private static void SafeMoveDirectory(string src, string dst)
+        {
+            try { Directory.Move(src, dst); }
+            catch (IOException)
+            {
+                foreach (string f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+                {
+                    string rel = f.Substring(src.Length).TrimStart('\\', '/');
+                    string target = Path.Combine(dst, rel);
+                    Directory.CreateDirectory(Path.GetDirectoryName(target) ?? dst);
+                    File.Copy(f, target, true);
+                }
+                Directory.Delete(src, true);
+            }
+        }
+
+        /// <summary>Extract [Error]/[Warn] lines from orbis-pub-cmd output (same as Main.FormatOrbisError).</summary>
+        private static string FormatOrbisError(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "(no output from orbis-pub-cmd)";
+            var errors = raw.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(l => l.IndexOf("Error", StringComparison.OrdinalIgnoreCase) >= 0)
+                .Select(l => l.Trim())
+                .ToList();
+            return errors.Count > 0 ? string.Join("\n", errors) : raw.Trim();
+        }
+
+        /// <summary>Shared folder-name sanitization (same rules as the main app's extract flows).</summary>
+        private static string SanitizeFolderName(string name)
+            => PkgExtractionService.SanitizeFolderName(name);
+
+        // orbis-pub-cmd reports a rejected passcode in its error output.
+        private static bool IsPasscodeFailure(string errorMessage) =>
+            !string.IsNullOrWhiteSpace(errorMessage) &&
+            errorMessage.IndexOf("passcode", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        /// <summary>
+        /// Asks the user for a custom package passcode. Returns true and the
+        /// entered value when confirmed; false when cancelled. The no-passcode
+        /// option maps to PkgFileListingService.NoPasscode (--no_passcode).
+        /// </summary>
+        private bool PromptForPasscode(out string passcode)
+        {
+            using var prompt = new PasscodePromptForm();
+            if (prompt.ShowDialog(this) != DialogResult.OK)
+            {
+                passcode = null;
+                return false;
+            }
+
+            if (prompt.IsNoPasscode)
+            {
+                passcode = PkgFileListingService.NoPasscode;
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(prompt.Passcode))
+            {
+                passcode = null;
+                return false;
+            }
+
+            passcode = prompt.Passcode;
+            return true;
+        }
+
+        #endregion
+    }
+}

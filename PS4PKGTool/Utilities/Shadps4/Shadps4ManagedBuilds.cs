@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace PS4PKGTool.Utilities.Shadps4
@@ -25,7 +26,30 @@ namespace PS4PKGTool.Utilities.Shadps4
         Shadps4Component Component,
         string DirectoryPath,
         Shadps4BuildManifest Manifest,
-        string ExecutablePath);
+        string ExecutablePath)
+    {
+        private static readonly Regex DateInTag = new(@"\d{4}-\d{2}-\d{2}", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Human-readable name for lists and dialogs: stable tags (v.0.17.0)
+        /// as they are; nightly/launcher build ids (commit shas) become
+        /// "date (short sha)" parsed from the release tag, so users can tell
+        /// versions apart without reading checksums.
+        /// </summary>
+        public string DisplayName
+        {
+            get
+            {
+                if (!LooksLikeSha(BuildId)) return BuildId;
+                string date = DateInTag.Match(Manifest.Release ?? "").Value;
+                string shortSha = BuildId.Length > 8 ? BuildId.Substring(0, 8) : BuildId;
+                return string.IsNullOrEmpty(date) ? BuildId : $"{date} ({shortSha})";
+            }
+        }
+
+        private static bool LooksLikeSha(string id)
+            => id.Length == 40 && id.All(Uri.IsHexDigit);
+    }
 
     /// <summary>
     /// Versioned storage for PS4PKGTool-managed shadPS4 builds:
@@ -50,7 +74,10 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         public Shadps4ManagedBuilds(string? rootPath = null, IClock? clock = null)
         {
-            _root = rootPath ?? DefaultRootPath();
+            // Empty string must fall back to the default root too: settings
+            // load an unset managed root as "" and a bare "" would point the
+            // store at a relative "builds" folder (no builds found).
+            _root = string.IsNullOrWhiteSpace(rootPath) ? DefaultRootPath() : rootPath;
             Clock = clock ?? new SystemClock();
         }
 
@@ -150,6 +177,27 @@ namespace PS4PKGTool.Utilities.Shadps4
         public string? ResolveManagedExecutable(string buildId)
             => FindExe(Shadps4Component.Core, buildId)
                 ?? FindExe(Shadps4Component.QtLauncher, buildId);
+
+        /// <summary>
+        /// Permanently removes ONE managed build folder. Deliberate deletion is
+        /// a user action (the Builds UI protects the active build and confirms
+        /// first) - rollback stays the default mechanism, so this only removes
+        /// the exact versioned directory, never the store or other builds. A
+        /// missing build id is a no-op.
+        /// </summary>
+        public void DeleteBuild(Shadps4Component component, string buildId)
+        {
+            string dir = BuildDirectory(component, buildId);
+            if (!Directory.Exists(dir)) return;
+            try
+            {
+                Directory.Delete(dir, true);
+            }
+            catch (Exception ex)
+            {
+                throw new IOException("Could not remove the build folder:\n" + dir + "\n\n" + ex.Message);
+            }
+        }
 
         private static Shadps4BuildManifest? ReadManifest(string dir)
         {

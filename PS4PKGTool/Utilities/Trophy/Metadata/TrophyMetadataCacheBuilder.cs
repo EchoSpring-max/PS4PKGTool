@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using PS4_Tools.LibOrbis.PKG;
 using static PS4_Tools.PKG.SceneRelated;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.TrophyMetadata
 {
@@ -38,7 +39,6 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
             bool recursive,
             string orbisPubCmdPath,
             string cachePath,
-            string temporaryRoot,
             IProgress<TrophyCacheProgress>? progress = null,
             CancellationToken cancellationToken = default)
         {
@@ -87,7 +87,7 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
                     }
 
                     NpbindExtractionResult extraction = await _extractor.ExtractAsync(
-                        orbisPubCmdPath, pkgPath, temporaryRoot, cancellationToken).ConfigureAwait(false);
+                        orbisPubCmdPath, pkgPath, cancellationToken).ConfigureAwait(false);
                     if (extraction.Succeeded && extraction.NpCommunicationId != null)
                     {
                         cache.Set(contentId, extraction.NpCommunicationId);
@@ -143,6 +143,10 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
                 {
                     foreach (string path in Directory.EnumerateFiles(fullDirectory, "*.pkg", options))
                     {
+                        // Never process staging artifacts: a p4t_v_* directory or a
+                        // ps4pkgtool_orbis_*.pkg rename is a moved original, not a
+                        // new package - processing it again would re-stage it deeper.
+                        if (OrbisTempRecovery.IsStagingArtifact(path)) continue;
                         string fullPath = Path.GetFullPath(path);
                         if (seen.Add(fullPath)) packages.Add(fullPath);
                     }

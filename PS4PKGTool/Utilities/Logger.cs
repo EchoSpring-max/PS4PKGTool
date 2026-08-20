@@ -14,6 +14,14 @@ namespace PS4PKGTool.Utilities
         public static string LogFilename { get; set; }
         public static Action<string> OnLog;
 
+        /// <summary>
+        /// Normalizes mixed line endings to CRLF: multi-line messages (e.g.
+        /// the emulator log tail) arrive with LF-only breaks, exception text
+        /// with CRLF. The log file and the Log tab must render every break.
+        /// </summary>
+        public static string NormalizeNewlines(string text)
+            => text.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "\r\n");
+
         public static void FlushLog()
         {
             File.WriteAllText(Helper.PS4PKGToolLogFile, string.Empty);
@@ -57,7 +65,7 @@ namespace PS4PKGTool.Utilities
                     {
                         using (var sw = new StreamWriter(Helper.PS4PKGToolLogFile, true))
                         {
-                            sw.WriteLine(logMessage);
+                            sw.WriteLine(NormalizeNewlines(logMessage));
                         }
                     }
 

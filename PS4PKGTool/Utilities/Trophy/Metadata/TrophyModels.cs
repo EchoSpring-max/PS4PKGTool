@@ -23,6 +23,16 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
         EmptyMarker
     }
 
+    public enum TrophyMetadataFailureKind
+    {
+        None,
+        MissingMetadata,
+        UnsupportedMetadata,
+        MissingNpCommunicationId,
+        DecryptionFailed,
+        ParseFailed
+    }
+
     public sealed class TrpEntry
     {
         public int Index { get; init; }
@@ -67,6 +77,7 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
         public bool MetadataPayloadFound { get; init; }
         public bool DecryptionAttempted { get; init; }
         public bool DecryptionSucceeded { get; init; }
+        public TrophyMetadataFailureKind FailureKind { get; init; }
         public string StatusMessage { get; init; } = string.Empty;
     }
 }

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.TrophyMetadata
 {
@@ -24,7 +25,6 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
         public async Task<NpbindExtractionResult> ExtractAsync(
             string orbisPubCmdPath,
             string pkgPath,
-            string temporaryRoot,
             CancellationToken cancellationToken = default)
         {
             if (!File.Exists(orbisPubCmdPath))
@@ -32,66 +32,53 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
             if (!File.Exists(pkgPath))
                 return Failure("The selected PKG was not found.");
 
-            string root = Path.GetFullPath(temporaryRoot);
-            Directory.CreateDirectory(root);
-            string workDirectory = Path.Combine(root, "npbind_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(workDirectory);
-
-            string originalPkgPath = Path.GetFullPath(pkgPath);
-            string packageDirectory = Path.GetDirectoryName(originalPkgPath)
-                ?? throw new InvalidOperationException("The selected PKG has no parent directory.");
-            string safePkgPath = Path.Combine(packageDirectory, "ps4pkgtool_npbind_" + Guid.NewGuid().ToString("N") + ".pkg");
-            bool renamed = false;
-            string? restorationError = null;
+            // Same safe-orbis pattern as every other extraction: the PKG is
+            // staged only when orbis-pub-cmd cannot take the original path
+            // (orbis-pub-cmd uses ANSI file APIs - non-ASCII directory
+            // segments are just as fatal as a non-ASCII file name). The
+            // staging is restored in a finally so no exit path skips it.
+            OrbisSafePkgOperation? operation = null;
+            string? outputDirectory = null;
             NpbindExtractionResult result;
-
             try
             {
-                // Rename in place so even very large PKGs get an ASCII-only path without copying.
-                // The unique target is in the exact same parent directory and is restored below.
-                File.Move(originalPkgPath, safePkgPath);
-                renamed = true;
+                operation = OrbisSafePkgOperation.Prepare(pkgPath);
+                outputDirectory = Helper.CreateOrbisTempDir("n");
                 result = await RunOrbisAsync(
-                    Path.GetFullPath(orbisPubCmdPath), safePkgPath, workDirectory, root, cancellationToken)
-                    .ConfigureAwait(false);
+                    Path.GetFullPath(orbisPubCmdPath),
+                    operation.OrbisPath,
+                    outputDirectory,
+                    cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            catch (Exception ex)
             {
                 result = Failure(ex.Message);
             }
             finally
             {
-                if (renamed && File.Exists(safePkgPath))
+                if (operation != null)
                 {
-                    try
+                    OrbisSafePkgRestoreResult restore = operation.Restore();
+                    if (!restore.Succeeded)
                     {
-                        if (File.Exists(originalPkgPath))
-                            restorationError = "The original PKG path unexpectedly exists; the temporary PKG was preserved at " + safePkgPath;
-                        else
-                            File.Move(safePkgPath, originalPkgPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        restorationError = "Failed to restore the original PKG filename. Recover it from " + safePkgPath + ". " + ex.Message;
+                        result = Failure(restore.ErrorMessage +
+                            " Recovery data remains in: " + restore.RecoveryDirectory);
                     }
                 }
-
-                // workDirectory is a GUID child created above; never delete the caller-provided root.
-                string relative = Path.GetRelativePath(root, workDirectory);
-                if (!relative.StartsWith("..", StringComparison.Ordinal) && Directory.Exists(workDirectory))
+                try
                 {
-                    try { Directory.Delete(workDirectory, recursive: true); } catch { }
+                    if (outputDirectory != null && Directory.Exists(outputDirectory))
+                        Directory.Delete(outputDirectory, true);
                 }
+                catch { /* best-effort scratch cleanup */ }
             }
-
-            return restorationError == null ? result : Failure(restorationError);
+            return result;
         }
 
         private async Task<NpbindExtractionResult> RunOrbisAsync(
             string orbisPubCmdPath,
             string safePkgPath,
             string workDirectory,
-            string fallbackWorkingDirectory,
             CancellationToken cancellationToken)
         {
             using var process = new Process
@@ -103,12 +90,13 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
-                    WorkingDirectory = Path.GetDirectoryName(orbisPubCmdPath) ?? fallbackWorkingDirectory
+                    WorkingDirectory = Path.GetDirectoryName(orbisPubCmdPath) ?? workDirectory
                 }
             };
             process.StartInfo.ArgumentList.Add("img_extract");
             process.StartInfo.ArgumentList.Add("--passcode");
             process.StartInfo.ArgumentList.Add(DefaultPasscode);
+            OrbisCommandOptions.AddConfiguredTempPath(process.StartInfo);
             process.StartInfo.ArgumentList.Add(safePkgPath + ":Sc0/npbind.dat");
             process.StartInfo.ArgumentList.Add(workDirectory);
 

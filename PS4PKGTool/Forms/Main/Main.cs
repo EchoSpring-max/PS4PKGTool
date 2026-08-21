@@ -2718,20 +2718,22 @@ namespace PS4PKGTool
 
         private static List<(string, int)> GetGlvColumns()
         {
-            var cols = new List<(string, int)> { ("Filename", 0), ("Title", 0) };
-            if (appSettings_.pkgtitleIdColumn) cols.Add(("Title ID", 0));
-            if (appSettings_.pkgcontentIdColumn) cols.Add(("Content ID", 0));
-            if (appSettings_.pkgregionColumn) cols.Add(("Region", 0));
-            if (appSettings_.pkgminimumFirmwareColumn) cols.Add(("System Version", 0));
-            if (appSettings_.pkgversionColumn) cols.Add(("Version [App Version]", 0));
-            if (appSettings_.pkgTypeColumn) cols.Add(("PKG Type", 0));
-            if (appSettings_.pkgcategoryColumn) cols.Add(("Category", 0));
-            if (appSettings_.pkgsizeColumn) cols.Add(("Size", 0));
-            if (appSettings_.psvr_neo_ps5bc_check) { cols.Add(("PSVR", 0)); cols.Add(("PS4 Pro Enhanced", 0)); cols.Add(("PS5 BC", 0)); }
-            if (appSettings_.pkgDirectoryColumn) cols.Add(("Directory", 0));
-            if (appSettings_.pkgBackportColumn) cols.Add(("Backported", 0));
-            if (appSettings_.AutoFetchUpdate) cols.Add(("Latest Update", 0));
-            if (appSettings_.Shadps4Check) cols.Add(($"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})", 0));
+            // DarkGroupedListView treats width 0 as Fill mode. Give each column
+            // a starting width instead, so user-resized widths are retained.
+            var cols = new List<(string, int)> { ("Filename", 180), ("Title", 220) };
+            if (appSettings_.pkgtitleIdColumn) cols.Add(("Title ID", 100));
+            if (appSettings_.pkgcontentIdColumn) cols.Add(("Content ID", 260));
+            if (appSettings_.pkgregionColumn) cols.Add(("Region", 85));
+            if (appSettings_.pkgminimumFirmwareColumn) cols.Add(("System Version", 110));
+            if (appSettings_.pkgversionColumn) cols.Add(("Version [App Version]", 140));
+            if (appSettings_.pkgTypeColumn) cols.Add(("PKG Type", 90));
+            if (appSettings_.pkgcategoryColumn) cols.Add(("Category", 90));
+            if (appSettings_.pkgsizeColumn) cols.Add(("Size", 95));
+            if (appSettings_.psvr_neo_ps5bc_check) { cols.Add(("PSVR", 65)); cols.Add(("PS4 Pro Enhanced", 125)); cols.Add(("PS5 BC", 80)); }
+            if (appSettings_.pkgDirectoryColumn) cols.Add(("Directory", 240));
+            if (appSettings_.pkgBackportColumn) cols.Add(("Backported", 90));
+            if (appSettings_.AutoFetchUpdate) cols.Add(("Latest Update", 105));
+            if (appSettings_.Shadps4Check) cols.Add(($"ShadPS4 ({Shadps4Compat.OsDisplay(appSettings_.Shadps4Os)})", 130));
             return cols;
         }
 

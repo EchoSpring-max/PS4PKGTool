@@ -119,5 +119,18 @@ namespace PS4PKGTool.Utilities
                 // or a broken fallback would otherwise take the app down.
             }
         }
+
+        // ── test seam ────────────────────────────────────────────────────
+        // The fallback state is process-static. Tests reset it between runs
+        // and redirect the fallback path so they never touch the real %TEMP%
+        // fallback. Guarded by InternalsVisibleTo - never called in production.
+        internal static void Test_ResetFallback()
+        {
+            _fallbackLogPath = null;
+            _fallbackAnnounced = false;
+        }
+
+        internal static string Test_FallbackLogPath => _fallbackLogPath;
+        internal static bool Test_FallbackAnnounced => _fallbackAnnounced;
     }
 }

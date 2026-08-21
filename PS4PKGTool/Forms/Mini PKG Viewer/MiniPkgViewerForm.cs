@@ -49,6 +49,16 @@ namespace PS4PKGTool
         private bool _loadStarted;
         private bool _resourcesReleased;
 
+        // The mini viewer intentionally creates this pane in code so its
+        // hand-maintained file-browser designer layout remains stable.
+        private DarkUI.Controls.DarkSectionPanel _filePreviewPanel;
+        private Panel _filePreviewBody;
+        private PictureBox _filePreviewImage;
+        private DarkUI.Controls.DarkTextBox _filePreviewText;
+        private DarkUI.Controls.DarkLabel _filePreviewInfo;
+        private int _filePreviewVersion;
+        private static readonly Assets.AssetInspectionService AssetService = Assets.GenericAssetRegistryBuilder.Build();
+
         public MiniPkgViewerForm()
             : this(
                 string.Empty,
@@ -149,6 +159,8 @@ namespace PS4PKGTool
             if (lvFiles.Columns.Count == 0)
                 lvFiles.Columns.AddRange(new ColumnHeader[]
                     { colFileName, colFileType, colFilePath, colFileSize });
+
+            CreateFilePreviewPane();
 
             // File browser icons from embedded resources, same set and
             // ordering as the main app (imageList1) so the tree and list
@@ -722,9 +734,215 @@ namespace PS4PKGTool
             if (lvFiles.SelectedItems[0].Tag is not TreeNode node)
                 return;
 
-            tvFiles.SelectedNode = node;
-            node.EnsureVisible();
+            if (node.Tag is not PkgFileNode model)
+                return;
+
+            if (model.IsDirectory || lvFiles.SelectedItems[0].Text == "...")
+            {
+                tvFiles.SelectedNode = node;
+                node.EnsureVisible();
+                return;
+            }
+
+            PreviewPackageFileAsync(model);
         }
+
+        /// <summary>
+        /// Adds the same preview surface as the main File Browser: a decoded
+        /// image where possible, otherwise text or a bounded hex dump. Keeping
+        /// it runtime-created avoids designer re-serialization dropping the
+        /// Mini viewer's existing file-browser setup.
+        /// </summary>
+        private void CreateFilePreviewPane()
+        {
+            _filePreviewPanel = new DarkUI.Controls.DarkSectionPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(8, 0, 0, 0),
+                SectionHeader = "File Preview",
+            };
+            _filePreviewBody = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(20, 20, 20),
+                Padding = new Padding(1),
+            };
+            _filePreviewInfo = new DarkUI.Controls.DarkLabel
+            {
+                Dock = DockStyle.Top,
+                Height = 34,
+                Padding = new Padding(8, 0, 8, 0),
+                AutoEllipsis = true,
+                Text = "Double-click a file to preview it.",
+                TextAlign = ContentAlignment.MiddleLeft,
+            };
+            _filePreviewImage = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(20, 20, 20),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Visible = false,
+            };
+            _filePreviewText = new DarkUI.Controls.DarkTextBox
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Consolas", 9F),
+                HideSelection = false,
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Both,
+                Visible = false,
+                WordWrap = false,
+            };
+
+            _filePreviewBody.Controls.Add(_filePreviewImage);
+            _filePreviewBody.Controls.Add(_filePreviewText);
+            _filePreviewPanel.Controls.Add(_filePreviewBody);
+            _filePreviewPanel.Controls.Add(_filePreviewInfo);
+
+            fileBrowserLayout.ColumnStyles.Clear();
+            fileBrowserLayout.ColumnCount = 3;
+            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28F));
+            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
+            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
+            fileBrowserLayout.SetColumn(tvFiles, 0);
+            fileBrowserLayout.SetColumn(lvFiles, 1);
+            fileBrowserLayout.Controls.Add(_filePreviewPanel, 2, 0);
+        }
+
+        private async void PreviewPackageFileAsync(PkgFileNode file)
+        {
+            if (_resourcesReleased || _extracting || !File.Exists(_currentPackagePath))
+                return;
+
+            int version = Interlocked.Increment(ref _filePreviewVersion);
+            _filePreviewImage.Visible = false;
+            _filePreviewText.Visible = false;
+            _filePreviewInfo.Text = "Previewing " + file.Name + "...";
+
+            try
+            {
+                PreviewResult result = await Task.Run(() => BuildFilePreview(file));
+                if (version != _filePreviewVersion || IsDisposed || Disposing)
+                    return;
+
+                _filePreviewInfo.Text = result.Info;
+                if (result.Texture != null)
+                {
+                    _filePreviewImage.Image?.Dispose();
+                    _filePreviewImage.Image = TextureToBitmap(result.Texture);
+                    _filePreviewImage.Visible = true;
+                }
+                else
+                {
+                    _filePreviewText.Text = result.Text;
+                    _filePreviewText.Visible = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer preview failed: " + ex.Message);
+                if (version == _filePreviewVersion && !IsDisposed && !Disposing)
+                {
+                    _filePreviewInfo.Text = file.Name + " - preview unavailable: " + ex.Message;
+                    _filePreviewText.Text = string.Empty;
+                    _filePreviewText.Visible = true;
+                }
+            }
+        }
+
+        private PreviewResult BuildFilePreview(PkgFileNode file)
+        {
+            string previewDir = Path.Combine(Path.GetTempPath(), "p4t_mini_preview_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(previewDir);
+            try
+            {
+                string extracted = Path.Combine(previewDir, Path.GetFileName(file.FullPath));
+                using (var reader = new OrbisPkgTool.PkgReader(_currentPackagePath, _fileListingPasscode))
+                {
+                    reader.ExtractFileTo(file.FullPath, extracted);
+                    // Unity Texture2D data commonly lives in a sibling .resS.
+                    // A missing companion is fine; the asset pipeline falls
+                    // back to metadata/text rather than failing the preview.
+                    try
+                    {
+                        string companion = file.FullPath + ".resS";
+                        reader.ExtractFileTo(companion, Path.Combine(previewDir, Path.GetFileName(companion)));
+                    }
+                    catch { }
+                }
+
+                var source = new Assets.IO.FileAssetSource(extracted, "PKG entry",
+                    rel => File.Exists(Path.Combine(previewDir, Path.GetFileName(rel)))
+                        ? new Assets.IO.FileAssetSource(Path.Combine(previewDir, Path.GetFileName(rel)), "Unity .resS stream")
+                        : null);
+                var detection = AssetService.Detect(source);
+                if (detection == null)
+                    return new PreviewResult(file.Name + " (" + Helper.RoundBytes(file.Size) + ") - hex preview", BuildHexDump(extracted, 1 << 20), null);
+
+                var descriptor = AssetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+                var preview = descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview)
+                    ? AssetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult()
+                    : null;
+                string info = BuildPreviewInfo(file.Name, descriptor);
+                if (preview?.Texture != null)
+                    return new PreviewResult(preview.Info ?? info, string.Empty, preview.Texture);
+                return new PreviewResult(preview?.Info ?? info, preview?.Text ?? BuildHexDump(extracted, 1 << 20), null);
+            }
+            finally
+            {
+                try { Directory.Delete(previewDir, true); } catch { }
+            }
+        }
+
+        private static string BuildPreviewInfo(string name, Assets.Models.AssetDescriptor descriptor)
+            => name + " (" + Helper.RoundBytes(descriptor.Size) + ") - " + descriptor.Format.ToUpperInvariant();
+
+        private static string BuildHexDump(string path, int maxBytes)
+        {
+            byte[] bytes;
+            using (var stream = File.OpenRead(path))
+            {
+                bytes = new byte[Math.Min((int)Math.Min(stream.Length, maxBytes), maxBytes)];
+                stream.ReadExactly(bytes);
+            }
+            var text = new StringBuilder();
+            for (int i = 0; i < bytes.Length; i += 16)
+            {
+                text.Append(i.ToString("X8")).Append("  ");
+                for (int j = 0; j < 16; j++)
+                    text.Append(i + j < bytes.Length ? bytes[i + j].ToString("X2") + " " : "   ");
+                text.Append(' ');
+                for (int j = 0; j < 16 && i + j < bytes.Length; j++)
+                    text.Append(bytes[i + j] is >= 32 and < 127 ? (char)bytes[i + j] : '.');
+                text.AppendLine();
+            }
+            return bytes.Length == 0 ? "(empty file)" : text.ToString();
+        }
+
+        private static Bitmap TextureToBitmap(Assets.Models.TextureData texture)
+        {
+            var bitmap = new Bitmap(texture.Width, texture.Height, PixelFormat.Format32bppArgb);
+            var rect = new Rectangle(0, 0, texture.Width, texture.Height);
+            var bits = bitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                var bgra = new byte[texture.Rgba8.Length];
+                for (int i = 0; i + 3 < texture.Rgba8.Length; i += 4)
+                {
+                    bgra[i] = texture.Rgba8[i + 2];
+                    bgra[i + 1] = texture.Rgba8[i + 1];
+                    bgra[i + 2] = texture.Rgba8[i];
+                    bgra[i + 3] = texture.Rgba8[i + 3];
+                }
+                System.Runtime.InteropServices.Marshal.Copy(bgra, 0, bits.Scan0, bgra.Length);
+            }
+            finally { bitmap.UnlockBits(bits); }
+            return bitmap;
+        }
+
+        private sealed record PreviewResult(string Info, string Text, Assets.Models.TextureData? Texture);
 
         /// <summary>
         /// Right-click on a file entry opens the extraction/copy menu.

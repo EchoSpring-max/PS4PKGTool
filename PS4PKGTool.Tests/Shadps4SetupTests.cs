@@ -201,10 +201,22 @@ namespace PS4PKGTool.Tests
         {
             // Settings load an unset managed root as "" - a bare "" would
             // resolve the store to a relative "builds" folder and list
-            // nothing. It must behave like null: default %LOCALAPPDATA% root.
+            // nothing. It must behave like null: the exe-adjacent default.
             var store = new Shadps4ManagedBuilds("");
 
             Assert.AreEqual(Shadps4ManagedBuilds.DefaultRootPath(), store.RootPath);
+        }
+
+        [TestMethod]
+        public void Store_DefaultRoot_IsExeAdjacentAppData()
+        {
+            // The default lives in the exe-adjacent AppData folder (same root
+            // as Helper.AppDataDirectory), NOT %LOCALAPPDATA% - a recorded
+            // root in settings always wins, this only feeds fresh installs.
+            string expected = System.IO.Path.Combine(
+                PS4PKGTool.Utilities.PS4PKGToolHelper.Helper.AppDataDirectory, "shadPS4");
+
+            Assert.AreEqual(expected, Shadps4ManagedBuilds.DefaultRootPath());
         }
 
         [TestMethod]
@@ -892,7 +904,7 @@ namespace PS4PKGTool.Tests
 
             Assert.AreEqual(@"D:\Emu Storage\managed", loaded.Shadps4ManagedRoot);
             Assert.AreEqual("", new PS4PKGTool.Utilities.Settings.AppSettings().Shadps4ManagedRoot,
-                "default is empty = the LocalAppData default root");
+                "default is empty = the exe-adjacent default root");
         }
 
         // ── helpers ──

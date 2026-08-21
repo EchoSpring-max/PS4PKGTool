@@ -22,7 +22,7 @@ Date: 2026-08-14 · Branch: `feature/asset-framework` · Upstream verification: 
 See section 1. Key contracts: `IShadps4FeedClient` (test seam), `Shadps4SetupService.InstallBuildAsync(release, store, progress, ct)`, `Shadps4ManagedBuilds.Commit/ListBuilds/FindExe/ResolveManagedExecutable`, `Shadps4ActiveCore.ResolveExecutable(setting, managedHook, out error)`.
 
 ## 3. Settings added
-`shadps4_active_core=` (`"" | managed:<id> | adopted:<path>`), `shadps4_active_launcher=` (same), `shadps4_managed_root=` (default `%LOCALAPPDATA%\PS4PKGTool\shadPS4`). One-time migration from legacy `shadps4_core_exe`/`shadps4_launcher_exe`/`shadps4_executable` (by filename) — new keys never overwritten; legacy keys never consulted after migration persists.
+`shadps4_active_core=` (`"" | managed:<id> | adopted:<path>`), `shadps4_active_launcher=` (same), `shadps4_managed_root=` (legacy default `%LOCALAPPDATA%\PS4PKGTool\shadPS4`; current default is `<exe dir>\AppData\shadPS4` — recorded roots always win). One-time migration from legacy `shadps4_core_exe`/`shadps4_launcher_exe`/`shadps4_executable` (by filename) — new keys never overwritten; legacy keys never consulted after migration persists.
 
 ## 4. Official upstream repositories/APIs used
 - `api.github.com/repos/shadps4-emu/shadPS4/releases` (core stable)

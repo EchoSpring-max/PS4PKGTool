@@ -64,7 +64,7 @@ All changes below are present in the Debug build; no release has been published 
 ### First-run setup + version management
 - Setup wizard: Install Recommended (latest stable core + optional QtLauncher) / Choose Core Version (real upstream metadata: channel, date, commit, asset) / Use Existing Installation
 - Step 2: managed builds folder (chosen once) + install directory (default `<root>\Data`, browsable, or cleared) + QtLauncher option
-- Managed versioned builds under `%LOCALAPPDATA%\PS4PKGTool\shadPS4\builds\` (`core-<commit>\`, `launcher-<commit>\`) with per-build `ps4pkgtool-manifest.json`
+- Managed versioned builds under `%LOCALAPPDATA%\PS4PKGTool\shadPS4\builds\` (`core-<commit>\`, `launcher-<commit>\`) with per-build `ps4pkgtool-manifest.json` (default root is now `<exe dir>\AppData\shadPS4`; `%LOCALAPPDATA%` was the legacy default — recorded roots keep working)
 - Rollback by switching active build — old builds never deleted
 - Version switching + rollback live in the shadPS4 Manager (Builds tab): Make Active / Open Folder / Choose Core Version / Install shadPS4
 - Manual Check for Updates (Core + QtLauncher independently; never auto-installs or auto-activates)

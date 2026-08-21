@@ -67,6 +67,7 @@ namespace PS4PKGTool.Utilities.Settings
         public string Shadps4ActiveLauncher { get; set; } = "";
         /// <summary>
         /// Root for PS4PKGTool-managed shadPS4 builds (default:
+        /// &lt;exe directory&gt;\AppData\shadPS4, historically
         /// %LOCALAPPDATA%\PS4PKGTool\shadPS4). Chosen once; every version
         /// installs under &lt;root&gt;\builds\. Empty = the default.
         /// </summary>

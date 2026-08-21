@@ -10,7 +10,8 @@ namespace PS4PKGTool.Utilities.Shadps4
     /// redone from scratch. Removes ONLY what PS4PKGTool manages:
     ///  - the managed builds store (builds\ and .work\ under the managed root;
     ///    a custom managed root itself is kept - it may hold other things; the
-    ///    default LocalAppData root is removed too when it ends up empty)
+    ///    default exe-adjacent AppData\shadPS4 root is removed too when it
+    ///    ends up empty)
     ///  - the tool's shadPS4 settings (active core/launcher, managed root,
     ///    install directory, the legacy executable anchor - cleared so the
     ///    one-time migration cannot resurrect them)

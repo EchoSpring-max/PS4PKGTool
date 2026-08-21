@@ -7607,16 +7607,11 @@ namespace PS4PKGTool
                         // streamed textures decode (PS4 builds stream everything).
                         if (detection?.Format == Assets.Handlers.UnitySerializedFileHandler.FormatId)
                         {
-                            string companionEntry = entryPath + ".resS";
-                            string companionFile = Path.Combine(tempDir, Path.GetFileName(companionEntry));
-                            if (!File.Exists(companionFile))
-                                ExtractSingleEntryForPreview(PKG.SelectedPKGFilename, companionEntry, tempDir);
-                            if (File.Exists(companionFile))
+                            ExtractUnityStreamCompanions(PKG.SelectedPKGFilename, entryPath, tempDir);
+                            if (Directory.EnumerateFiles(tempDir, "*.resS").Any())
                             {
                                 source = new Assets.IO.FileAssetSource(extracted, "PKG entry",
-                                    rel => File.Exists(Path.Combine(tempDir, Path.GetFileName(rel)))
-                                        ? new Assets.IO.FileAssetSource(Path.Combine(tempDir, Path.GetFileName(rel)), "Unity .resS stream")
-                                        : null);
+                                    rel => ResolveUnityStreamCompanion(tempDir, rel));
                             }
                         }
                         if (detection != null)
@@ -7969,6 +7964,36 @@ namespace PS4PKGTool
             using var reader = new OrbisPkgTool.PkgReader(pkgPath, DefaultOrbisPasscode);
             reader.ExtractFileTo(entryPath, destPath);
             return File.Exists(destPath) ? destPath : "";
+        }
+
+        /// <summary>Stages Unity stream data from the selected asset's folder.
+        /// Some PS4 builds leave StreamingInfo.path empty and use a shared .resS
+        /// file (for example resources.assets.resS) instead of asset.assets.resS.</summary>
+        private static void ExtractUnityStreamCompanions(string pkgPath, string entryPath, string tempDir)
+        {
+            string folder = (Path.GetDirectoryName(entryPath) ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+            using var reader = new OrbisPkgTool.PkgReader(pkgPath, DefaultOrbisPasscode);
+            foreach (var candidate in reader.ListFiles())
+            {
+                if (candidate.IsDirectory || !candidate.Path.EndsWith(".resS", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string candidateFolder = (Path.GetDirectoryName(candidate.Path) ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+                if (!string.Equals(folder, candidateFolder, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try { reader.ExtractFileTo(candidate.Path, Path.Combine(tempDir, Path.GetFileName(candidate.Path))); }
+                catch { /* missing/corrupt optional stream is handled by the preview fallback */ }
+            }
+        }
+
+        private static Assets.Abstractions.IAssetSource ResolveUnityStreamCompanion(string tempDir, string relativePath)
+        {
+            string requested = Path.Combine(tempDir, Path.GetFileName(relativePath));
+            if (File.Exists(requested))
+                return new Assets.IO.FileAssetSource(requested, "Unity .resS stream");
+            string[] candidates = Directory.GetFiles(tempDir, "*.resS");
+            return candidates.Length == 1
+                ? new Assets.IO.FileAssetSource(candidates[0], "Unity .resS stream")
+                : null;
         }
 
         private void PopulateListView(bool showRootNodes = false)

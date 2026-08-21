@@ -909,21 +909,11 @@ namespace PS4PKGTool
                 using (var reader = new OrbisPkgTool.PkgReader(_currentPackagePath, _fileListingPasscode))
                 {
                     reader.ExtractFileTo(file.FullPath, extracted);
-                    // Unity Texture2D data commonly lives in a sibling .resS.
-                    // A missing companion is fine; the asset pipeline falls
-                    // back to metadata/text rather than failing the preview.
-                    try
-                    {
-                        string companion = file.FullPath + ".resS";
-                        reader.ExtractFileTo(companion, Path.Combine(previewDir, Path.GetFileName(companion)));
-                    }
-                    catch { }
+                    ExtractUnityStreamCompanions(reader, file.FullPath, previewDir);
                 }
 
                 var source = new Assets.IO.FileAssetSource(extracted, "PKG entry",
-                    rel => File.Exists(Path.Combine(previewDir, Path.GetFileName(rel)))
-                        ? new Assets.IO.FileAssetSource(Path.Combine(previewDir, Path.GetFileName(rel)), "Unity .resS stream")
-                        : null);
+                    rel => ResolveUnityStreamCompanion(previewDir, rel));
                 var detection = AssetService.Detect(source);
                 if (detection == null)
                     return new PreviewResult(file.Name + " (" + Helper.RoundBytes(file.Size) + ") - hex preview", BuildHexDump(extracted, 1 << 20), null);
@@ -1071,6 +1061,32 @@ namespace PS4PKGTool
                 try { Directory.Delete(_filePreviewContainerTempDir, true); } catch { }
                 _filePreviewContainerTempDir = null;
             }
+        }
+
+        private static void ExtractUnityStreamCompanions(OrbisPkgTool.PkgReader reader, string entryPath, string previewDir)
+        {
+            string folder = (Path.GetDirectoryName(entryPath) ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+            foreach (var candidate in reader.ListFiles())
+            {
+                if (candidate.IsDirectory || !candidate.Path.EndsWith(".resS", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string candidateFolder = (Path.GetDirectoryName(candidate.Path) ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+                if (!string.Equals(folder, candidateFolder, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try { reader.ExtractFileTo(candidate.Path, Path.Combine(previewDir, Path.GetFileName(candidate.Path))); }
+                catch { }
+            }
+        }
+
+        private static Assets.Abstractions.IAssetSource ResolveUnityStreamCompanion(string previewDir, string relativePath)
+        {
+            string requested = Path.Combine(previewDir, Path.GetFileName(relativePath));
+            if (File.Exists(requested))
+                return new Assets.IO.FileAssetSource(requested, "Unity .resS stream");
+            string[] candidates = Directory.GetFiles(previewDir, "*.resS");
+            return candidates.Length == 1
+                ? new Assets.IO.FileAssetSource(candidates[0], "Unity .resS stream")
+                : null;
         }
 
         private static string BuildPreviewInfo(string name, Assets.Models.AssetDescriptor descriptor)

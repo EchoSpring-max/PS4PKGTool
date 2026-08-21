@@ -5808,6 +5808,7 @@ namespace PS4PKGTool
             this.Invoke((Action)(() => { listView1?.Invalidate(); listView1?.Refresh(); })); // repaint DLV grey
             _extractionCts = new CancellationTokenSource();
             CancellationToken ct = _extractionCts.Token;
+            int successCount = 0, failCount = 0;
             bgw.DoWork += (_, args) =>
             {
                 this.Invoke((Action)(() =>
@@ -5890,15 +5891,17 @@ namespace PS4PKGTool
                     });
 
                     // In-process extraction: no spawn, no temp dir, no move.
-                    // PkgReader.ExtractFile decrypts the entry straight into
-                    // out_path (directories) or the parent of out_path (files).
+                    // Directories keep their structure via ExtractFile; single
+                    // files use ExtractFileTo to land exactly at out_path (no
+                    // Image0\ prefix, parent dir created).
                     try
                     {
                         ct.ThrowIfCancellationRequested();
                         if (isDirectory)
                             reader.ExtractFile(targ_path.TrimEnd('/'), out_path);
                         else
-                            reader.ExtractFile(targ_path, Path.GetDirectoryName(out_path) ?? extractLocation);
+                            reader.ExtractFileTo(targ_path, out_path);
+                        successCount++;
                         Logger.LogInformation($"File extracted to \"{out_path}\"");
                     }
                     catch (OperationCanceledException)
@@ -5908,6 +5911,7 @@ namespace PS4PKGTool
                     }
                     catch (Exception ex)
                     {
+                        failCount++;
                         Logger.LogError($"Extraction failed for \"{targ_path}\": {ex.Message}");
                         this.Invoke(() => ShowError($"Extraction failed:\n{ex.Message}", true));
                     }
@@ -5935,8 +5939,13 @@ namespace PS4PKGTool
                 }
                 else
                 {
-                    Logger.LogInformation($"Extraction complete: {nodeList.Count} item(s)");
-                    ShowInformation($"Extraction complete: {nodeList.Count} item(s) extracted.", false);
+                    // Report actual successes, not just how many were queued -
+                    // per-entry failures already surfaced their own dialog.
+                    string summary = failCount == 0
+                        ? $"Extraction complete: {successCount} item(s) extracted."
+                        : $"Extraction finished: {successCount} extracted, {failCount} failed.";
+                    Logger.LogInformation($"Extraction complete: {successCount} succeeded, {failCount} failed (of {nodeList.Count})");
+                    ShowInformation(summary, false);
                 }
             };
             _extractionStopRequested = false; // new extraction starts clean
@@ -5966,7 +5975,13 @@ namespace PS4PKGTool
                     Directory.CreateDirectory(Path.GetDirectoryName(out_path) ?? extractLocation);
 
                 string arcPath = isDirectory ? targ_path.TrimEnd('/') : targ_path;
-                try { reader.ExtractFile(arcPath, isDirectory ? out_path : (Path.GetDirectoryName(out_path) ?? extractLocation)); }
+                try
+                {
+                    if (isDirectory)
+                        reader.ExtractFile(arcPath, out_path);
+                    else
+                        reader.ExtractFileTo(arcPath, out_path); // exact dest, no Image0\ prefix
+                }
                 catch (Exception ex) { Logger.LogWarning($"Drag-drop extract failed for {targ_path}: {ex.Message}"); }
             }
         }
@@ -7940,9 +7955,12 @@ namespace PS4PKGTool
         {
             // In-process extraction: the PKG is opened read-only and the entry
             // is decrypted straight into tempDir. No spawn, no staging.
+            // ExtractFileTo gives an EXACT destination (no Image0\ prefix), so
+            // the preview lands flat and a Unity .resS companion sits next to it.
+            string destPath = Path.Combine(tempDir, Path.GetFileName(entryPath));
             using var reader = new OrbisPkgTool.PkgReader(pkgPath, DefaultOrbisPasscode);
-            reader.ExtractFile(entryPath, tempDir);
-            return Directory.EnumerateFiles(tempDir, "*", SearchOption.AllDirectories).FirstOrDefault() ?? "";
+            reader.ExtractFileTo(entryPath, destPath);
+            return File.Exists(destPath) ? destPath : "";
         }
 
         private void PopulateListView(bool showRootNodes = false)

@@ -862,7 +862,9 @@ namespace PS4PKGTool
                 if (isDirectory)
                     reader.ExtractFile(targetPath.TrimEnd('/'), outPath);
                 else
-                    reader.ExtractFile(targetPath, Path.GetDirectoryName(outPath) ?? extractLocation);
+                    // Single file: land exactly at outPath (ExtractFileTo adds no
+                    // Image0\ prefix and creates the parent dir).
+                    reader.ExtractFileTo(targetPath, outPath);
 
                 if (_extractionStopRequested)
                     return (false, "Cancelled");

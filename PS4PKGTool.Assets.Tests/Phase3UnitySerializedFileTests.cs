@@ -85,6 +85,31 @@ public class Phase3UnitySerializedFileTests
         return obj.ToArray();
     }
 
+    /// <summary>Unity 5.x Texture2D: no fallback fields and one wrap-mode field.</summary>
+    internal static byte[] BuildLegacyInlineTextureObject()
+    {
+        var obj = new MemoryStream();
+        WriteAlignedString(obj, "LegacyTex");
+        WriteI32(obj, 8);              // m_Width
+        WriteI32(obj, 8);              // m_Height
+        WriteU32(obj, 32);             // m_CompleteImageSize
+        WriteI32(obj, 10);             // m_TextureFormat = DXT1
+        WriteI32(obj, 1);              // m_MipCount
+        obj.WriteByte(1);              // m_IsReadable
+        PadTo4(obj);
+        WriteI32(obj, 1);              // m_ImageCount
+        WriteI32(obj, 2);              // m_TextureDimension
+        WriteI32(obj, 0);              // GLTextureSettings.m_FilterMode
+        WriteI32(obj, 0);              // GLTextureSettings.m_Aniso
+        WriteI32(obj, 0);              // GLTextureSettings.m_MipBias
+        WriteI32(obj, 0);              // GLTextureSettings.m_WrapMode
+        WriteI32(obj, 0);              // m_LightmapFormat
+        WriteI32(obj, 0);              // m_ColorSpace
+        WriteI32(obj, 32);             // image data size
+        obj.Write(Dxt1Payload8x8());
+        return obj.ToArray();
+    }
+
     /// <summary>TextAsset object (m_Name only - no texture, exercises the listing fallback).</summary>
     internal static byte[] BuildTextAssetObject()
     {
@@ -257,6 +282,20 @@ public class Phase3UnitySerializedFileTests
         Assert.AreEqual(8, preview.Texture.Height);
         Assert.AreEqual(8 * 8 * 4, preview.Texture.Rgba8.Length);
         StringAssert.Contains(preview.Info ?? "", "DXT1");
+    }
+
+    [TestMethod]
+    public async Task PreviewUnity5TextureChild_UsesLegacySingleWrapModeLayout()
+    {
+        var source = new MemoryAssetSource(
+            BuildSyntheticSerializedFile(28, BuildLegacyInlineTextureObject(), version: 15), "legacy.assets");
+        var detection = _service.Detect(source)!;
+        var child = (await _service.GetChildrenAsync(source, detection, 0))[0];
+
+        var preview = await _service.TryPreviewAsync(child, detection);
+        Assert.IsNotNull(preview?.Texture);
+        Assert.AreEqual(8, preview!.Texture!.Width);
+        Assert.AreEqual(8, preview.Texture.Height);
     }
 
     [TestMethod]

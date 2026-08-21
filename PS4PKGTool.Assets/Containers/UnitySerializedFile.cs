@@ -199,7 +199,12 @@ public sealed class UnitySerializedFile
     ///   m_ColorSpace, image-data size, [StreamingInfo], then inline image bytes
     ///   OR an external .resS stream reference.
     /// </summary>
-    public static Texture2DInfo? ReadTexture2D(IAssetSource source, ObjectInfo obj, bool bigEndian, bool hasFallbackFields = true)
+    public static Texture2DInfo? ReadTexture2D(
+        IAssetSource source,
+        ObjectInfo obj,
+        bool bigEndian,
+        bool hasFallbackFields = true,
+        bool hasSeparateWrapModes = true)
     {
         if (obj.ClassId != 28) return null; // Texture2D
 
@@ -226,9 +231,14 @@ public sealed class UnitySerializedFile
         _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_FilterMode
         _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_Aniso
         _ = ReadSingle(data, ref pos, bigEndian); // GLTextureSettings.m_MipBias
-        _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_WrapU (= m_WrapMode)
-        _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_WrapV
-        _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_WrapW
+        _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_WrapMode / m_WrapU
+        // Unity 5.x stored one wrap mode. m_WrapV and m_WrapW were added
+        // with the newer Texture2D layout, alongside the fallback fields.
+        if (hasSeparateWrapModes)
+        {
+            _ = ReadI32(data, ref pos, bigEndian); // GLTextureSettings.m_WrapV
+            _ = ReadI32(data, ref pos, bigEndian); // GLTextureSettings.m_WrapW
+        }
         _ = ReadI32(data, ref pos, bigEndian);    // m_LightmapFormat
         _ = ReadI32(data, ref pos, bigEndian);    // m_ColorSpace
 

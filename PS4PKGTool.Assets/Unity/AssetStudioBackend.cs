@@ -43,7 +43,8 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
     {
         try
         {
-            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian, HasTextureFallbackFields(sf.UnityVersion));
+            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian,
+                HasTextureFallbackFields(sf.UnityVersion), HasSeparateWrapModes(sf.UnityVersion));
             return string.IsNullOrEmpty(info.Name) ? null : info.Name;
         }
         catch { return null; }
@@ -56,7 +57,8 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
         var match = sf.Objects.FirstOrDefault(o => o.PathId == obj.PathId);
         if (match == null) return null;
 
-        var info = UnitySerializedFile.ReadTexture2D(source, match, sf.BigEndian, HasTextureFallbackFields(sf.UnityVersion));
+        var info = UnitySerializedFile.ReadTexture2D(source, match, sf.BigEndian,
+            HasTextureFallbackFields(sf.UnityVersion), HasSeparateWrapModes(sf.UnityVersion));
         return new UnityTextureInfo
         {
             Name = info.Name,
@@ -175,6 +177,12 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
     // m_ForcedFallbackFormat and m_DownscaleFallback arrived in Unity 2017.3.
     // Unity 5.x Texture2D objects begin directly with m_Width.
     private static bool HasTextureFallbackFields(string unityVersion)
+    {
+        int dot = unityVersion.IndexOf('.');
+        return dot > 0 && int.TryParse(unityVersion[..dot], out int major) && major >= 2017;
+    }
+
+    private static bool HasSeparateWrapModes(string unityVersion)
     {
         int dot = unityVersion.IndexOf('.');
         return dot > 0 && int.TryParse(unityVersion[..dot], out int major) && major >= 2017;

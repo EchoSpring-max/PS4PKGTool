@@ -43,7 +43,7 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
     {
         try
         {
-            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian);
+            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian, HasTextureFallbackFields(sf.UnityVersion));
             return string.IsNullOrEmpty(info.Name) ? null : info.Name;
         }
         catch { return null; }
@@ -56,7 +56,7 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
         var match = sf.Objects.FirstOrDefault(o => o.PathId == obj.PathId);
         if (match == null) return null;
 
-        var info = UnitySerializedFile.ReadTexture2D(source, match, sf.BigEndian);
+        var info = UnitySerializedFile.ReadTexture2D(source, match, sf.BigEndian, HasTextureFallbackFields(sf.UnityVersion));
         return new UnityTextureInfo
         {
             Name = info.Name,
@@ -170,5 +170,13 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
             dst[j + 3] = (byte)((c & 0xF) * 17);
         }
         return dst;
+    }
+
+    // m_ForcedFallbackFormat and m_DownscaleFallback arrived in Unity 2017.3.
+    // Unity 5.x Texture2D objects begin directly with m_Width.
+    private static bool HasTextureFallbackFields(string unityVersion)
+    {
+        int dot = unityVersion.IndexOf('.');
+        return dot > 0 && int.TryParse(unityVersion[..dot], out int major) && major >= 2017;
     }
 }

@@ -93,25 +93,31 @@ public class Phase3UnitySerializedFileTests
         return obj.ToArray();
     }
 
-    internal static byte[] BuildSyntheticSerializedFile(int classId, byte[] objectData)
+    internal static byte[] BuildSyntheticSerializedFile(int classId, byte[] objectData, int version = 17)
     {
 
         // Metadata (little-endian): unity version, platform, stripped types, types, objects.
         var meta = new MemoryStream();
-        WriteNullString(meta, "2017.3.1p2");
+        WriteNullString(meta, version < 16 ? "5.3.8f1" : "2017.3.1p2");
         WriteU32(meta, 31);            // target platform = PS4
         meta.WriteByte(0);             // enableTypeTree = false
         WriteI32(meta, 1);             // type count
         WriteI32(meta, classId);
-        meta.WriteByte(0);             // isStrippedType
-        WriteI16(meta, 0);             // scriptTypeIndex
+        if (version >= 16) meta.WriteByte(0); // isStrippedType
+        if (version >= 17) WriteI16(meta, 0); // scriptTypeIndex
         meta.Write(new byte[16]);      // oldTypeHash
         WriteI32(meta, 1);             // object count
         PadTo4(meta);                  // v14+: pathId is 4-aligned
         WriteI64(meta, 1);             // pathId
         WriteU32(meta, 0);             // byteStart (relative to dataOffset)
         WriteU32(meta, (uint)objectData.Length);
-        WriteI32(meta, 0);             // typeId -> classId
+        WriteI32(meta, version < 16 ? classId : 0); // v16+: typeId -> classId
+        if (version < 16)
+        {
+            WriteI16(meta, (short)classId); // direct classId
+            WriteI16(meta, -1);             // scriptTypeIndex
+            if (version == 15) meta.WriteByte(0); // stripped
+        }
         byte[] metadata = meta.ToArray();
 
         // Header: the first four fields are ALWAYS big-endian.
@@ -119,7 +125,7 @@ public class Phase3UnitySerializedFileTests
         var file = new MemoryStream();
         WriteU32Be(file, (uint)metadata.Length);
         WriteU32Be(file, dataOffset + (uint)objectData.Length);
-        WriteU32Be(file, 17);
+        WriteU32Be(file, (uint)version);
         WriteU32Be(file, dataOffset);
         file.WriteByte(0);             // endianness: 0 = little-endian
         file.Write(new byte[3]);       // reserved
@@ -148,6 +154,17 @@ public class Phase3UnitySerializedFileTests
         var children = await _service.GetChildrenAsync(source, detection, 0);
         Assert.AreEqual(1, children.Count);
         Assert.IsInstanceOfType<UnityObjectAssetSource>(children[0]);
+        Assert.AreEqual(28, ((UnityObjectAssetSource)children[0]).Object.ClassId);
+    }
+
+    [TestMethod]
+    public async Task Browse_V15File_UsesDirectObjectClassId()
+    {
+        var source = new MemoryAssetSource(BuildSyntheticSerializedFile(28, BuildTextAssetObject(), version: 15), "v15.assets");
+        var detection = _service.Detect(source)!;
+
+        var children = await _service.GetChildrenAsync(source, detection, 0);
+        Assert.AreEqual(1, children.Count);
         Assert.AreEqual(28, ((UnityObjectAssetSource)children[0]).Object.ClassId);
     }
 

@@ -187,15 +187,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
 
         private static string FormatSystemVersion(string value)
         {
-            if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
-
-            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int encoded))
-                return value;
-
-            return encoded == 0
-                ? value
-                : $"{(encoded >> 8) & 0xFF}.{encoded & 0xFF:D2}";
+            return PkgSystemVersion.Format(value);
         }
 
         internal static Bitmap CreateDetachedBitmap(byte[] bytes)

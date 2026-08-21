@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using PS4PKGTool.Util.Constants;
+using PS4PKGTool.Utilities.PkgMeta;
 using PS4PKGTool.Utilities.Settings;
 using System;
 using System.Collections.Generic;
@@ -162,7 +163,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 row[PkgColumns.TitleId] = entry.TitleId ?? "";
                 row[PkgColumns.ContentId] = entry.ContentId ?? "";
                 row[PkgColumns.Region] = regionIcon;
-                row[PkgColumns.SystemVersion] = FormatSystemVersion(entry.SystemVersion);
+                row[PkgColumns.SystemVersion] = PkgSystemVersion.Format(entry.SystemVersion);
                 row[PkgColumns.AppVersion] = entry.Version ?? "";
                 row[PkgColumns.PkgType] = entry.PkgType ?? "";
                 row[PkgColumns.Category] = entry.Category ?? "";

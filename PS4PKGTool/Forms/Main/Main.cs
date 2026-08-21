@@ -2146,12 +2146,7 @@ namespace PS4PKGTool
                         foreach (var t in ps4Pkg.SfoTables)
                         {
                             if (t.Name == "SYSTEM_VER")
-                            {
-                                int value = Convert.ToInt32(t.Value);
-                                if (value != 0)
-                                    pkgMinFirmware = $"{(value >> 8) & 0xFF}.{value & 0xFF:D2}";
-                                else pkgMinFirmware = t.Value;
-                            }
+                                pkgMinFirmware = PkgSystemVersion.Format(t.Value);
                             if (t.Name == "VERSION") pkgVersion = verRegex2.Replace(t.Value, "");
                         }
                         pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
@@ -2373,7 +2368,7 @@ namespace PS4PKGTool
 
                 List<string> PkgFileList = new List<string>();
                 var PkgDirectoryList = appSettings_.PkgDirectories;
-                foreach (var directory in PkgDirectoryList)
+                foreach (var directory in PkgDirectoryList.Where(Directory.Exists))
                 {
                     var searchOption = appSettings_.ScanRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
 
@@ -2402,9 +2397,9 @@ namespace PS4PKGTool
                             }
                         }
                     }
-                    catch (UnauthorizedAccessException e)
+                    catch (Exception e) when (e is UnauthorizedAccessException || e is IOException)
                     {
-                        Logger.LogError(e.Message);
+                        Logger.LogWarning($"Could not scan saved directory '{directory}': {e.Message}");
                     }
                 }
 
@@ -2497,12 +2492,7 @@ namespace PS4PKGTool
                     foreach (var t in ps4Pkg.SfoTables)
                     {
                         if (t.Name == "SYSTEM_VER")
-                        {
-                            int value = Convert.ToInt32(t.Value);
-                            if (value != 0)
-                                pkgSystemVersion = $"{(value >> 8) & 0xFF}.{value & 0xFF:D2}";
-                            else pkgSystemVersion = t.Value;
-                        }
+                            pkgSystemVersion = PkgSystemVersion.Format(t.Value);
                         if (t.Name == "VERSION")
                             pkgVersion = verRegex.Replace(t.Value, "");
                     }

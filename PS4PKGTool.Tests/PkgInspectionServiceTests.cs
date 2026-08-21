@@ -75,6 +75,26 @@ public sealed class PkgInspectionServiceTests
     }
 
     [TestMethod]
+    public void Inspect_FormatsExtendedSystemVersionEncoding()
+    {
+        string path = CreatePackageFile(1);
+        try
+        {
+            using PkgInspectionSnapshot snapshot = new PkgInspectionService(new StubReader(
+                new RawPkgInspectionData
+                {
+                    SfoEntries = new[] { new PkgSfoEntry("SYSTEM_VER", "173015040") } // 0x0A500000
+                })).Inspect(path);
+
+            Assert.AreEqual("10.50", snapshot.RequiredFirmware);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestMethod]
     public void Inspect_ImagesAreDetachedAndPackageFileIsReleased()
     {
         string path = CreatePackageFile(32);

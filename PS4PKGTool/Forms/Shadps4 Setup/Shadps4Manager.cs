@@ -664,7 +664,12 @@ namespace PS4PKGTool
                             var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(ms.ToArray());
                             title = SfoString(sfo, "TITLE");
                             titleId = SfoString(sfo, "TITLE_ID");
-                            version = SfoString(sfo, "VERSION");
+                            // APP_VER is the installed application version.
+                            // VERSION is package metadata and can remain at the
+                            // base-game value after a patch merge.
+                            version = SfoString(sfo, "APP_VER");
+                            if (string.IsNullOrWhiteSpace(version))
+                                version = SfoString(sfo, "VERSION");
                         }
                         catch { /* not a readable SFO - fall back to the folder name */ }
                     }

@@ -102,8 +102,13 @@ public sealed class UnitySerializedFile
         {
             long classId = ReadI32(data, ref pos, bigEndian);
             orderedClassIds.Add(classId);
+            // AssetStudio SerializedFile.ReadMetadata:
+            //   v16+: isStrippedType(u8) then scriptTypeIndex(i16)
+            //   v13..v15 (Unity 5.x): scriptTypeIndex(i16) only — NO isStrippedType byte.
+            // Reading the v16 byte on a v15 file over-reads 1 byte per type and
+            // corrupts every later field (classIds, objectCount) — e.g. Unity 5.3.8f1.
             if (version >= 16) pos += 1;      // isStrippedType
-            if (version >= 17) pos += 2;      // scriptTypeIndex
+            if (version >= 13) pos += 2;      // scriptTypeIndex
             if (version >= 13)
             {
                 if (classId == 114) pos += 16; // scriptID (MonoBehaviour)
@@ -120,7 +125,20 @@ public sealed class UnitySerializedFile
         if (version >= 7 && version < 14) pos += 4;
 
         int objectCount = ReadI32(data, ref pos, bigEndian);
-        if (objectCount < 0 || objectCount > 10_000_000) throw new CorruptAssetException($"Invalid object count {objectCount}.");
+
+        if (!IsPlausibleObjectCount(objectCount))
+        {
+            // The forward type-entry walk went off the rails (version-specific
+            // layout the sequential reader doesn't model — e.g. Unity 5.x v15
+            // builds whose type entries don't match the v17-tuned skip). Recover
+            // by locating the object table directly: it is self-validating
+            // (every object must reference data inside the file) and sits before
+            // dataOffset. This leaves the known-good fast path untouched.
+            var recovered = LocateObjectTable(data, (int)dataOffset, bigEndian);
+            if (recovered == null)
+                throw new CorruptAssetException($"Invalid object count {objectCount}.");
+            (objectCount, pos) = recovered.Value;
+        }
 
         var objects = new List<ObjectInfo>(objectCount);
         for (int i = 0; i < objectCount; i++)
@@ -394,6 +412,60 @@ public sealed class UnitySerializedFile
         return b;
     }
 
+
     private static void Align4(ref int p) => p = (p + 3) & ~3;
     private static void Align8(ref int p) => p = (p + 7) & ~7;
+
+    private static bool IsPlausibleObjectCount(int count) => count >= 0 && count <= 10_000_000;
+
+    /// <summary>
+    /// Recovery path for serialized files whose object table is not where the
+    /// sequential metadata walk lands (some Unity 5.x / v15 type-entry layouts).
+    /// The object table is self-validating: each entry is
+    /// [align4][pathId i64][byteStart u32][byteSize u32][typeId i32] and every
+    /// object must reference data inside [dataOffset, fileLength]. Coincidental
+    /// int32s in the type data form tiny runs (1-3), so the candidate with the
+    /// most fully-valid objects is the real table. Returns (count, readPos).
+    /// </summary>
+    private static (int Count, int Pos)? LocateObjectTable(byte[] d, int dataOffset, bool be)
+    {
+        if (dataOffset <= 0 || dataOffset > d.Length) return null;
+        int limit = Math.Min(dataOffset, d.Length);
+        int bestOff = -1, bestCount = 0, bestEnd = 0;
+        for (int cand = 0; cand + 4 <= limit; cand++)
+        {
+            int count = ReadI32(d, cand, be);
+            if (count < 1 || count > 10_000_000) continue;
+            if (ValidateObjectTable(d, cand + 4, count, dataOffset, out int endPos))
+            {
+                if (count > bestCount) { bestCount = count; bestOff = cand; bestEnd = endPos; }
+            }
+        }
+        return bestOff < 0 ? null : (bestCount, bestOff + 4);
+    }
+
+    /// <summary>Validates that <paramref name="count"/> object entries can be read
+    /// starting at <paramref name="pos"/> and all reference in-file data.</summary>
+    private static bool ValidateObjectTable(byte[] d, int pos, int count, int dataOffset, out int endPos)
+    {
+        int limit = Math.Min(dataOffset, d.Length);
+        for (int i = 0; i < count; i++)
+        {
+            pos = (pos + 3) & ~3;
+            if (pos + 20 > limit) { endPos = pos; return false; }
+            // pathId (8) is not constrained; byteStart/byteSize must stay in-file.
+            uint byteStart = BitConverter.ToUInt32(d, pos + 8);
+            uint byteSize = BitConverter.ToUInt32(d, pos + 12);
+            if (byteStart > d.Length || byteSize > d.Length) { endPos = pos; return false; }
+            if ((long)dataOffset + byteStart + byteSize > d.Length) { endPos = pos; return false; }
+            pos += 20;
+        }
+        endPos = pos;
+        return true;
+    }
+
+    /// <summary>Reads a little/big-endian int32 at an absolute offset (no cursor).</summary>
+    private static int ReadI32(byte[] d, int p, bool be)
+        => be ? (d[p] << 24) | (d[p + 1] << 16) | (d[p + 2] << 8) | d[p + 3]
+              : BitConverter.ToInt32(d, p);
 }

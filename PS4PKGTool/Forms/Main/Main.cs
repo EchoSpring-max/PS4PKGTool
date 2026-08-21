@@ -4561,40 +4561,53 @@ namespace PS4PKGTool
             if (!(sender is ToolStripMenuItem clickedMenuItem))
                 return;
 
-            Logger.LogInformation("Checking RPI requirement..");
-            var CheckRequirement = PKGSENDER.CheckRequirement();
-            if (CheckRequirement != "OK")
+            try
             {
-                ShowError(CheckRequirement, true);
+                Logger.LogInformation("Checking RPI requirement..");
+                var CheckRequirement = PKGSENDER.CheckRequirement();
+                if (CheckRequirement != "OK")
+                {
+                    ShowError(CheckRequirement, true);
+                    EnableControls_PkgSender();
+                    EnableTabPages(mainTabControl);
+                    EnableControls(darkMenuStrip1);
+                    return;
+                }
+
+                if (clickedMenuItem == RpiCheckPkgInstalledtoolStripMenuItem1 || clickedMenuItem == RpiCheckPkgInstalledtoolStripMenuItem2)
+                {
+                    await CheckIfAppInstalledOnPS4();
+                }
+                if (clickedMenuItem == RpiSendPkgtoolStripMenuItem1 || clickedMenuItem == RpiSendPkgtoolStripMenuItem2)
+                {
+                    InitializePKGSender();
+                }
+                if (clickedMenuItem == RpiUninstallBasePKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallBasePKGToolStripMenuItem2)
+                {
+                    UninstallBasePkgFromPs4();
+                }
+                if (clickedMenuItem == RpiUninstallPatchPKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallPatchPKGToolStripMenuItem2)
+                {
+                    UninstallPatchPkgFromPs4();
+                }
+                if (clickedMenuItem == RpiUninstallDlcPKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallDlcPKGToolStripMenuItem2)
+                {
+                    UninstallDlcPkgFromPs4();
+                }
+                if (clickedMenuItem == RpiUninstallThemePKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallThemePKGToolStripMenuItem2)
+                {
+                    UninstallThemePkgFromPs4();
+                }
+            }
+            catch (Exception ex)
+            {
+                // RPI commands run through BackgroundWorkers/async calls whose
+                // failures surface here - never let one crash the whole app.
+                Logger.LogError("Remote Package Installer command failed", ex);
+                ShowError("An error occurred: " + ex.Message, true);
                 EnableControls_PkgSender();
                 EnableTabPages(mainTabControl);
                 EnableControls(darkMenuStrip1);
-                return;
-            }
-
-            if (clickedMenuItem == RpiCheckPkgInstalledtoolStripMenuItem1 || clickedMenuItem == RpiCheckPkgInstalledtoolStripMenuItem2)
-            {
-                await CheckIfAppInstalledOnPS4();
-            }
-            if (clickedMenuItem == RpiSendPkgtoolStripMenuItem1 || clickedMenuItem == RpiSendPkgtoolStripMenuItem2)
-            {
-                InitializePKGSender();
-            }
-            if (clickedMenuItem == RpiUninstallBasePKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallBasePKGToolStripMenuItem2)
-            {
-                UninstallBasePkgFromPs4();
-            }
-            if (clickedMenuItem == RpiUninstallPatchPKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallPatchPKGToolStripMenuItem2)
-            {
-                UninstallPatchPkgFromPs4();
-            }
-            if (clickedMenuItem == RpiUninstallDlcPKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallDlcPKGToolStripMenuItem2)
-            {
-                UninstallDlcPkgFromPs4();
-            }
-            if (clickedMenuItem == RpiUninstallThemePKGToolStripMenuItem1 || clickedMenuItem == RpiUninstallThemePKGToolStripMenuItem2)
-            {
-                UninstallThemePkgFromPs4();
             }
         }
 

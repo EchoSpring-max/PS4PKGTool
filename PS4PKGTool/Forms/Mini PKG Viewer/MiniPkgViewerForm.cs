@@ -187,7 +187,25 @@ namespace PS4PKGTool
                 return;
 
             _loadStarted = true;
-            await LoadPackageAsync();
+            try
+            {
+                await LoadPackageAsync();
+            }
+            catch (Exception ex)
+            {
+                // LoadPackageAsync handles its own failures; this is the last
+                // resort so a broken package can never crash the app.
+                Logger.LogError("Mini viewer initial load failed", ex);
+                if (!IsDisposed && !Disposing)
+                {
+                    AppMessageBox.Show(
+                        "Mini PKG Viewer",
+                        "The package could not be opened.\n\n" + ex.Message,
+                        AppMessageType.Error,
+                        AppMessageButtons.OK);
+                    Close();
+                }
+            }
         }
 
         private async Task LoadPackageAsync()
@@ -302,7 +320,17 @@ namespace PS4PKGTool
             if (packageTabs.SelectedTab != tabPackageEntries || _resourcesReleased)
                 return;
 
-            await LoadEntriesAsync();
+            try
+            {
+                await LoadEntriesAsync();
+            }
+            catch (Exception ex)
+            {
+                // LoadEntriesAsync handles cancellation; anything else must
+                // never take the app down with the viewer.
+                Logger.LogError("Mini viewer entries load failed", ex);
+                labelDisplayTotalPKG.Text = "Ready (Entries unavailable)";
+            }
         }
 
         private async Task LoadEntriesAsync()
@@ -339,10 +367,20 @@ namespace PS4PKGTool
             if (_resourcesReleased)
                 return;
 
-            if (tabsViewer.SelectedTab == tabTrophy)
-                await LoadTrophiesAsync();
-            else if (tabsViewer.SelectedTab == tabFiles)
-                await LoadFilesAsync();
+            try
+            {
+                if (tabsViewer.SelectedTab == tabTrophy)
+                    await LoadTrophiesAsync();
+                else if (tabsViewer.SelectedTab == tabFiles)
+                    await LoadFilesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Tab loads handle cancellation; anything else must never
+                // take the app down with the viewer.
+                Logger.LogError("Mini viewer tab load failed", ex);
+                labelDisplayTotalPKG.Text = "Ready";
+            }
         }
 
         /// <summary>

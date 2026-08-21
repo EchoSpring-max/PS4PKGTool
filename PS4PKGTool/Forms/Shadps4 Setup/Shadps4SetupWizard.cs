@@ -219,25 +219,37 @@ namespace PS4PKGTool
                 return;
             }
 
-            // Managed root is chosen once - persist it.
-            _settings.Shadps4ManagedRoot = root;
-            // The install directory choice from this step (may be empty to
-            // leave it unset - the post-install default is then skipped).
-            _installDirApplied = true;
-            string installDir = tbInstallDir.Text.Trim();
-            _settings.Shadps4InstallDirectory = installDir;
-            Logger.LogInformation($"Shadps4Wizard: install dir chosen = '{installDir}'");
-            if (!string.IsNullOrWhiteSpace(installDir))
+            try
             {
-                try { Directory.CreateDirectory(installDir); }
-                catch (Exception ex) { Logger.LogWarning("Wizard: install dir could not be created: " + ex.Message); }
-            }
-            SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
-            _store = new Shadps4ManagedBuilds(root);
+                // Managed root is chosen once - persist it.
+                _settings.Shadps4ManagedRoot = root;
+                // The install directory choice from this step (may be empty to
+                // leave it unset - the post-install default is then skipped).
+                _installDirApplied = true;
+                string installDir = tbInstallDir.Text.Trim();
+                _settings.Shadps4InstallDirectory = installDir;
+                Logger.LogInformation($"Shadps4Wizard: install dir chosen = '{installDir}'");
+                if (!string.IsNullOrWhiteSpace(installDir))
+                {
+                    try { Directory.CreateDirectory(installDir); }
+                    catch (Exception ex) { Logger.LogWarning("Wizard: install dir could not be created: " + ex.Message); }
+                }
+                SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
+                _store = new Shadps4ManagedBuilds(root);
 
-            btnNext2.Enabled = false;
-            ShowStep(3);
-            await RunInstallAsync();
+                btnNext2.Enabled = false;
+                ShowStep(3);
+                await RunInstallAsync();
+            }
+            catch (Exception ex)
+            {
+                // RunInstallAsync handles its own failures; this guards the
+                // settings/save path so a bad disk state can never crash the app.
+                Logger.LogError("shadPS4 wizard could not start the install", ex);
+                MessageBoxHelper.ShowWarning("The setup could not continue: " + ex.Message, false);
+                btnNext2.Enabled = true;
+                ShowStep(2);
+            }
         }
 
         // ── step 3: install ──

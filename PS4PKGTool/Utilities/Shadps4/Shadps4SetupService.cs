@@ -193,8 +193,9 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         private static void CleanupWork(string workDir, string staging)
         {
-            try { if (Directory.Exists(workDir)) Directory.Delete(workDir, true); } catch { }
-            try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { }
+            // Safety-net cleanup: a leftover dir never blocks the next install.
+            try { if (Directory.Exists(workDir)) Directory.Delete(workDir, true); } catch { /* best-effort */ }
+            try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch { /* best-effort */ }
         }
 
         private static string HelperBytes(long bytes)

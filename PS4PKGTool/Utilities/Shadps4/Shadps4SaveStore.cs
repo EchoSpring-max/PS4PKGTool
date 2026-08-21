@@ -277,7 +277,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 // Check 2 - immediately before the destructive rename.
                 if (IsCoreRunning())
                 {
-                    try { _fs.DeleteDirectory(staging); } catch { }
+                    try { _fs.DeleteDirectory(staging); } catch { /* best-effort: leftover staging self-heals on next init */ }
                     return new Shadps4SaveRestoreResult(Shadps4SaveRestoreStatus.RefusedRunning,
                         "shadPS4 started while restoring. The current save was left untouched.", safety);
                 }
@@ -294,7 +294,9 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 catch (Exception ex)
                 {
-                    // Roll back synchronously.
+                    // Roll back synchronously. If even the rollback fails, the
+                    // previous save stays stranded in the .previous sibling -
+                    // RecoverInterruptedRestore picks it up on the next init.
                     string rollbackNote = "";
                     try
                     {
@@ -304,7 +306,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                             rollbackNote = " The previous save was put back.";
                         }
                     }
-                    catch { }
+                    catch { /* best-effort: stranded .previous self-heals via the journal */ }
                     return new Shadps4SaveRestoreResult(Shadps4SaveRestoreStatus.Failed,
                         "Restore failed:\n" + ex.Message + rollbackNote, safety);
                 }
@@ -321,13 +323,13 @@ namespace PS4PKGTool.Utilities.Shadps4
                             rollbackNote = " The previous save was put back.";
                         }
                     }
-                    catch { }
+                    catch { /* best-effort: stranded .previous self-heals via the journal */ }
                     return new Shadps4SaveRestoreResult(Shadps4SaveRestoreStatus.Failed,
                         "The restored save could not be verified." + rollbackNote, safety);
                 }
 
                 // The swap is complete - the previous save is no longer needed.
-                try { if (_fs.DirectoryExists(previous)) _fs.DeleteDirectory(previous); } catch { }
+                try { if (_fs.DirectoryExists(previous)) _fs.DeleteDirectory(previous); } catch { /* best-effort: leftover .previous self-heals on next init */ }
                 return new Shadps4SaveRestoreResult(Shadps4SaveRestoreStatus.Restored,
                     "Save restored. The previous save was backed up before restoring.", safety);
             }
@@ -335,7 +337,7 @@ namespace PS4PKGTool.Utilities.Shadps4
             {
                 // A failure before the first rename leaves the current save
                 // untouched; discard any partial staging so it self-heals.
-                try { if (_fs.DirectoryExists(staging)) _fs.DeleteDirectory(staging); } catch { }
+                try { if (_fs.DirectoryExists(staging)) _fs.DeleteDirectory(staging); } catch { /* best-effort cleanup */ }
                 return new Shadps4SaveRestoreResult(Shadps4SaveRestoreStatus.Failed,
                     "Restore failed:\n" + ex.Message + "\n\nThe current save was left untouched.", safety);
             }

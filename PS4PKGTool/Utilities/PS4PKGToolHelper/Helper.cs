@@ -44,7 +44,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 if (_appIcon == null)
                 {
                     try { _appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
-                    catch { }
+                    catch (Exception ex) { Logger.LogWarning("AppIcon extract failed: " + ex.Message); }
                     if (_appIcon == null) _appIcon = SystemIcons.Application;
                 }
                 return _appIcon;
@@ -1353,7 +1353,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 Task<string> readTask = proc.StandardOutput.ReadToEndAsync();
                 if (!proc.WaitForExit(timeoutMs))
                 {
-                    try { proc.Kill(); proc.WaitForExit(); } catch { }
+                    // Kill so a hung curl can never leak an orphan process.
+                    // Kill itself can throw once the process is already gone.
+                    try { proc.Kill(); proc.WaitForExit(); }
+                    catch (Exception ex) { Logger.LogWarning("curl timeout kill failed: " + ex.Message); }
                 }
                 return readTask.Result;
             }

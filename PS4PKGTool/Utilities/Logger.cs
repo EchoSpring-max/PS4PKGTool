@@ -29,6 +29,13 @@ namespace PS4PKGTool.Utilities
 
         private static object lockObject = new object(); // For thread safety
 
+        // Fallback flag: set once when the portable log file can no longer
+        // be written (read-only install dir, locked file, full disk...). The
+        // logger then retries every write in %TEMP% and tells the Log tab
+        // once where the log lives now - logging must never fail silently.
+        private static string _fallbackLogPath;
+        private static bool _fallbackAnnounced;
+
         public static void LogInformation(string msg)
         {
             Log(LogLevel.Information, msg);
@@ -46,35 +53,70 @@ namespace PS4PKGTool.Utilities
 
         private static void Log(LogLevel level, string msg, Exception ex = null)
         {
+            if (string.IsNullOrEmpty(msg))
+                return;
+
             try
             {
-                if (!string.IsNullOrEmpty(msg))
+                DateTime now = DateTime.Now;
+                string shortLabel = level.ToString().Replace("Information", "INFO").Replace("Warning","WARN").Replace("Error","ERR");
+                string logMessage = $"{now:G} : [{shortLabel}] {msg}";
+                string displayMessage = $"{now:HH:mm:ss}  [{shortLabel}] {msg}";
+
+                if (ex != null)
                 {
-                    DateTime now = DateTime.Now;
-                    string shortLabel = level.ToString().Replace("Information", "INFO").Replace("Warning","WARN").Replace("Error","ERR");
-                    string logMessage = $"{now:G} : [{shortLabel}] {msg}";
-                    string displayMessage = $"{now:HH:mm:ss}  [{shortLabel}] {msg}";
+                    logMessage += Environment.NewLine + ex.ToString();
+                    displayMessage += " " + ex.Message;
+                }
 
-                    if (ex != null)
+                bool fileWriteOk = true;
+                lock (lockObject)
+                {
+                    if (_fallbackLogPath == null)
                     {
-                        logMessage += Environment.NewLine + ex.ToString();
-                        displayMessage += " " + ex.Message;
-                    }
-
-                    lock (lockObject)
-                    {
-                        using (var sw = new StreamWriter(Helper.PS4PKGToolLogFile, true))
+                        try
                         {
-                            sw.WriteLine(NormalizeNewlines(logMessage));
+                            using (var sw = new StreamWriter(Helper.PS4PKGToolLogFile, true))
+                            {
+                                sw.WriteLine(NormalizeNewlines(logMessage));
+                            }
+                        }
+                        catch
+                        {
+                            fileWriteOk = false;
+                            _fallbackLogPath = Path.Combine(Path.GetTempPath(), "PS4PKGTool-fallback.log");
                         }
                     }
 
-                    OnLog?.Invoke(displayMessage);
+                    if (_fallbackLogPath != null)
+                    {
+                        // Best-effort: if even %TEMP% is unwritable there is
+                        // nowhere left to write - the Log tab is the only sink.
+                        try
+                        {
+                            using (var sw = new StreamWriter(_fallbackLogPath, true))
+                            {
+                                sw.WriteLine(NormalizeNewlines(logMessage));
+                            }
+                        }
+                        catch { }
+                    }
                 }
+
+                if (!fileWriteOk && !_fallbackAnnounced)
+                {
+                    _fallbackAnnounced = true;
+                    // Announce on the Log tab exactly once: where the log went.
+                    try { OnLog?.Invoke($"[WARN] Log file unavailable - falling back to {_fallbackLogPath}"); }
+                    catch { }
+                }
+
+                OnLog?.Invoke(displayMessage);
             }
             catch (Exception)
             {
-                // Handle any exceptions during logging
+                // Last resort: never let logging throw. The display pipeline
+                // or a broken fallback would otherwise take the app down.
             }
         }
     }

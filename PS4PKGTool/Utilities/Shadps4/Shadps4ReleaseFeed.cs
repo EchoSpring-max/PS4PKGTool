@@ -266,7 +266,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                         foreach (var prop in doc.RootElement.EnumerateObject())
                             payload[prop.Name] = prop.Value.Clone();
                     }
-                    catch { }
+                    catch { /* best-effort: unreadable cache - other feeds' entries are lost, cache is rebuilt */ }
                 }
                 payload["fetchedUtc"] = _clock.UtcNow.ToString("O");
                 payload[feed.ToString()] = JsonDocument.Parse(rawJson).RootElement.Clone();

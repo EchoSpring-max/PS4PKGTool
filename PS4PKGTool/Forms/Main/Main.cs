@@ -318,10 +318,10 @@ namespace PS4PKGTool
                             if (_tbLogBox.Text.Length > 50000)
                                 _tbLogBox.Text = _tbLogBox.Text.Substring(_tbLogBox.Text.Length - 40000);
                         }
-                        catch { }
+                        catch { /* best-effort: textbox thrown during rapid scroll */ }
                     }));
             }
-            catch { }
+            catch { /* best-effort: form gone - log delivery abandoned */ }
         }
 
         private void Shadps4Launcher_Terminated(object? sender, Shadps4TerminationReport report)
@@ -338,7 +338,7 @@ namespace PS4PKGTool
                     Shadps4TerminationUi.ShowIfNeeded(report, feedback);
                 }));
             }
-            catch { }
+            catch { /* best-effort: form gone - termination report abandoned */ }
         }
 
         /// <summary>

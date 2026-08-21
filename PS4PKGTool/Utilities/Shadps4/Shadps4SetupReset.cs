@@ -38,7 +38,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                         Directory.Delete(store.RootPath);
                     }
                 }
-                catch { }
+                catch { /* best-effort: reset never fails on a non-empty or locked root */ }
             }
 
             settings.Shadps4ActiveCore = "";
@@ -52,7 +52,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         private static void TryDeleteDir(string dir)
         {
-            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { /* best-effort: reset never fails on leftovers */ }
         }
     }
 }

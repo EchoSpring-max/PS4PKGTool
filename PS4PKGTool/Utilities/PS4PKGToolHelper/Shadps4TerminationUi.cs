@@ -42,7 +42,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     var choice = AppMessageBox.Show("shadPS4", message, AppMessageType.Warning, AppMessageButtons.YesNo);
                     if (choice == DialogResult.Yes)
                     {
-                        try { Process.Start("explorer.exe", report.WerReportFolder); } catch { }
+                        try { Process.Start("explorer.exe", report.WerReportFolder); } catch { /* best-effort: Explorer refused to open */ }
                     }
                 }
             }

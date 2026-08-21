@@ -107,7 +107,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         private static void TryDelete(string path)
         {
-            try { if (File.Exists(path)) File.Delete(path); } catch { }
+            try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort: leftover .part is overwritten next run */ }
         }
     }
 }

@@ -103,7 +103,14 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     _cache[kv.Key] = byOs;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // A corrupt/unreadable cache used to be swallowed silently,
+                // which left _cache as an empty dict - Lookup then returned
+                // "" forever until the app restarted. Log it so the user can
+                // tell a broken cache from a genuinely unknown title.
+                Logger.LogWarning("shadPS4 compat cache load failed: " + ex.Message);
+            }
         }
 
         /// <summary>

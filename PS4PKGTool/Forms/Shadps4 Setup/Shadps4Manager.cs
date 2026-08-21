@@ -418,7 +418,7 @@ namespace PS4PKGTool
                 coreBuilds = store.ListBuilds(Shadps4Component.Core).Count;
                 launcherBuilds = store.ListBuilds(Shadps4Component.QtLauncher).Count;
             }
-            catch { }
+            catch { /* best-effort: unconfigured root shows zero builds */ }
 
             lblOverviewCounts.Text =
                 $"Games installed: {CountGameFolders()}    " +
@@ -556,10 +556,11 @@ namespace PS4PKGTool
                 coreBuilds = store.ListBuilds(Shadps4Component.Core).Count;
                 launcherBuilds = store.ListBuilds(Shadps4Component.QtLauncher).Count;
             }
-            catch { }
+            catch { /* best-effort: unconfigured root shows zero builds */ }
 
             string userMode = "";
-            try { userMode = Shadps4EnvironmentResolver.Resolve(_settings.Shadps4ExecutablePath).UserDirectoryMode.ToString(); } catch { }
+            try { userMode = Shadps4EnvironmentResolver.Resolve(_settings.Shadps4ExecutablePath).UserDirectoryMode.ToString(); }
+            catch { /* best-effort: unresolved env shows an empty user mode */ }
 
             return
                 $"Managed builds root:  {Describe(root)}\n" +
@@ -755,7 +756,8 @@ namespace PS4PKGTool
             string status = Shadps4Compat.Lookup(row.TitleId, _settings.Shadps4Os);
             if (string.IsNullOrWhiteSpace(status)) status = "Unknown";
             lblGameDetailCompat.Text = "Compatibility: " + status;
-            try { lblGameDetailCompat.ForeColor = Shadps4Compat.StatusColor(status); } catch { }
+            try { lblGameDetailCompat.ForeColor = Shadps4Compat.StatusColor(status); }
+            catch { /* best-effort: theme color fallback stays at default */ }
 
             lblGameDetailLastTest.Text = string.IsNullOrEmpty(row.LastTest) ? "" : "Last test: " + row.LastTest;
 
@@ -828,10 +830,10 @@ namespace PS4PKGTool
             {
                 foreach (string f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                 {
-                    try { total += new FileInfo(f).Length; } catch { }
+                    try { total += new FileInfo(f).Length; } catch { /* best-effort: file vanished mid-scan */ }
                 }
             }
-            catch { }
+            catch { /* best-effort: unreadable tree returns the partial total */ }
             return total;
         }
 
@@ -941,7 +943,7 @@ namespace PS4PKGTool
                     RefreshOverview();
                 }));
             }
-            catch { }
+            catch { /* best-effort: form gone - feedback delivery abandoned */ }
         }
 
         private void btnManagerGameMore_Click(object sender, EventArgs e)

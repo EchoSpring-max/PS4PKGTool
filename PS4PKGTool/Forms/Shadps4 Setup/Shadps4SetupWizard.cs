@@ -229,7 +229,8 @@ namespace PS4PKGTool
             Logger.LogInformation($"Shadps4Wizard: install dir chosen = '{installDir}'");
             if (!string.IsNullOrWhiteSpace(installDir))
             {
-                try { Directory.CreateDirectory(installDir); } catch { }
+                try { Directory.CreateDirectory(installDir); }
+                catch (Exception ex) { Logger.LogWarning("Wizard: install dir could not be created: " + ex.Message); }
             }
             SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
             _store = new Shadps4ManagedBuilds(root);
@@ -317,7 +318,8 @@ namespace PS4PKGTool
                     && string.IsNullOrWhiteSpace(_settings.Shadps4InstallDirectory))
                 {
                     string defaultInstallDir = Path.Combine(_settings.Shadps4ManagedRoot, "Data");
-                    try { Directory.CreateDirectory(defaultInstallDir); } catch { }
+                    try { Directory.CreateDirectory(defaultInstallDir); }
+                    catch (Exception ex) { Logger.LogWarning("Wizard: default install dir could not be created: " + ex.Message); }
                     _settings.Shadps4InstallDirectory = defaultInstallDir;
                 }
                 SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);

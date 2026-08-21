@@ -188,7 +188,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 // Safety net: the staging folder must never survive failure.
                 if (Directory.Exists(staging))
                 {
-                    try { Directory.Delete(staging, true); } catch { }
+                    try { Directory.Delete(staging, true); } catch { /* best-effort: next install overwrites it */ }
                 }
             }
         }
@@ -417,7 +417,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
         private static void Cleanup(string dir)
         {
-            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { /* best-effort: next install overwrites it */ }
         }
 
         private static string HelperBytes(long bytes)

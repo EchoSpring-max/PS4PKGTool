@@ -498,7 +498,7 @@ namespace PS4PKGTool
                         labelDisplayTotalPKG.Text = "Ready (Passcode required)";
                         if (PromptForPasscode(out string passcode))
                         {
-                            try { _fileListingSession.Dispose(); } catch { }
+                            try { _fileListingSession.Dispose(); } catch { /* best-effort: session already disposed */ }
                             _fileListingPasscode = passcode;
                             _fileListingSession = new PkgFileListingSession(
                                 _currentPackagePath, _fileListingPasscode, _fileListingLoader);
@@ -1267,9 +1267,11 @@ namespace PS4PKGTool
         /// </summary>
         private void RebuildLazySessions()
         {
-            try { _entrySession.Dispose(); } catch { }
-            try { _trophySession.Dispose(); } catch { }
-            try { _fileListingSession.Dispose(); } catch { }
+            // The lazy sessions are rebuilt immediately after, so a Dispose
+            // failure on a dead handle is harmless.
+            try { _entrySession.Dispose(); } catch { /* best-effort */ }
+            try { _trophySession.Dispose(); } catch { /* best-effort */ }
+            try { _fileListingSession.Dispose(); } catch { /* best-effort */ }
 
             _entrySession = new PkgEntryInspectionSession(_currentPackagePath, _entryLoader);
             _trophySession = new TrophyInspectionSession(_currentPackagePath, _trophyLoader);

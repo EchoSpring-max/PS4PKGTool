@@ -62,7 +62,7 @@ namespace PS4PKGTool.Utilities.Shadps4
             long total = 0;
             foreach (string f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
             {
-                try { total += new FileInfo(f).Length; } catch { }
+                try { total += new FileInfo(f).Length; } catch { /* best-effort: file vanished mid-scan */ }
             }
             return total;
         }

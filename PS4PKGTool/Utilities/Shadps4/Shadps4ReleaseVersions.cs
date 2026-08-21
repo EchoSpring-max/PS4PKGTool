@@ -65,7 +65,12 @@ namespace PS4PKGTool.Utilities.Shadps4
                         if (IsReleaseTag(r.Tag)) versions.Add(Normalize(r.Tag));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Never throws by contract - but a version list that is empty
+                // for an invisible reason reads as "no versions exist".
+                Logger.LogWarning("Release versions: stable feed cache unreadable: " + ex.Message);
+            }
 
             // Installed managed core builds with a release manifest tag.
             try
@@ -74,7 +79,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                 foreach (var b in store.ListBuilds(Shadps4Component.Core))
                     if (IsReleaseTag(b.Manifest.Release)) versions.Add(Normalize(b.Manifest.Release));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Managed root may simply not be configured yet (first run).
+                Logger.LogWarning("Release versions: managed builds unreadable: " + ex.Message);
+            }
 
             return versions.OrderByDescending(v => v, VersionComparer.Instance).ToList();
         }

@@ -144,12 +144,14 @@ namespace PS4PKGTool.Shell
         /// the real root (a test-scoped override never touches it).</summary>
         public static void Remove()
         {
+            // Idempotent by design: uninstall must succeed even when the
+            // keys are already gone or ACL-locked - hence best-effort.
             try { Registry.CurrentUser.DeleteSubKeyTree(VerbRoot, throwOnMissingSubKey: false); }
-            catch { }
+            catch { /* best-effort: idempotent uninstall */ }
             if (VerbRootOverride == null)
             {
                 try { Registry.CurrentUser.DeleteSubKeyTree(PkgVerbKey, throwOnMissingSubKey: false); }
-                catch { }
+                catch { /* best-effort: idempotent uninstall */ }
             }
         }
 

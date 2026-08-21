@@ -115,7 +115,7 @@ namespace PS4PKGTool.Utilities.Shadps4
 
             // 1) LocalDumps, only when the machine has already configured it.
             string? localDumps = null;
-            try { localDumps = LocalDumpsFolderResolver(); } catch { }
+            try { localDumps = LocalDumpsFolderResolver(); } catch { /* best-effort probe */ }
             if (!string.IsNullOrWhiteSpace(localDumps) && Directory.Exists(localDumps))
             {
                 try
@@ -165,14 +165,14 @@ namespace PS4PKGTool.Utilities.Shadps4
                     if (first != null) return first;
                 }
             }
-            catch { }
+            catch { /* best-effort: unreadable report folder - no dump artifact */ }
             return null;
         }
 
         private static DateTime LastWriteUtc(string path)
         {
             try { return Directory.GetLastWriteTimeUtc(path); }
-            catch { return DateTime.MinValue; }
+            catch { return DateTime.MinValue; } // best-effort: never fresh
         }
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         "CrashDumps");
                 }
-                catch { }
+                catch { /* best-effort: registry probe of an optional key */ }
             }
             return null;
         }
@@ -240,7 +240,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 {
                     if (File.Exists(candidate)) return candidate;
                 }
-                catch { }
+                catch { /* best-effort: inaccessible candidate - try the next */ }
             }
             return null;
         }

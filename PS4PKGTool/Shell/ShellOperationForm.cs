@@ -176,7 +176,7 @@ namespace PS4PKGTool.Shell
         private void btnShellOpenFolder_Click(object sender, EventArgs e)
         {
             if (lblShellResult.Tag is not ShellOperationResult { OpenFolder: { } folder }) return;
-            try { Process.Start("explorer.exe", folder); } catch { }
+            try { Process.Start("explorer.exe", folder); } catch { /* best-effort: Explorer refused to open */ }
         }
 
         private void btnShellDetails_Click(object sender, EventArgs e)
@@ -193,7 +193,7 @@ namespace PS4PKGTool.Shell
                 Clipboard.SetText(string.IsNullOrEmpty(result.Details) ? result.Message : result.Details);
                 btnShellCopyResult.Text = "Copied";
             }
-            catch { }
+            catch { /* best-effort: clipboard locked by another process */ }
         }
     }
 }

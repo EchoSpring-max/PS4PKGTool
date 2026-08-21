@@ -111,12 +111,28 @@ namespace PS4PKGTool
 
         private static void LogCrash(Exception ex)
         {
+            string log = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash.log");
             try
             {
-                string log = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash.log");
                 System.IO.File.WriteAllText(log, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{ex}");
+                return;
             }
-            catch { }
+            catch
+            {
+                // The portable exe-adjacent path is normally writable, but a
+                // read-only install dir (Program Files) or a locked file can
+                // silently lose the crash dump. Fall back to %TEMP% so the
+                // stack trace survives - it is the only post-mortem clue.
+            }
+
+            try
+            {
+                string fallback = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "PS4PKGTool-crash.log");
+                System.IO.File.WriteAllText(fallback,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} (fallback - exe dir was not writable)\n{ex}");
+            }
+            catch { /* nowhere left to write */ }
         }
 
         private static void EnsureSettingsFileExists()
@@ -163,7 +179,7 @@ namespace PS4PKGTool
                 if (Directory.Exists(legacyRoot) && !Directory.EnumerateFileSystemEntries(legacyRoot).Any())
                     Directory.Delete(legacyRoot);
             }
-            catch { }
+            catch { /* best-effort: a non-empty or locked legacy folder is left behind */ }
         }
 
         private static void MigrateFileBack(string legacyRoot, string fileName)

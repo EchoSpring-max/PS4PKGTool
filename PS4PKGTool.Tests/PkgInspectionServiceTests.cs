@@ -207,6 +207,32 @@ public sealed class PkgInspectionServiceTests
         Assert.AreEqual(string.Empty, fields.Single(field => field.Name == "PS4 SDK Version").Value);
     }
 
+    [TestMethod]
+    public void RealReader_ReadsBuiltFixturePkg()
+    {
+        using var fixture = PkgFixture.CreateWithSceSys("inspect-real",
+            ("icon0.png", CreatePng(Color.Red)),
+            ("pic0.png", CreatePng(Color.Green)),
+            ("pic1.png", CreatePng(Color.Blue)));
+
+        var raw = new Ps4ToolsPkgInspectionReader().Read(fixture.PackagePath);
+
+        Assert.AreEqual("Fix", raw.Title);
+        Assert.AreEqual("CUSA09999", raw.TitleId);
+        Assert.AreEqual("EP0001-CUSA09999_00-FIX0000000000001", raw.ContentId);
+        Assert.AreEqual("Game", raw.PackageCategory);
+        Assert.AreEqual("Fake", raw.PackageState);
+        Assert.AreEqual("01.00", raw.ApplicationVersion);
+        Assert.IsTrue(raw.SfoEntries.Any(e => e.Name == "TITLE" && e.Value == "Fix"));
+        // The 46 legacy header rows are exposed as fields.
+        Assert.AreEqual(46, raw.HeaderFields.Count);
+        Assert.AreEqual("pkg_magic", raw.HeaderFields[0].Name);
+        Assert.AreEqual("pkg_digest", raw.HeaderFields[45].Name);
+        Assert.IsNotNull(raw.Icon0Bytes);
+        Assert.IsNotNull(raw.Pic0Bytes);
+        Assert.IsNotNull(raw.Pic1Bytes);
+    }
+
     private static string CreatePackageFile(int length)
     {
         string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".pkg");

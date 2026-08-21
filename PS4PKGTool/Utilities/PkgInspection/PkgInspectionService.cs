@@ -1,5 +1,6 @@
 using ByteSizeLib;
-using PS4_Tools.LibOrbis.Util;
+using OrbisPkgTool.Pkg;
+using PS4PKGTool.Utilities.PkgMeta;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -37,46 +38,61 @@ namespace PS4PKGTool.Utilities.PkgInspection
         {
             // This remains the authoritative parser. Projecting immediately into
             // an immutable raw model prevents the viewer from touching Main's globals.
-            var package = PS4_Tools.PKG.SceneRelated.Read_PKG(packagePath);
-            var entries = package.Param?.Tables == null
+            var package = PkgMetadataReader.Read(packagePath);
+            var entries = package.SfoTables == null
                 ? Array.Empty<PkgSfoEntry>()
-                : package.Param.Tables
+                : package.SfoTables
                     .Select(entry => new PkgSfoEntry(entry.Name, entry.Value))
                     .ToArray();
-            var headerFields = ReadHeaderFields(package);
+            var headerFields = ReadHeaderFields(packagePath, package);
 
             return new RawPkgInspectionData
             {
                 Title = package.PS4_Title,
-                TitleId = package.Param?.TITLEID,
-                ContentId = package.Param?.ContentID ?? package.Content_ID,
+                TitleId = package.TITLEID,
+                ContentId = package.SfoContentId != "" ? package.SfoContentId : package.Content_ID,
                 PackageCategory = package.PKG_Type.ToString(),
                 PackageState = package.PKGState.ToString(),
-                ApplicationVersion = package.Param?.APP_VER,
+                ApplicationVersion = package.APP_VER,
                 SfoEntries = entries,
                 HeaderFields = headerFields,
                 Icon0Bytes = CloneBytes(package.Icon),
-                Pic0Bytes = CloneBytes(package.Image),
-                Pic1Bytes = CloneBytes(package.Image2)
+                Pic0Bytes = CloneBytes(package.Pic0),
+                Pic1Bytes = CloneBytes(package.Pic1)
             };
         }
 
         private static byte[] CloneBytes(byte[] bytes) => bytes == null ? null : (byte[])bytes.Clone();
 
         private static IReadOnlyList<PkgInspectionField> ReadHeaderFields(
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG package)
+            string packagePath,
+            PkgMetadata package)
         {
             try
             {
-                string[] names = package.Header.DisplayType()?.ToArray() ?? Array.Empty<string>();
-                string[] values = package.Header.DisplayValue()?.ToArray() ?? Array.Empty<string>();
-                return names.Zip(values, (name, value) => new PkgInspectionField(name, value)).ToArray();
+                var rows = PkgHeaderDump.Rows(package.Header, ReadHeaderBytes(packagePath));
+                return rows.Select(r => new PkgInspectionField(r.Type, r.Value)).ToArray();
             }
             catch
             {
                 // Unknown or damaged header values are optional inspection data.
                 return Array.Empty<PkgInspectionField>();
             }
+        }
+
+        private static byte[] ReadHeaderBytes(string packagePath)
+        {
+            using var file = new FileStream(packagePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var buffer = new byte[PkgHeaderDump.HeaderBytes];
+            int read = 0;
+            while (read < buffer.Length)
+            {
+                int n = file.Read(buffer, read, buffer.Length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+            Array.Resize(ref buffer, read);
+            return buffer;
         }
     }
 

@@ -6407,7 +6407,7 @@ namespace PS4PKGTool
                         string newPkgName = "";
                         string sourcePkg = "";
                         string targetPkg = "";
-                        (newPkgName, sourcePkg, targetPkg) = PS4_Tools.PKG.SceneRelated.GetNewPKGName(pkg, destinationFolder, namingFormat);
+                        (newPkgName, sourcePkg, targetPkg) = PS4PKGTool.Utilities.PkgRename.PkgRenameService.GetNewPKGName(pkg, destinationFolder, namingFormat);
                         targetPkgName = Path.GetFileName(targetPkg);
                         UpdatePKGFilename(newPkgName, sourcePkg, targetPkg);
                         countPkg++;

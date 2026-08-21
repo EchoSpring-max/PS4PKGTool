@@ -658,7 +658,9 @@ namespace PS4PKGTool
                         try
                         {
                             using var fs = File.OpenRead(sfoPath);
-                            var sfo = PS4_Tools.LibOrbis.SFO.ParamSfo.FromStream(fs);
+                            using var ms = new MemoryStream();
+                            fs.CopyTo(ms);
+                            var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(ms.ToArray());
                             title = SfoString(sfo, "TITLE");
                             titleId = SfoString(sfo, "TITLE_ID");
                             version = SfoString(sfo, "VERSION");
@@ -807,15 +809,11 @@ namespace PS4PKGTool
             }
         }
 
-        private static string SfoString(PS4_Tools.LibOrbis.SFO.ParamSfo sfo, string name)
+        private static string SfoString(OrbisPkgTool.Sfo.ParamSfo sfo, string name)
         {
             try
             {
-                var v = sfo.GetValueByName(name);
-                if (v == null) return "";
-                var bytes = v.ToByteArray();
-                if (bytes == null || bytes.Length == 0) return "";
-                return System.Text.Encoding.UTF8.GetString(bytes).TrimEnd('\0').Trim();
+                return sfo.GetString(name).Trim();
             }
             catch { return ""; }
         }
@@ -1349,7 +1347,9 @@ namespace PS4PKGTool
             try
             {
                 using var fs = File.OpenRead(sfoPath);
-                var sfo = PS4_Tools.LibOrbis.SFO.ParamSfo.FromStream(fs);
+                using var ms = new MemoryStream();
+                fs.CopyTo(ms);
+                var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(ms.ToArray());
                 string title = SfoString(sfo, "TITLE");
                 return string.IsNullOrWhiteSpace(title) ? null : title;
             }

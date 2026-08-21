@@ -199,7 +199,7 @@ namespace PS4PKGTool.Shell
             {
                 string destinationFolder = Path.GetDirectoryName(sourcePath) + @"\";
                 (_, _, string targetPkg) =
-                    PS4_Tools.PKG.SceneRelated.GetNewPKGName(sourcePath, destinationFolder, format);
+                    PS4PKGTool.Utilities.PkgRename.PkgRenameService.GetNewPKGName(sourcePath, destinationFolder, format);
 
                 if (File.Exists(targetPkg))
                 {

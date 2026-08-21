@@ -201,17 +201,17 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
     }
 
     /// <summary>
-    /// Appends one feedback entry per game session as JSONL under
-    /// %APPDATA%\PS4PKGTool\game-feedback.jsonl - the same durable folder as
-    /// the settings file, so rebuilds and app moves never lose reports.
+    /// Appends one feedback entry per game session as JSONL next to the exe
+    /// (AppData\game-feedback.jsonl) - the same portable folder as the
+    /// settings file, so reports travel with the app folder.
     /// filePath is injectable for tests.
     /// </summary>
     public static class GameFeedbackStore
     {
-        public static string FilePath => Path.Combine(Helper.UserSettingsDirectory, "game-feedback.jsonl");
+        public static string FilePath => Path.Combine(Helper.AppDataDirectory, "game-feedback.jsonl");
 
         /// <summary>PS4PKGTool-owned session log snapshots, one &lt;ResultId&gt;.log per result.</summary>
-        public static string LogSnapshotsDirectory => Path.Combine(Helper.UserSettingsDirectory, "Shadps4Reports", "Logs");
+        public static string LogSnapshotsDirectory => Path.Combine(Helper.AppDataDirectory, "Shadps4Reports", "Logs");
 
         private static readonly object Sync = new();
 

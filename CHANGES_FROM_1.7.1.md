@@ -214,8 +214,8 @@ A standalone read-only package inspector. Launching the app with one `.pkg` path
 
 ## 10. Settings Durability
 
-- Settings now persist in `%APPDATA%\PS4PKGTool\Settings.conf` (new `UserSettingsDirectory`) instead of next to the exe — a clean rebuild used to wipe the build-output AppData folder and silently reset every saved option; rebuilds, clean installs and moved folders can no longer lose them
-- Game feedback history moved to the same durable location
+- Settings now persist in `%APPDATA%\PS4PKGTool\Settings.conf` (new `UserSettingsDirectory`) instead of next to the exe — a clean rebuild used to wipe the build-output AppData folder and silently reset every saved option; rebuilds, clean installs and moved folders can no longer lose them *(reversed: portability won — settings, feedback history and report snapshots now live in `<exe>\AppData\` with everything else, with a one-time reverse migration from `%APPDATA%\PS4PKGTool`; clean rebuilds/reset is the accepted tradeoff)*
+- Game feedback history moved to the same durable location *(now also in `<exe>\AppData\`)*
 
 ---
 

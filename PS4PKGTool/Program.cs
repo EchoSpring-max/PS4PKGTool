@@ -121,38 +121,105 @@ namespace PS4PKGTool
 
         private static void EnsureSettingsFileExists()
         {
-            if (!Directory.Exists(Helper.UserSettingsDirectory))
-                Directory.CreateDirectory(Helper.UserSettingsDirectory);
-
-            // Runtime scratch folder (log, ps5bc.json, shadps4.json, manifest.json...).
-            // The AppData folder no longer ships with the build — the orbis-pub
-            // bundle was removed — so it must be created on demand.
+            // Portable runtime-data root next to the exe: settings, feedback
+            // history, report snapshots and every regenerable cache. The
+            // AppData folder no longer ships with the build - the orbis-pub
+            // bundle was removed - so it must be created on demand.
             if (!Directory.Exists(Helper.AppDataDirectory))
                 Directory.CreateDirectory(Helper.AppDataDirectory);
 
-            // One-time migration: settings used to live next to the exe,
-            // where any clean rebuild wiped them. Move a surviving file so
-            // existing users keep their settings across the move.
-            string legacyPath = Path.Combine(Helper.AppDataDirectory, "Settings.conf");
-            if (!File.Exists(SettingFilePath)
-                && File.Exists(legacyPath)
-                && new FileInfo(legacyPath).Length > 0)
-            {
-                try
-                {
-                    File.Move(legacyPath, SettingFilePath);
-                    Logger.LogInformation("Migrated settings to " + SettingFilePath);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogInformation("Settings migration failed: " + ex.Message);
-                }
-            }
+            // One-time reverse migration: an earlier layout kept settings and
+            // feedback durable in %APPDATA%\PS4PKGTool. Portability won -
+            // surviving data moves back into the portable AppData folder so
+            // the layout change loses nothing.
+            MigrateLegacyUserSettingsBack();
 
             if (!File.Exists(SettingFilePath) || new FileInfo(SettingFilePath).Length == 0)
             {
                 CreateDefaultSettings();
             }
+        }
+
+        /// <summary>
+        /// Moves settings, feedback history and report snapshots from the
+        /// historical %APPDATA%\PS4PKGTool folder back into the portable
+        /// exe-adjacent AppData folder. Best effort per item: failures are
+        /// logged and skipped (missing settings fall back to defaults).
+        /// </summary>
+        private static void MigrateLegacyUserSettingsBack()
+        {
+            string legacyRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "PS4PKGTool");
+            if (!Directory.Exists(legacyRoot)) return;
+
+            MigrateFileBack(legacyRoot, "Settings.conf");
+            MigrateFileBack(legacyRoot, "game-feedback.jsonl");
+            MigrateDirectoryBack(legacyRoot, "Shadps4Reports");
+
+            // The legacy folder is PS4PKGTool's alone - remove it when empty.
+            try
+            {
+                if (Directory.Exists(legacyRoot) && !Directory.EnumerateFileSystemEntries(legacyRoot).Any())
+                    Directory.Delete(legacyRoot);
+            }
+            catch { }
+        }
+
+        private static void MigrateFileBack(string legacyRoot, string fileName)
+        {
+            string source = Path.Combine(legacyRoot, fileName);
+            string target = Path.Combine(Helper.AppDataDirectory, fileName);
+            try
+            {
+                if (File.Exists(target) || !File.Exists(source) || new FileInfo(source).Length == 0)
+                    return;
+                File.Move(source, target);
+                Logger.LogInformation("Migrated " + fileName + " to " + target);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogInformation(fileName + " migration failed: " + ex.Message);
+            }
+        }
+
+        private static void MigrateDirectoryBack(string legacyRoot, string dirName)
+        {
+            string source = Path.Combine(legacyRoot, dirName);
+            string target = Path.Combine(Helper.AppDataDirectory, dirName);
+            try
+            {
+                if (Directory.Exists(target) || !Directory.Exists(source))
+                    return;
+                if (!Directory.EnumerateFileSystemEntries(source).Any())
+                {
+                    Directory.Delete(source); // empty - nothing worth moving
+                    return;
+                }
+                try
+                {
+                    Directory.Move(source, target);
+                }
+                catch (IOException)
+                {
+                    CopyDirectory(source, target); // cross-volume fallback
+                    Directory.Delete(source, true);
+                }
+                Logger.LogInformation("Migrated " + dirName + " to " + target);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogInformation(dirName + " migration failed: " + ex.Message);
+            }
+        }
+
+        private static void CopyDirectory(string sourceDir, string targetDir)
+        {
+            Directory.CreateDirectory(targetDir);
+            foreach (string file in Directory.GetFiles(sourceDir))
+                File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+            foreach (string dir in Directory.GetDirectories(sourceDir))
+                CopyDirectory(dir, Path.Combine(targetDir, Path.GetFileName(dir)));
         }
 
         private static void CreateDefaultSettings()

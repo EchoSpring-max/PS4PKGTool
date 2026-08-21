@@ -51,18 +51,15 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             }
         }
 
-        public static string AppDataDirectory = AppContext.BaseDirectory + @"AppData\";
-
         /// <summary>
-        /// Per-user settings location outside the build output folder.
-        /// AppDataDirectory sits next to the exe and a clean rebuild wipes
-        /// it, silently resetting every saved option. Settings persist in
-        /// %APPDATA%\PS4PKGTool instead so rebuilds, clean installs and
-        /// moved folders never lose them.
+        /// Portable runtime-data root next to the exe: settings
+        /// (Settings.conf), feedback history, report snapshots and every
+        /// regenerable cache (log, JSON downloads, manifest). One folder to
+        /// back up or copy. Tradeoff, accepted by design: a clean rebuild or
+        /// delete-the-folder update resets settings and caches - durability
+        /// was traded for full portability.
         /// </summary>
-        public static string UserSettingsDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "PS4PKGTool");
+        public static string AppDataDirectory = AppContext.BaseDirectory + @"AppData\";
 
         /// <summary>
         /// Creates a short ASCII temp directory for working files.

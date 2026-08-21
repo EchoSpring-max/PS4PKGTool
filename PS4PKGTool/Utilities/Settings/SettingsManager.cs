@@ -13,9 +13,11 @@ namespace PS4PKGTool.Utilities.Settings
     public static class SettingsManager
     {
         public static AppSettings appSettings_ = new AppSettings();
-        // Settings live outside the build output folder: the old next-to-exe
-        // location was wiped by every clean rebuild (settings silently reset).
-        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.UserSettingsDirectory, @"Settings.conf");
+        // Portable by design: Settings.conf lives in the exe-adjacent AppData
+        // folder (everything PS4PKGTool owns travels with the folder). The
+        // historical %APPDATA%\PS4PKGTool location is migrated back on first
+        // run (Program.EnsureSettingsFileExists).
+        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.AppDataDirectory, "Settings.conf");
         public static void SaveSettings(AppSettings settings, string filePath)
         {
             try

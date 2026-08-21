@@ -139,6 +139,7 @@ Program.Main()
   ├─ Application.EnableVisualStyles()
   ├─ EnsureSettingsFileExists()
   │   ├─ Creates AppData directory if missing
+  │   ├─ Migrates legacy %APPDATA%\PS4PKGTool data back into AppData\ (one-time)
   │   └─ Creates default Settings.conf if missing
   ├─ LoadSettings(SettingFilePath) → populates static appSettings_
   └─ ChooseStartupForm()
@@ -154,7 +155,7 @@ The entire business state lives in a single static class `Helper` with nested st
 ```
 Helper
 ├── static fields: FirstLaunch, FinalizePkgProcess
-├── static paths: AppDataDirectory (next to exe, wiped by rebuilds), UserSettingsDirectory (%APPDATA%\PS4PKGTool), OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
+├── static paths: AppDataDirectory (next to exe — portable by design, wiped by rebuilds), OrbisPubCmd, Ps5BcJsonFile, PS4PKGToolLogFile
 ├── RoundBytes(long) → human-readable byte count
 ├── Backport (nested class) — backport tracking via JSON file
 │   ├── BackportInfo (model)
@@ -219,7 +220,7 @@ Helper
 ```
 SettingsManager (static)
 ├── appSettings_ : AppSettings (static instance)
-├── SettingFilePath = "%APPDATA%\PS4PKGTool\Settings.conf" (moved out of the build output folder — clean rebuilds used to wipe it; one-time migration from "{exe}\AppData\Settings.conf" in Program.EnsureSettingsFileExists)
+├── SettingFilePath = "{exe}\AppData\Settings.conf" (portable by design — everything travels with the app folder; one-time reverse migration from "%APPDATA%\PS4PKGTool\Settings.conf" in Program.EnsureSettingsFileExists)
 ├── SaveSettings(AppSettings, filePath) → writes key=value flat file
 └── LoadSettings(filePath) → reads key=value flat file → returns AppSettings
 

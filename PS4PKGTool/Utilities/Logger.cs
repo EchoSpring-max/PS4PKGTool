@@ -36,6 +36,18 @@ namespace PS4PKGTool.Utilities
         private static string _fallbackLogPath;
         private static bool _fallbackAnnounced;
 
+        /// <summary>
+        /// Overrides the %TEMP% fallback location. The test process runs from
+        /// a bin dir without an AppData\ folder, so EVERY log write fails and
+        /// engages the fallback - without this hook the whole suite would
+        /// dump its output into the real %TEMP%. Never set in production.
+        /// </summary>
+        internal static string Test_FallbackDirectory
+        {
+            set => _fallbackDirectoryOverride = value;
+        }
+        private static string _fallbackDirectoryOverride;
+
         public static void LogInformation(string msg)
         {
             Log(LogLevel.Information, msg);
@@ -84,7 +96,9 @@ namespace PS4PKGTool.Utilities
                         catch
                         {
                             fileWriteOk = false;
-                            _fallbackLogPath = Path.Combine(Path.GetTempPath(), "PS4PKGTool-fallback.log");
+                            _fallbackLogPath = Path.Combine(
+                                _fallbackDirectoryOverride ?? Path.GetTempPath(),
+                                "PS4PKGTool-fallback.log");
                         }
                     }
 

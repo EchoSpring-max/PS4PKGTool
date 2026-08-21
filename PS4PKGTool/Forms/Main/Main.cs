@@ -7623,8 +7623,17 @@ namespace PS4PKGTool
                         {
                             var descriptor = _assetService.InspectAsync(source, detection).GetAwaiter().GetResult();
                             _previewInfo = BuildPreviewInfo(fname, descriptor);
-
-                            if (descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview))
+                            bool isContainer = _assetService.IsContainer(detection);
+                            if (isContainer)
+                            {
+                                // Unity and Unreal containers are browse-first:
+                                // show their object/entry list, rather than the
+                                // whole-file text/contact-sheet fallback.
+                                _containerSource = source;
+                                _containerDetection = detection;
+                                _containerTempDir = tempDir;
+                            }
+                            else if (descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview))
                             {
                                 var preview = _assetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult();
                                 if (preview?.Texture != null) _previewTexture = preview.Texture;
@@ -7643,13 +7652,7 @@ namespace PS4PKGTool
 
                         // Containers (pak/unity) stay alive for the asset workspace;
                         // everything else is cleaned up here (worker thread).
-                        if (detection != null && _assetService.IsContainer(detection))
-                        {
-                            _containerSource = source;
-                            _containerDetection = detection;
-                            _containerTempDir = tempDir;
-                        }
-                        else
+                        if (detection == null || !_assetService.IsContainer(detection))
                         {
                             try { if (File.Exists(extracted)) File.Delete(extracted); } catch { }
                             try { string d = Path.GetDirectoryName(extracted); if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_p_")) Directory.Delete(d, true); } catch { }
@@ -7680,6 +7683,14 @@ namespace PS4PKGTool
                         _previewError = null;
                         return;
                     }
+                    // Containers are browse-first. In particular, Unity's
+                    // whole-file preview is only a text summary when textures
+                    // cannot be decoded, which must not hide the object list.
+                    if (_containerSource != null && _containerDetection != null)
+                    {
+                        PopulateAssetList();
+                        return;
+                    }
                     try
                     {
                         RenderPreviewResult(fname, _previewSizeStr);
@@ -7688,9 +7699,6 @@ namespace PS4PKGTool
                     {
                         ShowError("Preview failed: " + ex.Message, false);
                     }
-                    // Containers expose their children in the asset workspace list.
-                    if (_containerSource != null && _containerDetection != null)
-                        PopulateAssetList();
                 };
                 bg.RunWorkerAsync();
             }

@@ -751,15 +751,15 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                     foreach (var pkgFile in PKG.VerifiedPs4PkgList)
                     {
-                        Unprotected_PKG pkg = Read_PKG(pkgFile);
-                        string filteredTitle = pkg.PS4_Title.SanitizeFileName();
-                        string finalTitle = filteredTitle.Replace("  -", " -");
-                        var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
-                        if (File.Exists(fileExists))
-                            continue;
                         try
                         {
                             using var reader = new OrbisPkgTool.PkgReader(pkgFile);
+                            var sfo = reader.ReadParamSfo();
+                            string filteredTitle = (sfo?.GetString("TITLE") ?? "").SanitizeFileName();
+                            string finalTitle = filteredTitle.Replace("  -", " -");
+                            var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
+                            if (File.Exists(fileExists))
+                                continue;
                             // snd0.at9 (entry id 0x1240) is the PS4 BGM track.
                             var snd0 = reader.Entries.FirstOrDefault(e =>
                                 e.Id == OrbisPkgTool.Pkg.PkgEntryIds.Snd0At9);
@@ -786,8 +786,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             {
                 try
                 {
-                    Unprotected_PKG PS4_PKG = Read_PKG(pkg);
-
                     if (extractAt9Done)
                     {
                         if (isBGMPlaying)
@@ -796,13 +794,18 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
 
                         string BGM_path = Path.Combine(AppDataDirectory, "BGM");
-                        string at9Path = Path.Combine(BGM_path, PS4_PKG.PS4_Title.SanitizeFileName() + ".AT9");
+                        string pkgTitle;
+                        using (var reader = new OrbisPkgTool.PkgReader(pkg))
+                        {
+                            pkgTitle = reader.ReadParamSfo()?.GetString("TITLE") ?? "";
+                        }
+                        string at9Path = Path.Combine(BGM_path, pkgTitle.SanitizeFileName() + ".AT9");
 
                         if (File.Exists(at9Path))
                         {
                             try
                             {
-                                byte[] at9Data = PS4_Tools.Media.Atrac9.LoadAt9(at9Path);
+                                byte[] at9Data = OrbisPkgTool.Media.At9Decoder.DecodeToWav(at9Path);
                                 At9Player = new System.Media.SoundPlayer(new MemoryStream(at9Data));
                                 At9Player.Play();
                                 isBGMPlaying = true;
@@ -1644,85 +1647,14 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
     public static class PkgImageReader
     {
-        private static readonly byte[] PkgMagic = { 0x7F, 0x43, 0x4E, 0x54 };
-
-        private static readonly Func<byte[], byte[]> RsaDecrypt;
-        private static readonly Func<byte[], byte[], byte[], byte[]> AesDecrypt;
-
-        static PkgImageReader()
-        {
-            var pkgUtilType = typeof(PS4_Tools.PKG.SceneRelated).Assembly.GetType("PS4PkgUtil");
-            var decryptMethod = pkgUtilType.GetMethod("Decrypt", new[] { typeof(byte[]) });
-            RsaDecrypt = (Func<byte[], byte[]>)Delegate.CreateDelegate(typeof(Func<byte[], byte[]>), decryptMethod);
-            var decryptAesMethod = pkgUtilType.GetMethod("DecryptAes", new[] { typeof(byte[]), typeof(byte[]), typeof(byte[]) });
-            AesDecrypt = (Func<byte[], byte[], byte[], byte[]>)Delegate.CreateDelegate(typeof(Func<byte[], byte[], byte[], byte[]>), decryptAesMethod);
-        }
-
-        public static byte[] ReadIcon0Png(string pkgPath) => ReadImageEntry(pkgPath, 4608);
-        public static byte[] ReadPic0Png(string pkgPath) => ReadImageEntry(pkgPath, 4640);
-        public static byte[] ReadPic1Png(string pkgPath) => ReadImageEntry(pkgPath, 4102);
+        public static byte[] ReadIcon0Png(string pkgPath) => ReadImageEntry(pkgPath, OrbisPkgTool.Pkg.PkgEntryIds.Icon0Png);
+        public static byte[] ReadPic0Png(string pkgPath) => ReadImageEntry(pkgPath, OrbisPkgTool.Pkg.PkgEntryIds.Pic0Png);
+        public static byte[] ReadPic1Png(string pkgPath) => ReadImageEntry(pkgPath, OrbisPkgTool.Pkg.PkgEntryIds.Pic1Png);
 
         public static byte[] ReadImageEntry(string pkgPath, uint entryId)
         {
-            using (var fs = new FileStream(pkgPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var br = new BinaryReader(fs))
-            {
-                var magic = br.ReadBytes(4);
-                if (magic[0] != PkgMagic[0] || magic[1] != PkgMagic[1] || magic[2] != PkgMagic[2] || magic[3] != PkgMagic[3])
-                    return null;
-
-                fs.Seek(0x10, SeekOrigin.Begin);
-                uint entryCount = ReadUInt32BE(br);
-                fs.Seek(0x1C, SeekOrigin.Begin);
-                uint tableOffset = ReadUInt32BE(br);
-
-                fs.Seek(0x2400, SeekOrigin.Begin);
-                var keySeed = RsaDecrypt(br.ReadBytes(256));
-
-                fs.Seek(tableOffset, SeekOrigin.Begin);
-                for (uint i = 0; i < entryCount; i++)
-                {
-                    var entryBytes = br.ReadBytes(32);
-                    uint id = (uint)((entryBytes[0] << 24) | (entryBytes[1] << 16) | (entryBytes[2] << 8) | entryBytes[3]);
-                    uint flags1 = (uint)((entryBytes[8] << 24) | (entryBytes[9] << 16) | (entryBytes[10] << 8) | entryBytes[11]);
-                    uint flags2 = (uint)((entryBytes[12] << 24) | (entryBytes[13] << 16) | (entryBytes[14] << 8) | entryBytes[15]);
-                    uint offset = (uint)((entryBytes[16] << 24) | (entryBytes[17] << 16) | (entryBytes[18] << 8) | entryBytes[19]);
-                    uint size = (uint)((entryBytes[20] << 24) | (entryBytes[21] << 16) | (entryBytes[22] << 8) | entryBytes[23]);
-                    bool isEncrypted = (flags1 & 0x80000000) != 0;
-
-                    if (id == entryId && size > 0)
-                    {
-                        fs.Seek(offset, SeekOrigin.Begin);
-                        byte[] data = br.ReadBytes((int)size);
-
-                        if (isEncrypted)
-                        {
-                            byte[] keyMaterial = new byte[64];
-                            Array.Copy(entryBytes, 4, keyMaterial, 0, 28);
-                            Array.Copy(keySeed, 0, keyMaterial, 32, 32);
-                            using (var sha = SHA256.Create())
-                            {
-                                byte[] hash = sha.ComputeHash(keyMaterial);
-                                byte[] iv = new byte[16];
-                                byte[] key = new byte[16];
-                                Array.Copy(hash, 0, iv, 0, 16);
-                                Array.Copy(hash, 16, key, 0, 16);
-                                data = AesDecrypt(key, iv, data);
-                            }
-                        }
-
-                        return data;
-                    }
-                }
-
-                return null;
-            }
-        }
-
-        private static uint ReadUInt32BE(BinaryReader br)
-        {
-            byte[] buf = br.ReadBytes(4);
-            return (uint)((buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3]);
+            using var reader = new OrbisPkgTool.PkgReader(pkgPath);
+            return reader.ExtractEntryBytes(entryId);
         }
     }
 }

@@ -137,7 +137,11 @@ namespace PS4PKGTool.Utilities.PkgInspection
 
             IReadOnlyList<PkgSfoEntry> entries = raw.SfoEntries ?? Array.Empty<PkgSfoEntry>();
             string packageVersion = FindSfoValue(entries, "VERSION");
-            string requiredFirmware = FormatSystemVersion(FindSfoValue(entries, "SYSTEM_VER"));
+            string sdkVersion = PkgBuildInfoParser.Parse(FindSfoValue(entries, "PUBTOOLINFO"))
+                .FirstOrDefault(field => field.Name == "PS4 SDK Version")?.Value;
+            string requiredFirmware = string.IsNullOrWhiteSpace(sdkVersion)
+                ? FormatSystemVersion(FindSfoValue(entries, "SYSTEM_VER"))
+                : PkgSystemVersion.FormatSdkVersion(sdkVersion);
             long size = File.Exists(packagePath) ? new FileInfo(packagePath).Length : 0;
 
             Bitmap icon = null;

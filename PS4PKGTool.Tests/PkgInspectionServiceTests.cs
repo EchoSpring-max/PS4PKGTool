@@ -26,7 +26,7 @@ public sealed class PkgInspectionServiceTests
                 new PkgSfoEntry("TITLE", "Example Game"),
                 new PkgSfoEntry("VERSION", "01.02"),
                 new PkgSfoEntry("SYSTEM_VER", "2304"),
-                new PkgSfoEntry("PUBTOOLINFO", "sdk_ver=09000000,c_date=2026-08-16")
+                new PkgSfoEntry("PUBTOOLINFO", "sdk_ver=0A500000,c_date=2026-08-16")
             }
         };
 
@@ -40,9 +40,9 @@ public sealed class PkgInspectionServiceTests
             Assert.AreEqual("FAKE", snapshot.PackageState);
             Assert.AreEqual("01.23", snapshot.ApplicationVersion);
             Assert.AreEqual("01.02", snapshot.PackageVersion);
-            Assert.AreEqual("9.00", snapshot.RequiredFirmware);
+            Assert.AreEqual("10.50", snapshot.RequiredFirmware);
             Assert.AreEqual(4, snapshot.SfoEntries.Count);
-            Assert.AreEqual("09000000", snapshot.BuildInfoFields
+            Assert.AreEqual("0A500000", snapshot.BuildInfoFields
                 .Single(field => field.Name == "PS4 SDK Version").Value);
             Assert.IsFalse(string.IsNullOrWhiteSpace(snapshot.PackageSize));
         }

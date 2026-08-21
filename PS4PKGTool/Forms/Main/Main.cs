@@ -2142,13 +2142,19 @@ namespace PS4PKGTool
                         PkgMetadata ps4Pkg = PkgMetadataReader.Read(pkgFile);
                         string pkgAppVersion = verRegex2.Replace(ps4Pkg.APP_VER, "");
                         string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : "";
+                        string pkgSdkVersion = "";
                         string pkgVersion = "";
                         foreach (var t in ps4Pkg.SfoTables)
                         {
                             if (t.Name == "SYSTEM_VER")
                                 pkgMinFirmware = PkgSystemVersion.Format(t.Value);
+                            if (t.Name == "PUBTOOLINFO")
+                                pkgSdkVersion = PkgBuildInfoParser.Parse(t.Value)
+                                    .FirstOrDefault(field => field.Name == "PS4 SDK Version")?.Value ?? "";
                             if (t.Name == "VERSION") pkgVersion = verRegex2.Replace(t.Value, "");
                         }
+                        if (!string.IsNullOrWhiteSpace(pkgSdkVersion))
+                            pkgMinFirmware = PkgSystemVersion.FormatSdkVersion(pkgSdkVersion);
                         pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
 
                         string pkgFileName = Path.GetFileName(pkgFile);
@@ -2484,6 +2490,7 @@ namespace PS4PKGTool
                     string neoEnable = "";
                     string ps5bc = "";
                     string pkgSystemVersion = "";
+                    string pkgSdkVersion = "";
                     byte[] pkgRegionIcon = null;
                     string pkgState = ps4Pkg.PKGState.ToString();
                     string pkgType = ps4Pkg.PKG_Type.ToString();
@@ -2493,9 +2500,14 @@ namespace PS4PKGTool
                     {
                         if (t.Name == "SYSTEM_VER")
                             pkgSystemVersion = PkgSystemVersion.Format(t.Value);
+                        if (t.Name == "PUBTOOLINFO")
+                            pkgSdkVersion = PkgBuildInfoParser.Parse(t.Value)
+                                .FirstOrDefault(field => field.Name == "PS4 SDK Version")?.Value ?? "";
                         if (t.Name == "VERSION")
                             pkgVersion = verRegex.Replace(t.Value, "");
                     }
+                    if (!string.IsNullOrWhiteSpace(pkgSdkVersion))
+                        pkgSystemVersion = PkgSystemVersion.FormatSdkVersion(pkgSdkVersion);
 
                     // get pkg full size
                     long fileSizeBytes = new System.IO.FileInfo(pkg).Length;

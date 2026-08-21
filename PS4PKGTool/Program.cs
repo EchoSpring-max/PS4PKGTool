@@ -124,6 +124,12 @@ namespace PS4PKGTool
             if (!Directory.Exists(Helper.UserSettingsDirectory))
                 Directory.CreateDirectory(Helper.UserSettingsDirectory);
 
+            // Runtime scratch folder (log, ps5bc.json, shadps4.json, manifest.json...).
+            // The AppData folder no longer ships with the build — the orbis-pub
+            // bundle was removed — so it must be created on demand.
+            if (!Directory.Exists(Helper.AppDataDirectory))
+                Directory.CreateDirectory(Helper.AppDataDirectory);
+
             // One-time migration: settings used to live next to the exe,
             // where any clean rebuild wiped them. Move a surviving file so
             // existing users keep their settings across the move.

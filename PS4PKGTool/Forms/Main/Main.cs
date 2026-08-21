@@ -13,6 +13,7 @@ using PS4PKGTool.Util;
 using PS4PKGTool.Util.Constants;
 using PS4PKGTool.Utilities.Constants;
 using PS4PKGTool.Utilities.PkgInspection;
+using PS4PKGTool.Utilities.PkgMeta;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using PS4PKGTool.Utilities.Shadps4;
@@ -38,6 +39,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MethodInvoker = System.Windows.Forms.MethodInvoker;
+using OrbisPkgTool.Pkg;
 using TRPViewer;
 using static PS4_Tools.PKG.SceneRelated;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper;
@@ -603,14 +605,14 @@ namespace PS4PKGTool
             worker.DoWork += (_, args) =>
             {
                 if (worker.CancellationPending) { args.Cancel = true; return; }
-                args.Result = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgPath);
+                args.Result = PkgMetadataReader.Read(pkgPath);
             };
 
             worker.RunWorkerCompleted += (_, args) =>
             {
                 if (loadVersion != _detailLoadVersion) return; // stale - a newer load started
                 if (args.Cancelled || args.Error != null || args.Result == null) return;
-                var ps4Pkg = (PS4_Tools.PKG.SceneRelated.Unprotected_PKG)args.Result;
+                var ps4Pkg = (PkgMetadata)args.Result;
 
                 UpdateFormTitle(ps4Pkg.PS4_Title, ps4Pkg.PKG_Type.ToString());
                 PKG.CurrentPKGTitle = ps4Pkg.PS4_Title;
@@ -718,8 +720,8 @@ namespace PS4PKGTool
                     return;
                 }
 
-                var pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgPath);
-                if (pkg?.Param?.TITLEID == null)
+                var pkg = PkgMetadataReader.Read(pkgPath);
+                if (pkg?.TITLEID == null)
                 {
                     ShowError("Could not read PKG title ID.", false);
                     return;
@@ -729,7 +731,7 @@ namespace PS4PKGTool
                     _officialUpdateForm = new OfficialUpdateForm();
 
                 _officialUpdateForm.SetLogCallback(Logger.LogInformation);
-                _officialUpdateForm.LoadUpdate(pkg.Param.TITLEID, pkgType, appSettings_.OfficialUpdateDownloadDirectory);
+                _officialUpdateForm.LoadUpdate(pkg.TITLEID, pkgType, appSettings_.OfficialUpdateDownloadDirectory);
                 _officialUpdateForm.Show();
                 _officialUpdateForm.BringToFront();
             }
@@ -745,11 +747,11 @@ namespace PS4PKGTool
             OpenOfficialUpdateForm();
         }
 
-        private void LoadPubToolInfo(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private void LoadPubToolInfo(PkgMetadata pkg)
         {
             try
             {
-                string pubToolInfo = pkg.Param.Tables
+                string pubToolInfo = pkg.SfoTables
                     .Where(item => item.Name == "PUBTOOLINFO")
                     .Select(item => item.Value)
                     .FirstOrDefault();
@@ -772,21 +774,22 @@ namespace PS4PKGTool
             catch (Exception ex) { Logger.LogWarning("Error loading pub-tool info: " + ex.Message); }
         }
 
-        private void LoadHeaderInfo(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private void LoadHeaderInfo(PkgMetadata pkg)
         {
             try
             {
-                List<string> type = pkg.Header.DisplayType().ToList();
-                List<string> value = pkg.Header.DisplayValue().ToList();
+                // The legacy grid showed PS4_Struct.DisplayType/DisplayValue;
+                // PkgHeaderDump reproduces those 46 rows from the raw header.
+                byte[] headerBytes = ReadHeaderBytes(PKG.SelectedPKGFilename);
+                var rows = PkgHeaderDump.Rows(pkg.Header, headerBytes);
 
                 DataTable dtHeader = new DataTable();
                 dtHeader.Columns.Add("Type");
                 dtHeader.Columns.Add("Value");
 
-                var typeAndValue = type.Zip(value, (t, v) => new { Type = t, Value = v });
-                foreach (var tv in typeAndValue)
+                foreach (var (type, value) in rows)
                 {
-                    dtHeader.Rows.Add(tv.Type, tv.Value);
+                    dtHeader.Rows.Add(type, value);
                 }
 
                 dgvHeader.DataSource = dtHeader;
@@ -794,7 +797,23 @@ namespace PS4PKGTool
             catch (Exception ex) { Logger.LogWarning("Error loading header info: " + ex.Message); }
         }
 
-        private void LoadPKGEntries(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        /// <summary>Reads the 0x1100-byte header window PkgHeaderDump needs.</summary>
+        private static byte[] ReadHeaderBytes(string pkgPath)
+        {
+            using var file = new FileStream(pkgPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var buffer = new byte[PkgHeaderDump.HeaderBytes];
+            int read = 0;
+            while (read < buffer.Length)
+            {
+                int n = file.Read(buffer, read, buffer.Length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+            Array.Resize(ref buffer, read);
+            return buffer;
+        }
+
+        private void LoadPKGEntries(PkgMetadata pkg)
         {
             dgvEntryList.DataSource = null;
             dgvEntryList.Rows.Clear();
@@ -803,10 +822,8 @@ namespace PS4PKGTool
 
             try
             {
-                using (var file = File.OpenRead(PKG.SelectedPKGFilename))
+                using (var pkgReader = new OrbisPkgTool.PkgReader(PKG.SelectedPKGFilename))
                 {
-                    var pkgReader = new PkgReader(file);
-                    var pkgData = pkgReader.ReadPkg();
                     var dt = new DataTable();
                     var i = 0;
                     Entry.EntryIdNameDictionary.Clear();
@@ -821,23 +838,25 @@ namespace PS4PKGTool
                     dt.Columns.Add("Flags 2");
                     dt.Columns.Add("Encrypted?");
 
-                    foreach (var meta in pkgData.Metas.Metas)
+                    foreach (var meta in pkgReader.Entries)
                     {
                         entryId = $"{i++,-6}";
-                        entryName = meta.id.ToString();
+                        entryName = ((LegacyEntryId)meta.Id).ToString();
                         EntryIdNameDictionary.Add(entryId, entryName);
-                        if (meta.Encrypted)
+                        if (meta.IsEncrypted)
                         {
-                            EncryptedEntryOffsetNameDictionary.Add($"0x{meta.DataOffset:X8}", $"{meta.id}");
+                            EncryptedEntryOffsetNameDictionary.Add($"0x{meta.DataOffset:X8}", entryName);
                         }
                     }
 
                     i = 0;
 
-                    foreach (var meta in pkgData.Metas.Metas)
+                    foreach (var meta in pkgReader.Entries)
                     {
                         var finalSize = ByteSizeLib.ByteSize.FromBytes(Convert.ToDouble(meta.DataSize));
-                        dt.Rows.Add($"{meta.id}", $"0x{meta.DataOffset:X}", finalSize, $"0x{meta.Flags1:X}", $"0x{meta.Flags2:X}", $"{meta.Encrypted:X}");
+                        // Legacy rendered meta.Encrypted ("True"/"False") — the
+                        // ":X" was ignored by the bool box.
+                        dt.Rows.Add(((LegacyEntryId)meta.Id).ToString(), $"0x{meta.DataOffset:X}", finalSize, $"0x{meta.Flags1:X}", $"0x{meta.Flags2:X}", meta.IsEncrypted.ToString());
                     }
 
                     dgvEntryList.DataSource = dt;
@@ -855,7 +874,7 @@ namespace PS4PKGTool
             }
         }
 
-        private void LoadBackgroundImages(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private void LoadBackgroundImages(PkgMetadata pkg)
         {
             try
             {
@@ -866,12 +885,12 @@ namespace PS4PKGTool
 
                 if (pkg.PKG_Type.ToString() == PKGCategory.GAME || pkg.PKG_Type.ToString() == PKGCategory.PATCH)
                 {
-                    if (pkg.Image != null)
+                    if (pkg.Pic0 != null)
                     {
                         pbPIC0.Click += pictureBox_click;
                         pbPIC0.Visible = true;
                         pbPIC0.SizeMode = PictureBoxSizeMode.StretchImage;
-                        pbPIC0.Image = Helper.Bitmap.BytesToBitmap(pkg.Image);
+                        pbPIC0.Image = Helper.Bitmap.BytesToBitmap(pkg.Pic0);
                         Helper.Bitmap.pic0.Image = pbPIC0.Image;
                     }
                     else
@@ -881,9 +900,9 @@ namespace PS4PKGTool
                         pbPIC0.Image = null;
                     }
 
-                    if (pkg.Image2 != null)
+                    if (pkg.Pic1 != null)
                     {
-                        if (old_byte == pkg.Image2)
+                        if (old_byte == pkg.Pic1)
                         {
                             pbPIC1.Click -= pictureBox_click;
                             pbPIC1.Visible = false;
@@ -891,11 +910,11 @@ namespace PS4PKGTool
                         }
                         else
                         {
-                            old_byte = pkg.Image2;
+                            old_byte = pkg.Pic1;
                             pbPIC1.Click += pictureBox_click;
                             pbPIC1.Visible = true;
                             pbPIC1.SizeMode = PictureBoxSizeMode.StretchImage;
-                            pbPIC1.Image = Helper.Bitmap.BytesToBitmap(pkg.Image2);
+                            pbPIC1.Image = Helper.Bitmap.BytesToBitmap(pkg.Pic1);
                             Helper.Bitmap.pic1.Image = pbPIC1.Image;
                         }
                     }
@@ -912,7 +931,7 @@ namespace PS4PKGTool
 
         private async Task<string> EnsureTrophyFileExtractedAsync(
             string pkgPath,
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+            PkgMetadata pkg)
         {
             string outputPath = Path.Combine(Trophy.TrophyTempFolder, pkg.Content_ID + "_" + pkg.PKG_Type + ".TRP");
             if (File.Exists(outputPath)) return outputPath;
@@ -931,32 +950,25 @@ namespace PS4PKGTool
         private static bool TryExtractTrophyFile(
             string pkgPath,
             string outputPath,
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+            PkgMetadata pkg)
         {
             Tool.CreateDirectoryIfNotExists(Trophy.TrophyTempFolder);
             string temporaryPath = outputPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {
-                using var pkgFile = File.OpenRead(pkgPath);
-                var pkgReader = new PkgReader(pkgFile);
-                var pkgData = pkgReader.ReadPkg();
-                var meta = pkgData.Metas.Metas.FirstOrDefault(item =>
-                    string.Equals(item.id.ToString(), "TROPHY__TROPHY00_TRP", StringComparison.Ordinal));
-                if (meta == null)
+                // PkgMetadataReader materialized (and decrypted) the TRP entry
+                // up front — the legacy raw-copy + encrypted-refusal path is
+                // replaced by a plain write.
+                if (pkg.TrpData == null || pkg.TrpData.Length == 0)
                 {
                     Logger.LogWarning("No TROPHY__TROPHY00_TRP entry found in PKG: " + pkg.PS4_Title + " (" + pkg.Content_ID + ")");
                     return false;
                 }
-                if (meta.Encrypted)
-                {
-                    Logger.LogWarning("Trophy TRP entry is encrypted and cannot be extracted: " + pkg.PS4_Title + " (" + pkg.Content_ID + ")");
-                    return false;
-                }
 
                 using (var outFile = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                    new SubStream(pkgFile, meta.DataOffset, meta.DataSize).CopyTo(outFile);
+                    outFile.Write(pkg.TrpData, 0, pkg.TrpData.Length);
 
-                if (new FileInfo(temporaryPath).Length != meta.DataSize)
+                if (new FileInfo(temporaryPath).Length != (long)pkg.TrpData.Length)
                     throw new InvalidDataException("Extracted trophy length does not match the PKG metadata entry.");
                 File.Move(temporaryPath, outputPath, overwrite: true);
                 Logger.LogInformation("Trophy extracted: " + pkg.PS4_Title + " -> " + outputPath);
@@ -974,7 +986,7 @@ namespace PS4PKGTool
             }
         }
 
-        private async void LoadTrophyInfo(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg, string pkgPath)
+        private async void LoadTrophyInfo(PkgMetadata pkg, string pkgPath)
         {
             int loadVersion = Interlocked.Increment(ref _trophyLoadVersion);
             try
@@ -1095,7 +1107,7 @@ namespace PS4PKGTool
                 return Trophy.ResizeImage(source, Math.Max(1, source.Width / 2), Math.Max(1, source.Height / 2));
         }
 
-        //private void LoadTrophies(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        //private void LoadTrophies(PkgMetadata pkg)
         //{
         //    try
         //    {
@@ -1246,7 +1258,7 @@ namespace PS4PKGTool
             bgw.RunWorkerAsync();
         }
 
-        private void ShowPackageIcon(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private void ShowPackageIcon(PkgMetadata pkg)
         {
             darkLabel1.Text = "";
 
@@ -1267,15 +1279,15 @@ namespace PS4PKGTool
         }
 
 
-        private void UpdateParamInfoGrid(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private void UpdateParamInfoGrid(PkgMetadata pkg)
         {
             DataTable dg2 = new DataTable();
             dg2.Columns.Add("PARAM");
             dg2.Columns.Add("VALUE");
 
-            for (int i = 0; i < pkg.Param.Tables.Count; i++)
+            for (int i = 0; i < pkg.SfoTables.Count; i++)
             {
-                dg2.Rows.Add(pkg.Param.Tables[i].Name, pkg.Param.Tables[i].Value);
+                dg2.Rows.Add(pkg.SfoTables[i].Name, pkg.SfoTables[i].Value);
             }
 
             darkDataGridView2.DataSource = dg2;
@@ -1432,7 +1444,7 @@ namespace PS4PKGTool
         private void MorePKGTool(string type, DataTable dataTable = null, string excelFilename = null)
         {
             this.Enabled = false;
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG PS4_PKG = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
+            PkgMetadata PS4_PKG = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
 
             switch (type)
             {
@@ -2191,11 +2203,11 @@ namespace PS4PKGTool
 
                     try
                     {
-                        PS4_Tools.PKG.SceneRelated.Unprotected_PKG ps4Pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgFile);
-                        string pkgAppVersion = verRegex2.Replace(ps4Pkg.Param.APP_VER, "");
+                        PkgMetadata ps4Pkg = PkgMetadataReader.Read(pkgFile);
+                        string pkgAppVersion = verRegex2.Replace(ps4Pkg.APP_VER, "");
                         string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : "";
                         string pkgVersion = "";
-                        foreach (Param_SFO.PARAM_SFO.Table t in ps4Pkg.Param.Tables.ToList())
+                        foreach (var t in ps4Pkg.SfoTables)
                         {
                             if (t.Name == "SYSTEM_VER")
                             {
@@ -2222,7 +2234,7 @@ namespace PS4PKGTool
                         {
                             foreach (var item in ps5BcCache2)
                             {
-                                if (item.npTitleIdshort == ps4Pkg.Param.TITLEID)
+                                if (item.npTitleIdshort == ps4Pkg.TITLEID)
                                 {
                                     string psvr = item.psVr, neo = item.neoEnable, pbc = item.ps5bc;
                                     psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
@@ -2241,8 +2253,8 @@ namespace PS4PKGTool
                         var row = dt.NewRow();
                         row[PkgColumns.Filename] = pkgFileName;
                         row[PkgColumns.Title] = ps4Pkg.PS4_Title;
-                        row[PkgColumns.TitleId] = ps4Pkg.Param.TITLEID;
-                        row[PkgColumns.ContentId] = ps4Pkg.Param.ContentID;
+                        row[PkgColumns.TitleId] = ps4Pkg.TITLEID;
+                        row[PkgColumns.ContentId] = ps4Pkg.SfoContentId;
                         row[PkgColumns.Region] = pkgRegionIcon;
                         row[PkgColumns.SystemVersion] = pkgMinFirmware;
                         row[PkgColumns.AppVersion] = pkgVersion + $" [{pkgAppVersion}]";
@@ -2521,21 +2533,20 @@ namespace PS4PKGTool
                 // process every verified pkg and display into gridview control
                 foreach (var pkg in PKG.VerifiedPs4PkgList)
                 {
-                    PS4_Tools.PKG.SceneRelated.Unprotected_PKG ps4Pkg;
+                    PkgMetadata ps4Pkg;
                     try
                     {
-                        ps4Pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
+                        ps4Pkg = PkgMetadataReader.Read(pkg);
                     }
                     catch (Exception ex)
                     {
                         Logger.LogError($"Failed to read PKG, skipping: {Path.GetFileName(pkg)} - {ex.Message}");
                         continue;
                     }
-                    Param_SFO.PARAM_SFO psfo = ps4Pkg.Param;
-
+                    
                     string pkgVersion = "";
-                    string pkgAppVersion = verRegex.Replace(psfo.APP_VER, "");
-                    string pkgTitleId = ps4Pkg.Param.TITLEID;
+                    string pkgAppVersion = verRegex.Replace(ps4Pkg.APP_VER, "");
+                    string pkgTitleId = ps4Pkg.TITLEID;
                     string pkgFileName = Path.GetFileName(pkg);
                     string pkgDirectoryName = Path.GetDirectoryName(pkg);
                     string psVr = "";
@@ -2547,7 +2558,7 @@ namespace PS4PKGTool
                     string pkgType = ps4Pkg.PKG_Type.ToString();
 
                     // get pkg's minimum system fw + version
-                    foreach (Param_SFO.PARAM_SFO.Table t in ps4Pkg.Param.Tables.ToList())
+                    foreach (var t in ps4Pkg.SfoTables)
                     {
                         if (t.Name == "SYSTEM_VER")
                         {
@@ -2571,7 +2582,7 @@ namespace PS4PKGTool
                         {
                             foreach (var item in ps5BcJsonCache)
                             {
-                                if (item.npTitleIdshort == ps4Pkg.Param.TITLEID)
+                                if (item.npTitleIdshort == ps4Pkg.TITLEID)
                                 {
                                     string psvr = item.psVr;
                                     string neo = item.neoEnable;
@@ -2602,7 +2613,7 @@ namespace PS4PKGTool
                     row[PkgColumns.Filename] = pkgFileName;
                     row[PkgColumns.Title] = ps4Pkg.PS4_Title;
                     row[PkgColumns.TitleId] = pkgTitleId;
-                    row[PkgColumns.ContentId] = ps4Pkg.Param.ContentID;
+                    row[PkgColumns.ContentId] = ps4Pkg.SfoContentId;
                     row[PkgColumns.Region] = pkgRegionIcon;
                     row[PkgColumns.SystemVersion] = pkgMinFirmware;
                     row[PkgColumns.AppVersion] = pkgVersion + $" [{pkgAppVersion}]";
@@ -2930,7 +2941,7 @@ namespace PS4PKGTool
         {
             var paths = GetGLVTargetPaths();
             if (paths.Count == 0) { ShowError("No PKG selected.", false); return; }
-            var ids = paths.Select(p => { var r = PS4_Tools.PKG.SceneRelated.Read_PKG(p); return r.Param.ContentID; });
+            var ids = paths.Select(p => { var r = PkgMetadataReader.Read(p); return r.SfoContentId; });
             Clipboard.SetText(string.Join("\n", ids));
             ShowInformation($"{paths.Count} Content ID(s) copied.", true);
         }
@@ -3085,8 +3096,8 @@ namespace PS4PKGTool
                 {
                     try
                     {
-                        var pkgData = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
-                        string titleId = pkgData.Param.TITLEID;
+                        var pkgData = PkgMetadataReader.Read(pkg);
+                        string titleId = pkgData.TITLEID;
                         string pkgType = pkgData.PKG_Type.ToString();
                         if (!string.IsNullOrEmpty(titleId))
                         {
@@ -4305,9 +4316,8 @@ namespace PS4PKGTool
                 DisableControls(darkMenuStrip1);
                 DisableControls_PkgSender();
 
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-                Param_SFO.PARAM_SFO psfo = read.Param;
-
+                PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+                
                 Logger.LogInformation("Sending " + read.PS4_Title + " to PS4..");
 
                 // Update 'Settings.PKG.SelectedPKGFilename'
@@ -4322,7 +4332,7 @@ namespace PS4PKGTool
                     PKGSENDER.JSON.CHECKAPPEXISTS.baseAppExist = true;
 
                     dynamic appExistsJson = null;
-                    appExistsJson = PKGSENDER.CheckIfPkgInstalled(psfo);
+                    appExistsJson = PKGSENDER.CheckIfPkgInstalled(read);
                     if (appExistsJson == null)
                     {
                         ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
@@ -4391,15 +4401,14 @@ namespace PS4PKGTool
                     return;
                 }
 
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-                Param_SFO.PARAM_SFO psfo = read.Param;
-
+                PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+                
                 PKGSENDER.JSON.STOPTASK.status = stopTaskJson.status.ToString();
                 if (PKGSENDER.JSON.STOPTASK.status == "success")
                 {
                     // If stopping success, uninstall stopped game 
                     dynamic uninstallAppJson = null;
-                    uninstallAppJson = PKGSENDER.UninstallGame(psfo);
+                    uninstallAppJson = PKGSENDER.UninstallGame(read);
                     if (uninstallAppJson == null)
                     {
                         ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
@@ -4434,9 +4443,8 @@ namespace PS4PKGTool
 
         private async Task CheckIfAppInstalledOnPS4()
         {
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-            Param_SFO.PARAM_SFO psfo = read.Param;
-
+            PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+            
             Logger.LogInformation("Checking if base PKG installed on PS4 (" + read.PS4_Title + ")..");
 
             DisableTabPages(mainTabControl, "tabPage1");
@@ -4447,7 +4455,7 @@ namespace PS4PKGTool
 
             try
             {
-                app_exists_json = await PKGSENDER.CheckIfPkgInstalled(psfo);
+                app_exists_json = await PKGSENDER.CheckIfPkgInstalled(read);
                 if (app_exists_json == null)
                 {
                     ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
@@ -4499,9 +4507,8 @@ namespace PS4PKGTool
                 // Kill server if running
                 Tool.KillNodeJS();
 
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(currentPkgFile);
-                Param_SFO.PARAM_SFO psfo = read.Param;
-                var tempFilename = read.Content_ID + "_" + read.PKG_Type.ToString() + "_Send_To_PS4.pkg";
+                PkgMetadata read = PkgMetadataReader.Read(currentPkgFile);
+                                var tempFilename = read.Content_ID + "_" + read.PKG_Type.ToString() + "_Send_To_PS4.pkg";
 
                 // Get directory
                 var directory = Path.GetDirectoryName(currentPkgFile);
@@ -4553,7 +4560,7 @@ namespace PS4PKGTool
                     PKGSENDER.JSON.SENDPKG.status = send_pkg_json.status.ToString();
                     PKGSENDER.JSON.SENDPKG.task_id = send_pkg_json.task_id.ToString();
                     PKGSENDER.JSON.SENDPKG.title = send_pkg_json.title.ToString();
-                    PKGSENDER.JSON.SENDPKG.title_id = psfo.TitleID.ToUpper();
+                    PKGSENDER.JSON.SENDPKG.title_id = read.TITLEID.ToUpper();
                     PKGSENDER.MonitorPkgSenderTaskBackgroundWorker = new BackgroundWorker();
                     PKGSENDER.MonitorPkgSenderTaskBackgroundWorker.WorkerSupportsCancellation = true;
                     MonitorPKGSenderTask(PKGSENDER.MonitorPkgSenderTaskBackgroundWorker);
@@ -4837,16 +4844,15 @@ namespace PS4PKGTool
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-            Param_SFO.PARAM_SFO psfo = read.Param;
-
+            PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+            
             Logger.LogInformation("Uninstalling addon PKG (" + read.PS4_Title + ")..");
 
             // Uninstall installed addon pkg
 
             dynamic uninstall_patch_json = null;
 
-            uninstall_patch_json = PKGSENDER.UninstallAddonTheme(psfo);
+            uninstall_patch_json = PKGSENDER.UninstallAddonTheme(read);
             if (uninstall_patch_json == null)
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
@@ -4877,16 +4883,15 @@ namespace PS4PKGTool
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-            Param_SFO.PARAM_SFO psfo = read.Param;
-
+            PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+            
             Logger.LogInformation("Uninstalling theme PKG (" + read.PS4_Title + ")..");
 
             // Uninstall installed theme pkg
 
             dynamic uninstall_theme_json = null;
 
-            uninstall_theme_json = PKGSENDER.UninstallAddonTheme(psfo);
+            uninstall_theme_json = PKGSENDER.UninstallAddonTheme(read);
             if (uninstall_theme_json == null)
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
@@ -4928,15 +4933,14 @@ namespace PS4PKGTool
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-            Param_SFO.PARAM_SFO psfo = read.Param;
-            Logger.LogInformation("Uninstalling base PKG (" + read.PS4_Title + ")..");
+            PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+                        Logger.LogInformation("Uninstalling base PKG (" + read.PS4_Title + ")..");
 
             // Check if pkg is installed
 
             dynamic app_exists_json = null;
 
-            app_exists_json = PKGSENDER.CheckIfPkgInstalled(psfo);
+            app_exists_json = PKGSENDER.CheckIfPkgInstalled(read);
             if (app_exists_json == null)
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
@@ -4960,7 +4964,7 @@ namespace PS4PKGTool
                     // Uninstall installed pkg
 
                     dynamic uninstall_app_json = null;
-                    uninstall_app_json = PKGSENDER.UninstallGame(psfo);
+                    uninstall_app_json = PKGSENDER.UninstallGame(read);
                     if (uninstall_app_json == null)
                     {
                         ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
@@ -4993,16 +4997,15 @@ namespace PS4PKGTool
             DisableControls(darkMenuStrip1);
             DisableControls_PkgSender();
 
-            PS4_Tools.PKG.SceneRelated.Unprotected_PKG read = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
-            Param_SFO.PARAM_SFO psfo = read.Param;
-
+            PkgMetadata read = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
+            
             Logger.LogInformation("Uninstalling patch PKG (" + read.PS4_Title + ")..");
 
             // Uninstall installed patch pkg
 
             dynamic uninstall_patch_json = null;
 
-            uninstall_patch_json = PKGSENDER.UninstallPatch(psfo);
+            uninstall_patch_json = PKGSENDER.UninstallPatch(read);
             if (uninstall_patch_json == null)
             {
                 ShowError("An error occurred while trying to communicate with the PS4. Launch/restart the Remote Package Installer application on the PS4 and do not minimize it.", true);
@@ -5198,7 +5201,7 @@ namespace PS4PKGTool
         {
             if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
             {
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG PS4_PKG = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
+                PkgMetadata PS4_PKG = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
 
                 Logger.LogInformation("Extracting decrypted items..");
                 //load pkg file
@@ -5720,7 +5723,7 @@ namespace PS4PKGTool
                             toolStripProgressBar1.MarqueeAnimationSpeed = 30;
                         }));
                         // Extraction code here
-                        PS4_Tools.PKG.SceneRelated.Unprotected_PKG PS4_PKG = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
+                        PkgMetadata PS4_PKG = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
                         string origPath = PKG.SelectedPKGFilename;
                         Logger.LogInformation($"Extracting: {Path.GetFileName(origPath)}");
                         Logger.LogInformation($"Extracting PKG ({origPath})..");
@@ -6565,14 +6568,14 @@ namespace PS4PKGTool
                 progressWorker?.ReportProgress((int)(100.0 * processed / total), $"Reading PKG {processed}/{total}...");
                 try
                 {
-                    var readPkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
+                    var readPkg = PkgMetadataReader.Read(pkg);
                     string pkgType = readPkg.PKG_Type.ToString();
                     if (pkgType != "Game" && pkgType != "Patch")
                     {
                         Logger.LogInformation($"Priority rename: skipping {Path.GetFileName(pkg)} ({pkgType}).");
                         continue;
                     }
-                    string titleId = readPkg.Param.TITLEID;
+                    string titleId = readPkg.TITLEID;
                     if (string.IsNullOrEmpty(titleId))
                     {
                         titleId = "UNKNOWN_TITLEID";
@@ -6582,7 +6585,7 @@ namespace PS4PKGTool
                     if (!groups.ContainsKey(titleId))
                         groups[titleId] = new List<(string, string, string, string)>();
 
-                    groups[titleId].Add((pkg, readPkg.PS4_Title, readPkg.Param.APP_VER, readPkg.PKG_Type.ToString()));
+                    groups[titleId].Add((pkg, readPkg.PS4_Title, readPkg.APP_VER, readPkg.PKG_Type.ToString()));
                 }
                 catch (Exception ex)
                 {

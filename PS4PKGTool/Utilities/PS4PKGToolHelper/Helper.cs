@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using PS4_Tools.LibOrbis.Util;
 using System;
@@ -1366,7 +1366,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return readTask.Result;
             }
 
-            public static dynamic CheckIfPkgInstalled(Param_SFO.PARAM_SFO psfo)
+            public static dynamic CheckIfPkgInstalled(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
             {
                 dynamic json = null;
 
@@ -1378,7 +1378,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         StartInfo = new ProcessStartInfo
                         {
                             FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TITLEID + "\"\"\"} http://" + appSettings_.Ps4Ip + ":12800/api/is_exists",
+                            Arguments = "curl --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"} http://" + appSettings_.Ps4Ip + ":12800/api/is_exists",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             CreateNoWindow = true
@@ -1433,7 +1433,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return json;
             }
 
-            public static dynamic UninstallAddonTheme(Param_SFO.PARAM_SFO psfo)
+            public static dynamic UninstallAddonTheme(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
             {
                 dynamic json = null;
                 StackTrace stackTrace = new StackTrace();
@@ -1444,11 +1444,11 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     uninstallappp.StartInfo.FileName = AppDataDirectory + @"curl.exe";
                     if (stackTrace.GetFrame(1).GetMethod().Name == "uninstallAddonPkgFromPs4")
                     {
-                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_ac --data {\"\"\"content_id\"\"\":\"\"\"" + psfo.ContentID + "\"\"\"}";
+                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_ac --data {\"\"\"content_id\"\"\":\"\"\"" + pkg.SfoContentId + "\"\"\"}";
                     }
                     else
                     {
-                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_theme --data {\"\"\"content_id\"\"\":\"\"\"" + psfo.ContentID + "\"\"\"}";
+                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_theme --data {\"\"\"content_id\"\"\":\"\"\"" + pkg.SfoContentId + "\"\"\"}";
                     }
                     uninstallappp.StartInfo.UseShellExecute = false;
                     uninstallappp.StartInfo.RedirectStandardOutput = true;
@@ -1466,7 +1466,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return json;
             }
 
-            public static dynamic UninstallPatch(Param_SFO.PARAM_SFO psfo)
+            public static dynamic UninstallPatch(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
             {
                 dynamic json = null;
 
@@ -1477,7 +1477,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         StartInfo = new ProcessStartInfo
                         {
                             FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_patch --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TITLEID + "\"\"\"}",
+                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_patch --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             CreateNoWindow = true
@@ -1563,7 +1563,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return json;
             }
 
-            public static dynamic UninstallGame(Param_SFO.PARAM_SFO psfo)
+            public static dynamic UninstallGame(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
             {
                 dynamic json = null;
                 try
@@ -1573,7 +1573,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         StartInfo = new ProcessStartInfo
                         {
                             FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_game --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TitleID + "\"\"\"}",
+                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_game --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             CreateNoWindow = true

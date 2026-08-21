@@ -51,8 +51,8 @@ namespace PS4PKGTool
             {
                 try
                 {
-                    var updateInfo = PS4_Tools.PKG.Official.CheckForUpdate(titleId);
-                    if (updateInfo?.Tag?.Package?.Manifest_item?.pieces != null)
+                    var updateInfo = OrbisPkgTool.Psn.UpdateCheck.CheckForUpdate(titleId);
+                    if (updateInfo?.Tag?.Package?.ManifestItem?.Pieces != null)
                     {
                         var dt = new DataTable();
                         dt.Columns.Add("Part");
@@ -62,24 +62,24 @@ namespace PS4PKGTool
                         dt.Columns.Add("RawSize", typeof(long));
 
                         string version = updateInfo.Tag.Package.Version ?? "?";
-                        string sysVer = FormatSystemVersion(updateInfo.Tag.Package.System_ver);
+                        string sysVer = FormatSystemVersion(updateInfo.Tag.Package.SystemVer);
                         string type = ToTitleCase(updateInfo.Tag.Package.Type ?? "?");
                         string mandatory = ToTitleCase(updateInfo.Tag.Mandatory ?? "?");
                         string remaster = ToTitleCase(updateInfo.Tag.Package.Remaster ?? "?");
-                        int fileCount = updateInfo.Tag.Package.Manifest_item.pieces.Count;
+                        int fileCount = updateInfo.Tag.Package.ManifestItem.Pieces.Count;
                         long totalBytes = 0;
 
                         int partNum = 0;
-                        foreach (var piece in updateInfo.Tag.Package.Manifest_item.pieces)
+                        foreach (var piece in updateInfo.Tag.Package.ManifestItem.Pieces)
                         {
                             partNum++;
-                            long size = piece.fileSize;
+                            long size = piece.FileSize;
                             totalBytes += size;
                             dt.Rows.Add(
                                 $"Part {partNum}",
                                 ByteSize.FromBytes(size).ToString(),
-                                piece.hashValue.ToString(),
-                                piece.url.ToString(),
+                                piece.HashValue.ToString(),
+                                piece.Url.ToString(),
                                 size
                             );
                         }

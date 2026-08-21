@@ -5,8 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using PS4_Tools.LibOrbis.PKG;
-using static PS4_Tools.PKG.SceneRelated;
+using PS4PKGTool.Utilities.PkgMeta;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool.Utilities.TrophyMetadata
@@ -65,7 +64,7 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
 
                 try
                 {
-                    Unprotected_PKG pkg = Read_PKG(pkgPath);
+                    PkgMetadata pkg = PkgMetadataReader.Read(pkgPath);
                     if (!HasTrophyEntry(pkgPath))
                     {
                         result.WithoutTrophies++;
@@ -153,11 +152,8 @@ namespace PS4PKGTool.Utilities.TrophyMetadata
 
         private static bool HasTrophyEntry(string pkgPath)
         {
-            using var stream = File.OpenRead(pkgPath);
-            var reader = new PkgReader(stream);
-            var data = reader.ReadPkg();
-            return data.Metas.Metas.Any(meta =>
-                string.Equals(meta.id.ToString(), "TROPHY__TROPHY00_TRP", StringComparison.Ordinal));
+            using var reader = new OrbisPkgTool.PkgReader(pkgPath);
+            return reader.Entries.Any(meta => meta.Id == OrbisPkgTool.Pkg.PkgEntryIds.Trophy00Trp);
         }
 
         private static void AddError(TrophyCacheBuildResult result, string error)

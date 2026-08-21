@@ -528,12 +528,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 get { return SelectedPKGFilename_; }
                 set { SelectedPKGFilename_ = value; }
             }
-            private static List<PS4_Tools.PKG.Official.StoreItems> storeitems_;
-            public static List<PS4_Tools.PKG.Official.StoreItems> StoreItems
-            {
-                get { return storeitems_; }
-                set { storeitems_ = value; }
-            }
 
             private static List<string> validPS4PKG_ = new List<string>();
             private static List<string> idEntryList_ = new List<string>();

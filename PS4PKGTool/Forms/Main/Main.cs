@@ -1456,66 +1456,6 @@ namespace PS4PKGTool
                     // Code for the "TROPHY" button
                     break;
 
-                case PKGCategory.ADDON:
-                    if (Tool.CheckForInternetConnection())
-                    {
-                        if (PKGGridView.GetCellCount(DataGridViewElementStates.Selected) > 0)
-                        {
-                            try
-                            {
-                                string CUSA_DLC = "";
-                                string CONTENTID_DLC = "";
-                                foreach (DataGridViewCell cell in PKGGridView.SelectedCells)
-                                {
-                                    int selectedrowindex = cell.RowIndex;
-                                    DataGridViewRow selectedRow = PKGGridView.Rows[selectedrowindex];
-                                    CUSA_DLC = Convert.ToString(selectedRow.Cells[2].Value);
-                                    CONTENTID_DLC = Convert.ToString(selectedRow.Cells[2].Value);
-                                }
-
-                                if (CUSA_DLC != null && CONTENTID_DLC != null)
-                                {
-                                    try
-                                    {
-                                        PKG.StoreItems = PS4_Tools.PKG.Official.Get_All_Store_Items("CUSA07022");
-                                    }
-                                    catch
-                                    {
-                                        PKG.StoreItems = null;
-                                    }
-
-                                    if (PKG.StoreItems.Count > 0)
-                                    {
-                                        DLC grid = new DLC(PKG.StoreItems);
-                                        toolStripStatusLabel2.Text = "Viewing addon.. ";
-                                        BeginInvoke((MethodInvoker)delegate
-                                        {
-                                            grid.ShowDialog();
-                                        });
-                                    }
-                                    else
-                                    {
-                                        ShowInformation("\"" + PS4_PKG.PS4_Title + "\" has no Addon", true);
-                                    }
-                                }
-                                else
-                                {
-                                    ShowError("An error occurred", true);
-
-                                }
-                            }
-                            catch (System.Runtime.InteropServices.ExternalException)
-                            {
-                                ShowError("The Clipboard could not be accessed. Please try again.", true);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        ShowError("Network is not Available", true);
-                    }
-                    break;
-
                 case "EXPORT":
                     try
                     {
@@ -3108,8 +3048,8 @@ namespace PS4PKGTool
                             }
                             else if (pkgType == PKGCategory.GAME || pkgType == PKGCategory.PATCH)
                             {
-                                var updateInfo = PS4_Tools.PKG.Official.CheckForUpdate(titleId);
-                                if (updateInfo != null && updateInfo.Tag?.Package?.Manifest_url != null)
+                                var updateInfo = OrbisPkgTool.Psn.UpdateCheck.CheckForUpdate(titleId);
+                                if (updateInfo != null && updateInfo.Tag?.Package?.ManifestUrl != null)
                                 {
                                     fetched++;
                                     latestValue = updateInfo.Tag?.Package?.Version ?? "No Update";

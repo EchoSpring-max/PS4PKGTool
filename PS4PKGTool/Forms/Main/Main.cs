@@ -1617,12 +1617,47 @@ namespace PS4PKGTool
             _fileSizes.Clear();
             _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             ClearFileBrowser();
+            ClearSelectedPkgDetails();
             groupedListView?.Clear();
             ManifestHelper.DeleteManifest();                    // without this the library would resurrect on restart
             InitializeEmptyGrid();
             labelDisplayTotalPKG.Text = "Displaying 0 PS4 PKG";
             toolStripStatusLabel2.Text = "Ready (empty)";
             Logger.LogInformation("PKG list emptied.");
+        }
+
+        /// <summary>Resets the selected-PKG details when the library becomes empty.</summary>
+        private void ClearSelectedPkgDetails()
+        {
+            PKG.SelectedPKGFilename = null;
+            darkLabel1.Text = "";
+            label3.Text = "";
+
+            ClearPictureBox(pictureBox1, hide: true);
+            ClearPictureBox(pbPIC0, hide: true);
+            ClearPictureBox(pbPIC1, hide: true);
+
+            ClearDetailGrid(darkDataGridView2);
+            ClearDetailGrid(TrophyGridView);
+            ClearDetailGrid(dgvEntryList);
+            ClearDetailGrid(darkDataGridView4);
+            ClearDetailGrid(dgvHeader);
+            ClearDetailGrid(dgvUpdate);
+            this.Text = "PS4 PKG Tool " + ApplicationVersion;
+        }
+
+        private static void ClearPictureBox(PictureBox pictureBox, bool hide)
+        {
+            Image image = pictureBox.Image;
+            pictureBox.Image = null;
+            if (hide) pictureBox.Visible = false;
+            image?.Dispose();
+        }
+
+        private static void ClearDetailGrid(DarkDataGridView grid)
+        {
+            grid.DataSource = null;
+            grid.Rows.Clear();
         }
 
         private void toolStripMenuItem160_Click(object sender, EventArgs e)
@@ -6256,7 +6291,7 @@ namespace PS4PKGTool
 
         private void listView1_SizeChanged(object sender, EventArgs e)
         {
-            BalanceListViewColumns();
+            // Keep user-adjusted column widths when the file browser is resized.
         }
 
         /// <summary>
@@ -6276,8 +6311,7 @@ namespace PS4PKGTool
 
         private void listView1_ColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
         {
-            e.Cancel = true;
-            e.NewWidth = listView1.Columns[e.ColumnIndex].Width;
+            // Intentionally left empty: DarkListView columns are user-resizable.
         }
 
         private void toolStripMenuItem32_Click(object sender, EventArgs e)

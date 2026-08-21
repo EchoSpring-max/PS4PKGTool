@@ -166,8 +166,7 @@ namespace PS4PKGTool
 
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; 
-            CheckForIllegalCrossThreadCalls = false;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             PKGGridView.ScrollBars = ScrollBars.Vertical;
             darkDataGridView2.ScrollBars = ScrollBars.Vertical;
             TrophyGridView.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
@@ -1440,7 +1439,7 @@ namespace PS4PKGTool
 
         private void MorePKGTool(string type, DataTable dataTable = null, string excelFilename = null)
         {
-            this.Enabled = false;
+            this.Invoke((MethodInvoker)delegate { this.Enabled = false; });
             PkgMetadata PS4_PKG = PkgMetadataReader.Read(PKG.SelectedPKGFilename);
 
             switch (type)
@@ -1458,21 +1457,21 @@ namespace PS4PKGTool
                     {
                         int rows = dataTable?.Rows.Count ?? 0;
                         Logger.LogInformation($"Exporting {rows} PKG(s) to Excel...");
-                        toolStripStatusLabel2.Text = "Exporting PKG list.. ";
+                        this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = "Exporting PKG list.. "; });
                         var wb = new XLWorkbook();
                         wb.Worksheets.Add(dataTable, "PS4 PKG");
                         wb.SaveAs(excelFilename);
                         Logger.LogInformation($"Exported {rows} PKG(s) to \"{excelFilename}\".");
-                        ShowInformation($"PKG list exported.", false);
+                        this.Invoke((Action)(() => ShowInformation($"PKG list exported.", false)));
                     }
                     catch (Exception s)
                     {
                         Logger.LogInformation($"ERROR: Export failed: {s.Message}");
-                        ShowError(s.Message, true);
+                        this.Invoke((Action)(() => ShowError(s.Message, true)));
                     }
                     break;
             }
-            this.Enabled = true; // re-enable on every exit path (ADDON/ENTRY/TROPHY leaves the form disabled otherwise)
+            this.Invoke((MethodInvoker)delegate { this.Enabled = true; }); // re-enable on every exit path (ADDON/ENTRY/TROPHY leaves the form disabled otherwise)
         }
 
         private void CopyContentID()
@@ -2327,7 +2326,7 @@ namespace PS4PKGTool
                 PKG.app = 0;
                 PKG.unknown = 0;
                 PKG.addon = 0;
-                toolStripProgressBar1.Value = 0;
+                this.Invoke((MethodInvoker)delegate { toolStripProgressBar1.Value = 0; });
 
                 // Load from manifest cache if available (fast startup, no PKG reading)
                 if (Helper.LoadFromManifest && ManifestHelper.ManifestExists())
@@ -4170,27 +4169,39 @@ namespace PS4PKGTool
             string pkgFileName_ = Path.GetFileName(sourcePkg);
             string directoryName = Path.GetDirectoryName(sourcePkg);
 
-            foreach (DataGridViewRow row in PKGGridView.Rows)
+            // The grid scan runs on the UI thread; the file move itself stays
+            // on the calling worker so rename loops never block the UI on disk I/O.
+            DataGridViewRow matchedRow = null;
+            PKGGridView.Invoke((Action)(() =>
             {
-                string cell0 = row.Cells[0].Value?.ToString();
-                string cell12 = row.Cells[13].Value?.ToString();
-
-                if (string.Equals(cell0, pkgFileName_, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(cell12, directoryName, StringComparison.OrdinalIgnoreCase))
+                foreach (DataGridViewRow row in PKGGridView.Rows)
                 {
-                    File.Move(sourcePkg, targetPkg);
-                    string newFileName = newPkgName + ".pkg";
-                    PKGGridView.Invoke((Action)(() =>
+                    string cell0 = row.Cells[0].Value?.ToString();
+                    string cell12 = row.Cells[13].Value?.ToString();
+
+                    if (string.Equals(cell0, pkgFileName_, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(cell12, directoryName, StringComparison.OrdinalIgnoreCase))
                     {
-                        row.Cells[0].Value = newFileName;
-                    }));
-                    // Update the GLV cell in-place (no full rebuild, no selection loss).
-                    // Use targetPkg - after the DGV cell update above, GlvItem.FilePath
-                    // is recomputed from the DataRow and equals the new path, not sourcePkg.
-                    groupedListView?.Invoke((Action)(() =>
-                        groupedListView.UpdateCellForPath(targetPkg, 0, newFileName)));
-                    return;
+                        matchedRow = row;
+                        return;
+                    }
                 }
+            }));
+
+            if (matchedRow != null)
+            {
+                File.Move(sourcePkg, targetPkg);
+                string newFileName = newPkgName + ".pkg";
+                PKGGridView.Invoke((Action)(() =>
+                {
+                    matchedRow.Cells[0].Value = newFileName;
+                }));
+                // Update the GLV cell in-place (no full rebuild, no selection loss).
+                // Use targetPkg - after the DGV cell update above, GlvItem.FilePath
+                // is recomputed from the DataRow and equals the new path, not sourcePkg.
+                groupedListView?.Invoke((Action)(() =>
+                    groupedListView.UpdateCellForPath(targetPkg, 0, newFileName)));
+                return;
             }
             // Row not found - the grid may have been refreshed since this rename started.
             // Try the File.Move anyway so the file on disk is still renamed.
@@ -4460,12 +4471,15 @@ namespace PS4PKGTool
                 }
 
                 // Update filename in gridview
-                foreach (DataGridViewCell cell in PKGGridView.SelectedCells)
+                PKGGridView.Invoke((Action)(() =>
                 {
-                    int selectedRowIndex = cell.RowIndex;
-                    DataGridViewRow selectedRow = PKGGridView.Rows[selectedRowIndex];
-                    selectedRow.Cells[0].Value = tempFilename;
-                }
+                    foreach (DataGridViewCell cell in PKGGridView.SelectedCells)
+                    {
+                        int selectedRowIndex = cell.RowIndex;
+                        DataGridViewRow selectedRow = PKGGridView.Rows[selectedRowIndex];
+                        selectedRow.Cells[0].Value = tempFilename;
+                    }
+                }));
 
                 TEMPFILENAMESENDPKG = directory + @"\" + tempFilename;
                 PKG.SelectedPKGFilename = TEMPFILENAMESENDPKG;
@@ -4477,16 +4491,19 @@ namespace PS4PKGTool
                 send_pkg_json = PKGSENDER.SendPKG(tempFilename);
                 if (send_pkg_json == null)
                 {
-                    ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
-                    EnableControls_PkgSender();
-                    EnableTabPages(mainTabControl);
-                    EnableControls(darkMenuStrip1);
-                    toolStripMenuItem18.Text = "Remote PKG Installer | Status : Idle";
-                    RpiSendPkgtoolStripMenuItem2.Text = "Send PKG to PS4";
-                    toolStripMenuItem16.Text = "Remote PKG Installer | Status : Idle";
-                    RpiSendPkgtoolStripMenuItem1.Text = "Send PKG to PS4";
-                    toolStripStatusLabel2.Text = "...";
-                    toolStripProgressBar1.Value = 0;
+                    this.Invoke((Action)(() =>
+                    {
+                        ShowError("An error occurred while trying to communicate with PS4. Launch/restart Remote Package Installer application on PS4 and don't minimize it.", true);
+                        EnableControls_PkgSender();
+                        EnableTabPages(mainTabControl);
+                        EnableControls(darkMenuStrip1);
+                        toolStripMenuItem18.Text = "Remote PKG Installer | Status : Idle";
+                        RpiSendPkgtoolStripMenuItem2.Text = "Send PKG to PS4";
+                        toolStripMenuItem16.Text = "Remote PKG Installer | Status : Idle";
+                        RpiSendPkgtoolStripMenuItem1.Text = "Send PKG to PS4";
+                        toolStripStatusLabel2.Text = "...";
+                        toolStripProgressBar1.Value = 0;
+                    }));
                     return;
                 }
 
@@ -4505,16 +4522,19 @@ namespace PS4PKGTool
                 else if (PKGSENDER.JSON.SENDPKG.status != "fail")
                 {
                     PKGSENDER.JSON.SENDPKG.error = send_pkg_json.error.ToString();
-                    ShowError("Operation failed : \n\nStatus : " + PKGSENDER.JSON.SENDPKG.status + "\n" + PKGSENDER.JSON.SENDPKG.error, true);
-                    toolStripMenuItem18.Text = "Remote PKG Installer | Status : Idle";
-                    RpiSendPkgtoolStripMenuItem2.Text = "Send PKG to PS4";
-                    toolStripMenuItem16.Text = "Remote PKG Installer | Status : Idle";
-                    RpiSendPkgtoolStripMenuItem1.Text = "Send PKG to PS4";
-                    toolStripStatusLabel2.Text = "...";
-                    toolStripProgressBar1.Value = 0;
-                    EnableControls_PkgSender();
-                    EnableTabPages(mainTabControl);
-                    EnableControls(darkMenuStrip1);
+                    this.Invoke((Action)(() =>
+                    {
+                        ShowError("Operation failed : \n\nStatus : " + PKGSENDER.JSON.SENDPKG.status + "\n" + PKGSENDER.JSON.SENDPKG.error, true);
+                        toolStripMenuItem18.Text = "Remote PKG Installer | Status : Idle";
+                        RpiSendPkgtoolStripMenuItem2.Text = "Send PKG to PS4";
+                        toolStripMenuItem16.Text = "Remote PKG Installer | Status : Idle";
+                        RpiSendPkgtoolStripMenuItem1.Text = "Send PKG to PS4";
+                        toolStripStatusLabel2.Text = "...";
+                        toolStripProgressBar1.Value = 0;
+                        EnableControls_PkgSender();
+                        EnableTabPages(mainTabControl);
+                        EnableControls(darkMenuStrip1);
+                    }));
                     return;
                 }
 
@@ -4538,13 +4558,16 @@ namespace PS4PKGTool
                 }
 
                 // Update original filename in gridview
-                foreach (DataGridViewRow row in PKGGridView.Rows)
+                PKGGridView.Invoke((Action)(() =>
                 {
-                    if (row.Cells[0].Value.ToString().Equals(tempFilename))
+                    foreach (DataGridViewRow row in PKGGridView.Rows)
                     {
-                        row.Cells[0].Value = originalName;
+                        if (row.Cells[0].Value.ToString().Equals(tempFilename))
+                        {
+                            row.Cells[0].Value = originalName;
+                        }
                     }
-                }
+                }));
 
                 // Rename original filename
                 File.Move(TEMPFILENAMESENDPKG, currentPkgFile);
@@ -4661,8 +4684,11 @@ namespace PS4PKGTool
                 PKGSENDER.JSON.MONITORTASK.packageFilesizeTotal = taskProgressJson.length.ToString();
                 PKGSENDER.JSON.MONITORTASK.packageTransferredTotal = taskProgressJson.transferred.ToString();
                 PKGSENDER.JSON.MONITORTASK.TimeRemainingTotal = taskProgressJson.rest_sec_total.ToString();
-                toolStripProgressBar1.Maximum = Convert.ToInt32(PKGSENDER.JSON.MONITORTASK.TimeRemainingTotal);
-                int totalRemainTime = toolStripProgressBar1.Maximum;
+                darkStatusStrip1.Invoke((MethodInvoker)delegate
+                {
+                    toolStripProgressBar1.Maximum = Convert.ToInt32(PKGSENDER.JSON.MONITORTASK.TimeRemainingTotal);
+                });
+                int totalRemainTime = Convert.ToInt32(PKGSENDER.JSON.MONITORTASK.TimeRemainingTotal);
                 int increment = 0;
 
                 for (long i = Convert.ToInt64(PKGSENDER.JSON.MONITORTASK.packageTransferredTotal); i < Convert.ToInt64(PKGSENDER.JSON.MONITORTASK.packageFilesizeTotal); i++)
@@ -4707,7 +4733,10 @@ namespace PS4PKGTool
 
                         if (Convert.ToInt32(PKGSENDER.JSON.MONITORTASK.TimeRemainingTotal) == 0)
                         {
-                            toolStripProgressBar1.Value = 0;
+                            darkStatusStrip1.Invoke((MethodInvoker)delegate
+                            {
+                                toolStripProgressBar1.Value = 0;
+                            });
                             break;
                         }
 
@@ -5452,8 +5481,11 @@ namespace PS4PKGTool
             bg.DoWork += delegate (object sender, DoWorkEventArgs e)
             {
                 Logger.LogInformation("Viewing PKG file list..");
-                DisableControls(darkMenuStrip1);
-                DisableControls(PKGTreeView);
+                this.Invoke((MethodInvoker)delegate
+                {
+                    DisableControls(darkMenuStrip1);
+                    DisableControls(PKGTreeView);
+                });
                 listingResult = new PkgFileListingService().ListAsync(
                     PKG.SelectedPKGFilename,
                     DefaultOrbisPasscode,
@@ -5688,7 +5720,10 @@ namespace PS4PKGTool
                         string origPath = PKG.SelectedPKGFilename;
                         Logger.LogInformation($"Extracting: {Path.GetFileName(origPath)}");
                         Logger.LogInformation($"Extracting PKG ({origPath})..");
-                        toolStripStatusLabel2.Text = $"Extracting PKG ({origPath})..";
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            toolStripStatusLabel2.Text = $"Extracting PKG ({origPath})..";
+                        });
                         extractLocation = $@"{extractLocation}\{PS4_PKG.PS4_Title.SanitizeFileName()}";
                         Tool.CreateDirectoryIfNotExists(extractLocation);
 
@@ -5849,7 +5884,10 @@ namespace PS4PKGTool
                         Directory.CreateDirectory(outDir);
 
                     Logger.LogInformation($"Extracting {targ_path} ({in_path})..");
-                    toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
+                    });
 
                     // In-process extraction: no spawn, no temp dir, no move.
                     // PkgReader.ExtractFile decrypts the entry straight into
@@ -6728,12 +6766,16 @@ namespace PS4PKGTool
             var backgroundWorker = new BackgroundWorker();
             backgroundWorker.DoWork += delegate
             {
-                this.Enabled = false;
+                this.Invoke((MethodInvoker)delegate { this.Enabled = false; });
                 PKG.pkgCount = 0;
                 PKG.CountFailMove = 0;
                 PKG.ListFailMove = "";
-                toolStripProgressBar1.Maximum = PKGGridView.Rows.Count;
-                int total = PKGGridView.Rows.Count;
+                int total = 0;
+                this.Invoke((MethodInvoker)delegate
+                {
+                    total = PKGGridView.Rows.Count;
+                    toolStripProgressBar1.Maximum = total;
+                });
                 Logger.LogInformation($"Move PKG by {moveBy}: {total} PKG(s) → {outputFolder}");
 
                 // Track the chosen output root once so the moved games stay
@@ -6748,13 +6790,24 @@ namespace PS4PKGTool
                     try
                     {
                         PKG.pkgCount++;
-                        toolStripStatusLabel2.Text = $"Moving PKG.. ({PKG.pkgCount}/{total})";
-                        toolStripProgressBar1.Increment(1);
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            toolStripStatusLabel2.Text = $"Moving PKG.. ({PKG.pkgCount}/{total})";
+                            toolStripProgressBar1.Increment(1);
+                        });
 
-                        var row = PKGGridView.Rows[i];
-                        if (row.Cells[0].Value == null) continue;
+                        // Row data must be read on the UI thread (grid access).
+                        var info = new PkgMoveInfo();
+                        bool hasFilename = false;
+                        PKGGridView.Invoke((Action)(() =>
+                        {
+                            var row = PKGGridView.Rows[i];
+                            hasFilename = row.Cells[0].Value != null;
+                            if (hasFilename)
+                                info = GetPkgMoveInfo(row);
+                        }));
+                        if (!hasFilename) continue;
 
-                        var info = GetPkgMoveInfo(row);
                         string dest = null;
 
                         switch (moveBy.ToLowerInvariant())
@@ -6797,7 +6850,15 @@ namespace PS4PKGTool
                     {
                         PKG.CountFailMove++;
                         string name = "";
-                        try { name = Path.GetFileNameWithoutExtension(PKGGridView.Rows[i].Cells[0].Value?.ToString() ?? ""); } catch { }
+                        try
+                        {
+                            int rowIndex = i;
+                            PKGGridView.Invoke((Action)(() =>
+                            {
+                                name = Path.GetFileNameWithoutExtension(PKGGridView.Rows[rowIndex].Cells[0].Value?.ToString() ?? "");
+                            }));
+                        }
+                        catch { /* best-effort: grid may not be accessible */ }
                         Logger.LogError($"Move failed: {name} - {ex.Message}");
                         PKG.ListFailMove += $"{name} : {ex.Message}\n";
                     }

@@ -171,6 +171,7 @@ namespace PS4PKGTool
             darkDataGridView2.ScrollBars = ScrollBars.Vertical;
             TrophyGridView.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             TrophyGridView.ScrollBars = ScrollBars.Vertical;
+            EnableDataGridViewColumnResizing();
 
             this.ActiveControl = null;  //this = form
             toolStripProgressBar1.MarqueeAnimationSpeed = 30;
@@ -1617,12 +1618,84 @@ namespace PS4PKGTool
             _fileSizes.Clear();
             _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             ClearFileBrowser();
+            ClearSelectedPkgDetails();
             groupedListView?.Clear();
             ManifestHelper.DeleteManifest();                    // without this the library would resurrect on restart
             InitializeEmptyGrid();
             labelDisplayTotalPKG.Text = "Displaying 0 PS4 PKG";
             toolStripStatusLabel2.Text = "Ready (empty)";
             Logger.LogInformation("PKG list emptied.");
+        }
+
+        /// <summary>Resets every detail panel when there is no selected PKG.</summary>
+        private void ClearSelectedPkgDetails()
+        {
+            PKG.SelectedPKGFilename = null;
+            darkLabel1.Text = "";
+            label3.Text = "";
+
+            ClearPictureBox(pictureBox1, hide: true);
+            ClearPictureBox(pbPIC0, hide: true);
+            ClearPictureBox(pbPIC1, hide: true);
+
+            ClearDetailGrid(darkDataGridView2);
+            ClearDetailGrid(TrophyGridView);
+            ClearDetailGrid(dgvEntryList);
+            ClearDetailGrid(darkDataGridView4);
+            ClearDetailGrid(dgvHeader);
+            ClearDetailGrid(dgvUpdate);
+
+            this.Text = "PS4 PKG Tool " + ApplicationVersion;
+        }
+
+        private static void ClearPictureBox(PictureBox pictureBox, bool hide)
+        {
+            Image image = pictureBox.Image;
+            pictureBox.Image = null;
+            if (hide) pictureBox.Visible = false;
+            image?.Dispose();
+        }
+
+        private static void ClearDetailGrid(DataGridView grid)
+        {
+            grid.DataSource = null;
+            grid.Rows.Clear();
+        }
+
+        private static void ClearDetailGrid(DarkDataGridView grid)
+        {
+            grid.DataSource = null;
+            grid.Rows.Clear();
+        }
+
+        /// <summary>Lets the user resize every column in every main-window DataGridView.</summary>
+        private void EnableDataGridViewColumnResizing()
+        {
+            foreach (DataGridView grid in GetControls(this).OfType<DataGridView>())
+            {
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+                grid.AllowUserToResizeColumns = true;
+                foreach (DataGridViewColumn column in grid.Columns)
+                    column.Resizable = DataGridViewTriState.True;
+            }
+
+            foreach (DarkDataGridView grid in GetControls(this).OfType<DarkDataGridView>())
+            {
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+                grid.AllowUserToResizeColumns = true;
+                foreach (DataGridViewColumn column in grid.Columns)
+                    column.Resizable = DataGridViewTriState.True;
+            }
+        }
+
+        private static IEnumerable<Control> GetControls(Control parent)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                yield return child;
+                foreach (Control descendant in GetControls(child))
+                    yield return descendant;
+            }
         }
 
         private void toolStripMenuItem160_Click(object sender, EventArgs e)

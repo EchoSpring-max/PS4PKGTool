@@ -129,10 +129,16 @@ public sealed class UnitySerializedFileHandler : IAssetHandler, IAssetPreviewPro
     internal static UnityTextureInfo? LoadTextureBytes(IAssetSource source, UnityTextureInfo info)
     {
         if (info.InlineBytes is { Length: > 0 }) return info;
-        if (string.IsNullOrEmpty(info.StreamPath) || info.StreamSize == 0) return null;
+        if (info.StreamSize == 0) return null;
         if (source is not ICompanionResolverSource resolver) return null;
 
-        var companion = resolver.ResolveCompanion(info.StreamPath);
+        // PS4 Unity builds sometimes leave StreamingInfo.path empty while
+        // still storing the payload beside the serialized file as
+        // "<assets-file>.resS". Use that conventional sibling as a fallback.
+        string companionPath = string.IsNullOrEmpty(info.StreamPath)
+            ? source.Name + ".resS"
+            : info.StreamPath;
+        var companion = resolver.ResolveCompanion(companionPath);
         if (companion == null) return null;
         try
         {

@@ -59,7 +59,7 @@ public class Phase3UnitySerializedFileTests
     }
 
     /// <summary>Texture2D object with STREAMED data (StreamingInfo -> .resS companion).</summary>
-    internal static byte[] BuildStreamedTextureObject()
+    internal static byte[] BuildStreamedTextureObject(string streamPath = "synthetic.assets.resS")
     {
         var obj = new MemoryStream();
         WriteAlignedString(obj, "Tex1");
@@ -81,7 +81,7 @@ public class Phase3UnitySerializedFileTests
         WriteI32(obj, 0);              // image data size = 0 -> StreamingInfo follows
         WriteU32(obj, 16);             // stream offset (payload sits at +16 in the companion)
         WriteU32(obj, 32);             // stream size
-        WriteAlignedString(obj, "synthetic.assets.resS");
+        WriteAlignedString(obj, streamPath);
         return obj.ToArray();
     }
 
@@ -257,6 +257,34 @@ public class Phase3UnitySerializedFileTests
         Assert.AreEqual(8, preview.Texture.Height);
         Assert.AreEqual(8 * 8 * 4, preview.Texture.Rgba8.Length);
         StringAssert.Contains(preview.Info ?? "", "DXT1");
+    }
+
+    [TestMethod]
+    public async Task PreviewStreamedTexture_EmptyPath_UsesAssetsResSCompanion()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "p4t_3d_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var companion = new byte[16 + 32];
+            Dxt1Payload8x8().CopyTo(companion, 16);
+            File.WriteAllBytes(Path.Combine(tempDir, "synthetic.assets.resS"), companion);
+            File.WriteAllBytes(Path.Combine(tempDir, "synthetic.assets"),
+                BuildSyntheticSerializedFile(28, BuildStreamedTextureObject(string.Empty)));
+
+            var source = new FileAssetSource(Path.Combine(tempDir, "synthetic.assets"), "PKG entry",
+                rel => File.Exists(Path.Combine(tempDir, rel))
+                    ? new FileAssetSource(Path.Combine(tempDir, rel), "Unity .resS stream")
+                    : null);
+            var detection = _service.Detect(source)!;
+            var child = (await _service.GetChildrenAsync(source, detection, 0))[0];
+
+            var preview = await _service.TryPreviewAsync(child, detection);
+            Assert.IsNotNull(preview?.Texture, "An empty stream path should resolve to synthetic.assets.resS.");
+            Assert.AreEqual(8, preview!.Texture!.Width);
+            Assert.AreEqual(8, preview.Texture.Height);
+        }
+        finally { try { Directory.Delete(tempDir, true); } catch { } }
     }
 
     // ── real Overcooked 2 sample ──

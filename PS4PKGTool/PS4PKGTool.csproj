@@ -153,18 +153,6 @@
     <Reference Include="DiscUtils.Core">
       <HintPath>Library.Core\DiscUtils.dll</HintPath>
     </Reference>
-    <Reference Include="GameArchives.Core">
-      <HintPath>Library.Core\GameArchives.dll</HintPath>
-    </Reference>
-    <Reference Include="LibOrbisPkg.Core">
-      <HintPath>Library.Core\LibOrbisPkg.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="PARAM.SFO">
-      <HintPath>Library.Core\PARAM.SFO.dll</HintPath>
-    </Reference>
-    <Reference Include="PS4_Tools">
-      <HintPath>Library.Core\PS4_Tools.dll</HintPath>
-    </Reference>
     <Reference Include="VisualStudioTabControl.Core">
       <HintPath>Library.Core\VisualStudioTabControl.Core.dll</HintPath>
     </Reference>

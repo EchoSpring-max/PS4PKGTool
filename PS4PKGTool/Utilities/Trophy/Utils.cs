@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using Ionic.Zip;
 using System.Drawing.Imaging;
 using System.Linq;
-using static DDSReader.DDSImage;
 using System.IO.Compression;
 using ZipFile = Ionic.Zip.ZipFile;
 
@@ -1147,24 +1146,6 @@ namespace PS4_Trophy_xdpx
                 image.Save(ms, format);
                 return ms.ToArray();
             }
-        }
-    }
-
-    static class ConstantsExtensions
-    {
-        public static CompressionOptions FixFlags(this CompressionOptions flags)
-        {
-            // grab the flag bits            
-            var fit = flags & (CompressionOptions.ColourIterativeClusterFit | CompressionOptions.ColourClusterFit | CompressionOptions.ColourRangeFit | CompressionOptions.ColourClusterFitAlt);
-            var metric = flags & (CompressionOptions.ColourMetricPerceptual | CompressionOptions.ColourMetricUniform);
-            var extra = flags & (CompressionOptions.WeightColourByAlpha | CompressionOptions.UseParallelProcessing);
-
-            // set defaults            
-            if (fit == 0) fit = CompressionOptions.ColourClusterFit;
-            if (metric == 0) metric = CompressionOptions.ColourMetricPerceptual;
-
-            // done
-            return fit | metric | extra;
         }
     }
 

@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using Newtonsoft.Json;
-using PS4_Tools.LibOrbis.Util;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,7 +15,6 @@ using System.Security.Cryptography;
 using System.Net;
 using System.ComponentModel;
 using System.Windows.Forms;
-using PS4_Tools.LibOrbis.PKG;
 using Microsoft.VisualBasic;
 using System.Security.Principal;
 using System.Threading;

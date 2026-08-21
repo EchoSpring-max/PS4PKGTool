@@ -6,8 +6,6 @@ using DarkUI.Forms;
 using GitHubUpdate;
 using Irony;
 using Newtonsoft.Json;
-using PS4_Tools.LibOrbis.PKG;
-using PS4_Tools.LibOrbis.Util;
 using PS4_Trophy_xdpx;
 using PS4PKGTool.Util;
 using PS4PKGTool.Util.Constants;
@@ -41,7 +39,6 @@ using System.Windows.Forms;
 using MethodInvoker = System.Windows.Forms.MethodInvoker;
 using OrbisPkgTool.Pkg;
 using TRPViewer;
-using static PS4_Tools.PKG.SceneRelated;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper.Backport;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper.Entry;
@@ -5348,9 +5345,10 @@ namespace PS4PKGTool
                     Dictionary<string, string> failedEntries = new Dictionary<string, string>();
                     var pkgPath = PKG.SelectedPKGFilename;
 
+                    using (var pkgReader = new OrbisPkgTool.PkgReader(pkgPath))
                     using (var pkgFile = File.OpenRead(pkgPath))
                     {
-                        var pkg = new PkgReader(pkgFile).ReadPkg();
+                        var entries = pkgReader.Entries;
 
                         foreach (var entry in EntryIdNameDictionary)
                         {
@@ -5358,7 +5356,7 @@ namespace PS4PKGTool
                             try
                             {
                                 var idx = int.Parse(entry.Key);
-                                if (idx < 0 || idx >= pkg.Metas.Metas.Count)
+                                if (idx < 0 || idx >= entries.Count)
                                 {
                                     failedEntries[name] = "Entry number is out of range.";
                                     continue;
@@ -5366,17 +5364,27 @@ namespace PS4PKGTool
 
                                 var outName = name.Replace("_SHA", ".SHA").Replace("_DAT", ".DAT").Replace("_SFO", ".SFO").Replace("_XML", ".XML").Replace("_SIG", ".SIG").Replace("_PNG", ".PNG").Replace("_JSON", ".JSON").Replace("_DDS", ".DDS").Replace("_TRP", ".TRP").Replace("_AT9", ".AT9");
                                 var outPath = Path.Combine(fbd.SelectedPath, outName);
-                                var meta = pkg.Metas.Metas[idx];
+                                var meta = entries[idx];
 
                                 using (var outFile = File.Create(outPath))
                                 {
                                     outFile.SetLength(meta.DataSize);
-                                    if (meta.Encrypted)
+                                    if (meta.IsEncrypted)
                                     {
                                         encryptedEntries.Add(name);
                                     }
 
-                                    new SubStream(pkgFile, meta.DataOffset, meta.DataSize).CopyTo(outFile);
+                                    // Raw copy — encrypted entries stay encrypted (legacy behavior).
+                                    pkgFile.Position = meta.DataOffset;
+                                    var buffer = new byte[81920];
+                                    long remaining = meta.DataSize;
+                                    while (remaining > 0)
+                                    {
+                                        int n = pkgFile.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                                        if (n <= 0) break;
+                                        outFile.Write(buffer, 0, n);
+                                        remaining -= n;
+                                    }
                                 }
                             }
                             catch (Exception ex)

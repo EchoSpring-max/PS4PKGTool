@@ -56,6 +56,12 @@ namespace PS4PKGTool
         private PictureBox _filePreviewImage;
         private DarkUI.Controls.DarkTextBox _filePreviewText;
         private DarkUI.Controls.DarkLabel _filePreviewInfo;
+        private ListView _filePreviewAssetList;
+        private Button _filePreviewBackButton;
+        private Assets.Abstractions.IAssetSource _filePreviewContainerSource;
+        private Assets.Models.AssetDetectionResult _filePreviewContainerDetection;
+        private readonly List<Assets.Abstractions.IAssetSource> _filePreviewContainerChildren = new();
+        private string _filePreviewContainerTempDir;
         private int _filePreviewVersion;
         private static readonly Assets.AssetInspectionService AssetService = Assets.GenericAssetRegistryBuilder.Build();
 
@@ -795,9 +801,36 @@ namespace PS4PKGTool
                 Visible = false,
                 WordWrap = false,
             };
+            _filePreviewAssetList = new ListView
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(20, 20, 20),
+                ForeColor = Color.Gainsboro,
+                BorderStyle = BorderStyle.None,
+                FullRowSelect = true,
+                GridLines = true,
+                HideSelection = false,
+                View = View.Details,
+                Visible = false,
+            };
+            _filePreviewAssetList.Columns.Add("Name", 190);
+            _filePreviewAssetList.Columns.Add("Type", 90);
+            _filePreviewAssetList.Columns.Add("Size", 75);
+            _filePreviewAssetList.ItemActivate += filePreviewAssetList_ItemActivate;
+            _filePreviewBackButton = new Button
+            {
+                Dock = DockStyle.Bottom,
+                Height = 28,
+                FlatStyle = FlatStyle.Flat,
+                Text = "Back to asset list",
+                Visible = false,
+            };
+            _filePreviewBackButton.Click += filePreviewBackButton_Click;
 
             _filePreviewBody.Controls.Add(_filePreviewImage);
             _filePreviewBody.Controls.Add(_filePreviewText);
+            _filePreviewBody.Controls.Add(_filePreviewAssetList);
+            _filePreviewBody.Controls.Add(_filePreviewBackButton);
             _filePreviewPanel.Controls.Add(_filePreviewBody);
             _filePreviewPanel.Controls.Add(_filePreviewInfo);
 
@@ -817,18 +850,32 @@ namespace PS4PKGTool
                 return;
 
             int version = Interlocked.Increment(ref _filePreviewVersion);
+            CleanupFilePreviewContainer();
             _filePreviewImage.Visible = false;
             _filePreviewText.Visible = false;
+            _filePreviewAssetList.Visible = false;
+            _filePreviewBackButton.Visible = false;
             _filePreviewInfo.Text = "Previewing " + file.Name + "...";
 
             try
             {
                 PreviewResult result = await Task.Run(() => BuildFilePreview(file));
                 if (version != _filePreviewVersion || IsDisposed || Disposing)
+                {
+                    result.Cleanup();
                     return;
+                }
 
                 _filePreviewInfo.Text = result.Info;
-                if (result.Texture != null)
+                if (result.ContainerSource != null && result.ContainerDetection != null)
+                {
+                    _filePreviewContainerSource = result.ContainerSource;
+                    _filePreviewContainerDetection = result.ContainerDetection;
+                    _filePreviewContainerTempDir = result.ContainerTempDir;
+                    _filePreviewContainerChildren.AddRange(result.Children);
+                    PopulateFilePreviewAssetList();
+                }
+                else if (result.Texture != null)
                 {
                     _filePreviewImage.Image?.Dispose();
                     _filePreviewImage.Image = TextureToBitmap(result.Texture);
@@ -882,6 +929,14 @@ namespace PS4PKGTool
                     return new PreviewResult(file.Name + " (" + Helper.RoundBytes(file.Size) + ") - hex preview", BuildHexDump(extracted, 1 << 20), null);
 
                 var descriptor = AssetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+                if (AssetService.IsContainer(detection))
+                {
+                    var children = AssetService.GetChildrenAsync(source, detection, 0).GetAwaiter().GetResult();
+                    string containerInfo = file.Name + ": " + children.Count + " entries (double-click an entry to preview)";
+                    var result = new PreviewResult(containerInfo, string.Empty, null, source, detection, children, previewDir);
+                    previewDir = null;
+                    return result;
+                }
                 var preview = descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview)
                     ? AssetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult()
                     : null;
@@ -892,7 +947,129 @@ namespace PS4PKGTool
             }
             finally
             {
-                try { Directory.Delete(previewDir, true); } catch { }
+                if (previewDir != null)
+                    try { Directory.Delete(previewDir, true); } catch { }
+            }
+        }
+
+        private void PopulateFilePreviewAssetList()
+        {
+            _filePreviewAssetList.BeginUpdate();
+            try
+            {
+                _filePreviewAssetList.Items.Clear();
+                const int maxEntries = 2000;
+                for (int i = 0; i < _filePreviewContainerChildren.Count && i < maxEntries; i++)
+                {
+                    var child = _filePreviewContainerChildren[i];
+                    string type = child is Assets.Containers.UnityObjectAssetSource unity
+                        ? "class " + unity.Object.ClassId
+                        : child.SourceDescription ?? "file";
+                    _filePreviewAssetList.Items.Add(new ListViewItem(new[]
+                        { child.Name, type, Helper.RoundBytes(child.Length) }));
+                }
+                if (_filePreviewContainerChildren.Count > maxEntries)
+                    _filePreviewAssetList.Items.Add(new ListViewItem(new[] { "...", "", "" }));
+            }
+            finally { _filePreviewAssetList.EndUpdate(); }
+
+            _filePreviewImage.Visible = false;
+            _filePreviewText.Visible = false;
+            _filePreviewAssetList.Visible = true;
+            _filePreviewBackButton.Visible = false;
+        }
+
+        private void filePreviewAssetList_ItemActivate(object sender, EventArgs e)
+        {
+            if (_filePreviewAssetList.SelectedItems.Count == 0)
+                return;
+            int index = _filePreviewAssetList.SelectedItems[0].Index;
+            if (index < 0 || index >= _filePreviewContainerChildren.Count)
+                return;
+            PreviewPackageAssetAsync(_filePreviewContainerChildren[index]);
+        }
+
+        private async void PreviewPackageAssetAsync(Assets.Abstractions.IAssetSource child)
+        {
+            int version = Interlocked.Increment(ref _filePreviewVersion);
+            _filePreviewAssetList.Visible = false;
+            _filePreviewImage.Visible = false;
+            _filePreviewText.Visible = false;
+            _filePreviewBackButton.Visible = false;
+            _filePreviewInfo.Text = "Previewing " + child.Name + "...";
+            try
+            {
+                PreviewResult result = await Task.Run(() => BuildPackageAssetPreview(child));
+                if (version != _filePreviewVersion || IsDisposed || Disposing)
+                    return;
+                _filePreviewInfo.Text = result.Info;
+                if (result.Texture != null)
+                {
+                    _filePreviewImage.Image?.Dispose();
+                    _filePreviewImage.Image = TextureToBitmap(result.Texture);
+                    _filePreviewImage.Visible = true;
+                }
+                else
+                {
+                    _filePreviewText.Text = result.Text;
+                    _filePreviewText.Visible = true;
+                }
+                _filePreviewBackButton.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Mini viewer asset preview failed: " + ex.Message);
+                if (version == _filePreviewVersion && !IsDisposed && !Disposing)
+                {
+                    _filePreviewInfo.Text = child.Name + " - preview unavailable: " + ex.Message;
+                    _filePreviewText.Text = string.Empty;
+                    _filePreviewText.Visible = true;
+                    _filePreviewBackButton.Visible = true;
+                }
+            }
+        }
+
+        private PreviewResult BuildPackageAssetPreview(Assets.Abstractions.IAssetSource child)
+        {
+            if (child is Assets.Containers.UnityObjectAssetSource unityChild)
+            {
+                var handler = new Assets.Handlers.UnitySerializedFileHandler();
+                var preview = handler.PreviewAsync(unityChild, _filePreviewContainerDetection).GetAwaiter().GetResult();
+                return new PreviewResult(preview?.Info ?? child.Name, preview?.Text ?? string.Empty, preview?.Texture);
+            }
+
+            string extension = Path.GetExtension(child.Name);
+            string temp = Path.Combine(_filePreviewContainerTempDir, "p4t_child_" + Guid.NewGuid().ToString("N") + extension);
+            using (var input = child.OpenRead())
+            using (var output = File.Create(temp))
+                input.CopyTo(output);
+            try
+            {
+                var source = new Assets.IO.FileAssetSource(temp, "container member");
+                var detection = AssetService.Detect(source);
+                if (detection == null)
+                    return new PreviewResult(child.Name + " - hex preview", BuildHexDump(temp, 1 << 20), null);
+                var descriptor = AssetService.InspectAsync(source, detection).GetAwaiter().GetResult();
+                var preview = descriptor.Capabilities.HasFlag(Assets.Abstractions.AssetCapabilities.Preview)
+                    ? AssetService.TryPreviewAsync(source, detection).GetAwaiter().GetResult()
+                    : null;
+                return new PreviewResult(preview?.Info ?? BuildPreviewInfo(child.Name, descriptor),
+                    preview?.Text ?? BuildHexDump(temp, 1 << 20), preview?.Texture);
+            }
+            finally { try { File.Delete(temp); } catch { } }
+        }
+
+        private void filePreviewBackButton_Click(object sender, EventArgs e) => PopulateFilePreviewAssetList();
+
+        private void CleanupFilePreviewContainer()
+        {
+            _filePreviewContainerSource = null;
+            _filePreviewContainerDetection = null;
+            _filePreviewContainerChildren.Clear();
+            if (_filePreviewContainerTempDir != null)
+            {
+                try { Directory.Delete(_filePreviewContainerTempDir, true); } catch { }
+                _filePreviewContainerTempDir = null;
             }
         }
 
@@ -942,7 +1119,21 @@ namespace PS4PKGTool
             return bitmap;
         }
 
-        private sealed record PreviewResult(string Info, string Text, Assets.Models.TextureData? Texture);
+        private sealed record PreviewResult(
+            string Info,
+            string Text,
+            Assets.Models.TextureData? Texture,
+            Assets.Abstractions.IAssetSource ContainerSource = null,
+            Assets.Models.AssetDetectionResult ContainerDetection = null,
+            IReadOnlyList<Assets.Abstractions.IAssetSource> Children = null,
+            string ContainerTempDir = null)
+        {
+            public void Cleanup()
+            {
+                if (ContainerTempDir != null)
+                    try { Directory.Delete(ContainerTempDir, true); } catch { }
+            }
+        }
 
         /// <summary>
         /// Right-click on a file entry opens the extraction/copy menu.
@@ -1195,6 +1386,7 @@ namespace PS4PKGTool
             dgvTrophies.Rows.Clear();
             _trophySession.Dispose();
             _fileListingSession.Dispose();
+            CleanupFilePreviewContainer();
             _loadCancellation.Cancel();
             picIcon.Image = null;
             picPic0.Image = null;

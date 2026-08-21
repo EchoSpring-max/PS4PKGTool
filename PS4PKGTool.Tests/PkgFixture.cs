@@ -43,8 +43,20 @@ internal sealed class PkgFixture : IDisposable
             (f.Path, Data: DataBytes(f.Size, random))).ToArray());
     }
 
+    /// <summary>Creates a PKG that also carries the given Sc0 system files
+    /// (icon0.png, pic0.png, pic1.png, trophy/trophy00.trp, ...) — they are
+    /// written under Image0/sce_sys/ and PkgBuilder picks them up either from
+    /// the GP4 listing or its sce_sys folder scan.</summary>
+    public static PkgFixture CreateWithSceSys(string directoryName,
+        params (string Path, byte[] Data)[] sceSysFiles)
+    {
+        return CreateCore(directoryName, "game.pkg", null,
+            Array.Empty<(string Path, byte[] Data)>(), sceSysFiles);
+    }
+
     private static PkgFixture CreateCore(string directoryName, string fileName,
-        string? passcode, (string Path, byte[] Data)[] files)
+        string? passcode, (string Path, byte[] Data)[] files,
+        (string Path, byte[] Data)[]? sceSysFiles = null)
     {
         string root = Path.Combine(Path.GetTempPath(),
             "p4t-fixture-" + Guid.NewGuid().ToString("N"));
@@ -56,6 +68,16 @@ internal sealed class PkgFixture : IDisposable
             string full = Path.Combine(image0, p.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(full)!);
             File.WriteAllBytes(full, d);
+        }
+        // additional Sc0 system files (icon0.png, trophy/trophy00.trp, ...)
+        if (sceSysFiles != null)
+        {
+            foreach (var (p, d) in sceSysFiles)
+            {
+                string full = Path.Combine(image0, "sce_sys", p.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                File.WriteAllBytes(full, d);
+            }
         }
         // mandatory sce_sys/param.sfo
         var sfo = ParamSfo.CreateGameTemplate("Fix", "CUSA09999",

@@ -103,6 +103,8 @@ namespace PS4PKGTool
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _trophyExtractionLocks = new(StringComparer.OrdinalIgnoreCase);
         private HashSet<string> _pkgDirectories = new();   // paths that are directories (from orbis D lines)
         private int _glvGroupHeaderIndex = -1;   // group header row index last right-clicked in GLV
+        private List<string> _glvContextGroupPaths = new();
+        private ToolStripMenuItem? _glvGroupTitleMenu;
         private readonly int _pkgListTabTopGap;
         private readonly int _pkgListTabBottomGap;
         private bool _pkgListLayoutInitialized;
@@ -279,23 +281,32 @@ namespace PS4PKGTool
             cbGroupBy.SelectedIndexChanged += (_, _) => PopulateGroupedView();
 
             // ── GLV context menu ──────────────────────────────
-            glvRenamePriMenuItem.Click += (_, _) => GlvRenameByPriority();
+            ConfigureGlvContextMenu();
 
             groupedListView.ContextMenuStrip = contextMenuGLV;
             groupedListView.GroupHeaderClicked += (headerIdx, groupName, args) =>
             {
                 _glvGroupHeaderIndex = headerIdx;
-                glvRenamePriMenuItem.Visible = true;
                 contextMenuGLV.Show(Cursor.Position);
             };
-            // Rename by Install Priority is available for both item and group right-clicks
             contextMenuGLV.Opening += (_, _) =>
             {
-                glvRenamePriMenuItem.Visible = true;
+                _glvContextGroupPaths = ResolveGlvContextGroupPaths();
                 UpdateGlvMenuLabel(); // always the selected/highlighted PKG's title
+                if (_glvGroupTitleMenu != null)
+                {
+                    string titleId = _glvContextGroupPaths
+                        .Select(path => GetGridRowForPath(path)?.Cells[PkgColumns.TitleId].Value?.ToString())
+                        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "Group";
+                    _glvGroupTitleMenu.Text = $"{titleId} ({_glvContextGroupPaths.Count} PKG)";
+                }
             };
             // Clear the group-target hand-off when the menu closes so no stale state leaks
-            contextMenuGLV.Closed += (_, _) => _glvGroupHeaderIndex = -1;
+            contextMenuGLV.Closed += (_, _) =>
+            {
+                _glvGroupHeaderIndex = -1;
+                _glvContextGroupPaths.Clear();
+            };
 
             Logger.OnLog += Logger_OnLog;
         }
@@ -665,6 +676,184 @@ namespace PS4PKGTool
             };
 
             worker.RunWorkerAsync();
+        }
+
+        private void ConfigureGlvContextMenu()
+        {
+            contextMenuGLV.Items.Clear();
+
+            contextMenuGLV.Items.Add(CreateGlvHeader("Global Operations"));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(checkForDuplicatePKGToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(checkForPatchesMissingBasePKGToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(globalExportPKGListToExcelToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem3));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem111));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem38));
+            contextMenuGLV.Items.Add(new ToolStripSeparator());
+
+            _glvGroupTitleMenu = CreateGlvHeader("Group Operations");
+            contextMenuGLV.Items.Add(_glvGroupTitleMenu);
+            contextMenuGLV.Items.Add(CreateGlvAction("Rename by Install Priority", GlvRenameByPriority));
+            contextMenuGLV.Items.Add(CreateGlvForwardingMenu(GroupActionExtacrtImageToolStripMenuItem));
+            contextMenuGLV.Items.Add(CreateGlvForwardingMenu(toolStripMenuItem133));
+            contextMenuGLV.Items.Add(CreateGlvAction("Export this group as excel file", () => RunWithGlvGroupSelection(() => selectedExportPKGListToExcelToolStripMenuItem2.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Delete group PKGs", GlvDeletePkg));
+            contextMenuGLV.Items.Add(CreateGlvAction("Merge base + latest update", GlvMergeBaseAndLatestUpdate));
+            contextMenuGLV.Items.Add(new ToolStripSeparator());
+
+            contextMenuGLV.Items.Add(CreateGlvHeader("shadPS4"));
+            contextMenuGLV.Items.Add(CreateGlvAction("Install base game", () => RunWithGlvCategorySelection(PKGCategory.GAME, () => toolStripMenuItemShadps4Install.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Install latest update", () => RunWithGlvCategorySelection(PKGCategory.PATCH, () => toolStripMenuItemShadps4Install.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Launch installed game", () => RunWithGlvCategorySelection(PKGCategory.GAME, () => toolStripMenuItemShadps4Launch.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Open shadPS4 Manager", () => toolStripMenuItemShadps4OpenManager.PerformClick()));
+        }
+
+        private static ToolStripMenuItem CreateGlvHeader(string text)
+            => new ToolStripMenuItem(text) { Enabled = false };
+
+        private static ToolStripMenuItem CreateGlvAction(string text, Action action)
+        {
+            var item = new ToolStripMenuItem(text);
+            item.Click += (_, _) => action();
+            return item;
+        }
+
+        private static ToolStripMenuItem CreateForwardingMenu(ToolStripMenuItem source)
+        {
+            var item = new ToolStripMenuItem(source.Text);
+            foreach (ToolStripItem child in source.DropDownItems)
+            {
+                if (child is ToolStripSeparator) { item.DropDownItems.Add(new ToolStripSeparator()); continue; }
+                if (child is ToolStripMenuItem childMenu) item.DropDownItems.Add(CreateForwardingMenu(childMenu));
+            }
+            if (item.DropDownItems.Count == 0)
+                item.Click += (_, _) => source.PerformClick();
+            return item;
+        }
+
+        private ToolStripMenuItem CreateGlvForwardingMenu(ToolStripMenuItem source)
+        {
+            var item = new ToolStripMenuItem(source.Text);
+            foreach (ToolStripItem child in source.DropDownItems)
+            {
+                if (child is ToolStripSeparator) { item.DropDownItems.Add(new ToolStripSeparator()); continue; }
+                if (child is ToolStripMenuItem childMenu)
+                {
+                    var forwardedChild = CreateGlvForwardingMenu(childMenu);
+                    item.DropDownItems.Add(forwardedChild);
+                }
+            }
+            if (item.DropDownItems.Count == 0)
+                item.Click += (_, _) => RunWithGlvGroupSelection(() => source.PerformClick());
+            return item;
+        }
+
+        private List<string> ResolveGlvContextGroupPaths()
+        {
+            if (_glvGroupHeaderIndex >= 0)
+                return groupedListView.GetGroupFilePaths(_glvGroupHeaderIndex);
+
+            string path = groupedListView?.SelectedFilePath ?? "";
+            int groupIndex = string.IsNullOrEmpty(path) ? -1 : groupedListView.FindGroupForPath(path);
+            return groupIndex >= 0 ? groupedListView.GetGroupFilePaths(groupIndex) : new List<string>();
+        }
+
+        private void RunWithGlvGroupSelection(Action action)
+        {
+            if (!SelectGridRowsForPaths(_glvContextGroupPaths))
+            {
+                ShowError("No PKG group selected.", false);
+                return;
+            }
+            action();
+        }
+
+        private void RunWithGlvCategorySelection(string category, Action action)
+        {
+            var matchingPaths = _glvContextGroupPaths
+                .Where(path => string.Equals(GetGridRowForPath(path)?.Cells[PkgColumns.Category].Value?.ToString(), category, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (matchingPaths.Count == 0)
+            {
+                ShowWarning(category == PKGCategory.GAME ? "This group has no base game PKG." : "This group has no update PKG.", false);
+                return;
+            }
+
+            // The shadPS4 actions work on one PKG. For several updates, use the highest App Version.
+            string selectedPath = matchingPaths
+                .OrderByDescending(path => GlvAppVersionRank(GetGridRowForPath(path)?.Cells[PkgColumns.AppVersion].Value?.ToString()))
+                .First();
+            if (!SelectGridRowsForPaths(new[] { selectedPath })) return;
+            action();
+        }
+
+        private DataGridViewRow? GetGridRowForPath(string path)
+            => PKGGridView.Rows.Cast<DataGridViewRow>().FirstOrDefault(row =>
+                !row.IsNewRow && string.Equals(GetGridRowPkgPath(row), path, StringComparison.OrdinalIgnoreCase));
+
+        private static string GetGridRowPkgPath(DataGridViewRow row)
+            => Path.Combine(row.Cells[PkgColumns.Directory].Value?.ToString() ?? "",
+                row.Cells[PkgColumns.Filename].Value?.ToString() ?? "");
+
+        private static decimal GlvAppVersionRank(string? appVersion)
+            => decimal.TryParse(appVersion, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out decimal version) ? version : 0m;
+
+        private bool SelectGridRowsForPaths(IEnumerable<string> paths)
+        {
+            var wanted = new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase);
+            if (wanted.Count == 0) return false;
+            PKGGridView.ClearSelection();
+            DataGridViewRow? first = null;
+            foreach (DataGridViewRow row in PKGGridView.Rows)
+            {
+                if (row.IsNewRow || !wanted.Contains(GetGridRowPkgPath(row))) continue;
+                row.Selected = true;
+                first ??= row;
+            }
+            if (first == null) return false;
+            PKGGridView.CurrentCell = first.Cells[0];
+            return true;
+        }
+
+        private void GlvMergeBaseAndLatestUpdate()
+        {
+            var bases = _glvContextGroupPaths.Where(path => string.Equals(GetGridRowForPath(path)?.Cells[PkgColumns.Category].Value?.ToString(), PKGCategory.GAME, StringComparison.OrdinalIgnoreCase)).ToList();
+            var updates = _glvContextGroupPaths.Where(path => string.Equals(GetGridRowForPath(path)?.Cells[PkgColumns.Category].Value?.ToString(), PKGCategory.PATCH, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (bases.Count != 1 || updates.Count == 0)
+            {
+                ShowWarning("This group needs one base game PKG and at least one update PKG to merge.", false);
+                return;
+            }
+            string update = updates.OrderByDescending(path => GlvAppVersionRank(GetGridRowForPath(path)?.Cells[PkgColumns.AppVersion].Value?.ToString())).First();
+            if (!SelectGridRowsForPaths(new[] { bases[0], update })) return;
+            MergeSelectedBaseAndUpdate_Click(mergeSelectedBaseAndUpdateToolStripMenuItem, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Loads entries which may be large (background images and trophy data)
+        /// after the selected package's title, SFO and ICON0 have been shown.
+        /// </summary>
+        private async void LoadDeferredPackageAssets(string pkgPath, int loadVersion, bool iconAlreadyShown)
+        {
+            try
+            {
+                PkgMetadata pkg = await Task.Run(() => PkgMetadataReader.ReadArtwork(pkgPath));
+                if (loadVersion != _detailLoadVersion)
+                    return;
+
+                // Some packages only have an icon in their trophy archive.
+                if (!iconAlreadyShown)
+                    ShowPackageIcon(pkg);
+
+                LoadBackgroundImages(pkg);
+                LoadTrophyInfo(pkg, pkgPath);
+            }
+            catch (Exception ex)
+            {
+                if (loadVersion == _detailLoadVersion)
+                    Logger.LogWarning("Deferred package artwork load failed: " + ex.Message);
+            }
         }
 
         private void UpdateFormTitle(string pkgTitle, string pkgType)

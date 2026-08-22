@@ -187,14 +187,14 @@ public sealed class UnitySerializedFile
     }
 
     /// <summary>
-    /// Reads a Texture2D's fields using AssetStudio's hardcoded class layout for
-    /// serialized-file version 17 (Unity 5.5-2018.4). Works with STRIPPED type
+    /// Reads a Texture2D's fields using a Unity-version-specific layout. Works with STRIPPED type
     /// trees (the PS4 build norm) - no type tree required.
     ///
     /// Field order (verified against AssetStudio master, Texture2D.cs / Texture.cs):
     ///   m_Name, Texture base (2017.3+: m_ForcedFallbackFormat, m_DownscaleFallback),
     ///   m_Width, m_Height, m_CompleteImageSize, m_TextureFormat, m_MipCount,
-    ///   m_IsReadable, m_ImageCount, m_TextureDimension, GLTextureSettings (2017:
+    ///   m_IsReadable, [Unity 3.0-5.4: m_ReadAllowed], m_ImageCount,
+    ///   m_TextureDimension, GLTextureSettings (2017:
     ///   FilterMode, Aniso, MipBias, WrapU, WrapV, WrapW), m_LightmapFormat,
     ///   m_ColorSpace, image-data size, [StreamingInfo], then inline image bytes
     ///   OR an external .resS stream reference.
@@ -204,7 +204,22 @@ public sealed class UnitySerializedFile
         ObjectInfo obj,
         bool bigEndian,
         bool hasFallbackFields = true,
-        bool hasSeparateWrapModes = true)
+        bool hasSeparateWrapModes = true,
+        bool hasReadAllowed = false,
+        bool hasMipCount = true)
+        => ReadTexture2D(source, obj, bigEndian, new Texture2DLayout
+        {
+            HasFallbackFields = hasFallbackFields,
+            HasSeparateWrapModes = hasSeparateWrapModes,
+            HasReadAllowed = hasReadAllowed,
+            HasMipCount = hasMipCount,
+        });
+
+    public static Texture2DInfo? ReadTexture2D(
+        IAssetSource source,
+        ObjectInfo obj,
+        bool bigEndian,
+        Texture2DLayout layout)
     {
         if (obj.ClassId != 28) return null; // Texture2D
 
@@ -212,7 +227,7 @@ public sealed class UnitySerializedFile
         int pos = 0;
 
         string name = ReadAlignedString(data, ref pos, bigEndian) ?? "";
-        if (hasFallbackFields)
+        if (layout.HasFallbackFields)
         {
             _ = ReadI32(data, ref pos, bigEndian); // Texture.m_ForcedFallbackFormat
             pos += 1;                              // Texture.m_DownscaleFallback (bool)
@@ -222,10 +237,24 @@ public sealed class UnitySerializedFile
         int width = ReadI32(data, ref pos, bigEndian);
         int height = ReadI32(data, ref pos, bigEndian);
         _ = ReadU32(data, ref pos, bigEndian);    // m_CompleteImageSize
+        if (layout.HasMipsStripped)
+            _ = ReadI32(data, ref pos, bigEndian); // m_MipsStripped (2020.1+)
         int format = ReadI32(data, ref pos, bigEndian);
-        int mipCount = ReadI32(data, ref pos, bigEndian);
+        int mipCount = layout.HasMipCount
+            ? ReadI32(data, ref pos, bigEndian)
+            : data[pos++] != 0 ? 1 : 0;          // m_MipMap (Unity 5.0-5.1)
         pos += 1;                                 // m_IsReadable (bool)
+        if (layout.HasPreProcessed)
+            pos += 1;                             // m_IsPreProcessed (2020.1+)
+        if (layout.HasIgnoreMasterTextureLimit)
+            pos += 1;                             // m_IgnoreMasterTextureLimit (2019.3+)
+        if (layout.HasReadAllowed)
+            pos += 1;                             // m_ReadAllowed (Unity 3.0-5.4)
+        if (layout.HasStreamingMipmaps)
+            pos += 1;                             // m_StreamingMipmaps (2018.2+)
         Align4(ref pos);
+        if (layout.HasStreamingMipmaps)
+            _ = ReadI32(data, ref pos, bigEndian); // m_StreamingMipmapsPriority
         _ = ReadI32(data, ref pos, bigEndian);    // m_ImageCount
         _ = ReadI32(data, ref pos, bigEndian);    // m_TextureDimension
         _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_FilterMode
@@ -234,7 +263,7 @@ public sealed class UnitySerializedFile
         _ = ReadI32(data, ref pos, bigEndian);    // GLTextureSettings.m_WrapMode / m_WrapU
         // Unity 5.x stored one wrap mode. m_WrapV and m_WrapW were added
         // with the newer Texture2D layout, alongside the fallback fields.
-        if (hasSeparateWrapModes)
+        if (layout.HasSeparateWrapModes)
         {
             _ = ReadI32(data, ref pos, bigEndian); // GLTextureSettings.m_WrapV
             _ = ReadI32(data, ref pos, bigEndian); // GLTextureSettings.m_WrapW
@@ -248,7 +277,7 @@ public sealed class UnitySerializedFile
         long streamOffset = 0;
         uint streamSize = 0;
 
-        if (imageDataSize == 0)
+        if (imageDataSize == 0 && layout.HasStreamingInfo)
         {
             // StreamingInfo (version < 2020): external .resS reference.
             streamOffset = ReadU32(data, ref pos, bigEndian);
@@ -261,7 +290,7 @@ public sealed class UnitySerializedFile
         }
 
         if (width <= 0 || height <= 0 || format < 0)
-            throw new CorruptAssetException("Texture2D fields are out of range (layout mismatch).");
+            throw new CorruptAssetException($"Texture2D fields are out of range (layout mismatch: {width}x{height}, format {format}).");
 
         return new Texture2DInfo
         {
@@ -324,9 +353,48 @@ public sealed class UnitySerializedFile
 
     private static uint ReadU32(byte[] d, ref int p, bool be)
     {
+        if (p < 0 || p + 4 > d.Length)
+            throw new CorruptAssetException("Serialized Texture2D data is truncated or uses an unsupported layout.");
         uint v = be ? (uint)((d[p] << 24) | (d[p + 1] << 16) | (d[p + 2] << 8) | d[p + 3]) : BitConverter.ToUInt32(d, p);
         p += 4;
         return v;
+    }
+
+    /// <summary>Texture2D field switches for a Unity editor version.</summary>
+    public sealed class Texture2DLayout
+    {
+        public bool HasFallbackFields { get; init; }
+        public bool HasSeparateWrapModes { get; init; }
+        public bool HasReadAllowed { get; init; }
+        public bool HasMipCount { get; init; } = true;
+        public bool HasStreamingMipmaps { get; init; }
+        public bool HasMipsStripped { get; init; }
+        public bool HasPreProcessed { get; init; }
+        public bool HasIgnoreMasterTextureLimit { get; init; }
+        public bool HasStreamingInfo { get; init; } = true;
+
+        public static Texture2DLayout FromUnityVersion(string unityVersion)
+        {
+            var parts = unityVersion.Split('.', 3);
+            if (parts.Length < 2 || !int.TryParse(parts[0], out int major) || !int.TryParse(parts[1], out int minor))
+                return new Texture2DLayout(); // compatible fallback for common 2017.3-2018 files
+
+            bool AtLeast(int requiredMajor, int requiredMinor = 0)
+                => major > requiredMajor || (major == requiredMajor && minor >= requiredMinor);
+
+            return new Texture2DLayout
+            {
+                HasFallbackFields = AtLeast(2017, 3),
+                HasSeparateWrapModes = AtLeast(2017),
+                HasReadAllowed = major >= 3 && (major < 5 || (major == 5 && minor <= 4)),
+                HasMipCount = AtLeast(5, 2),
+                HasStreamingMipmaps = AtLeast(2018, 2),
+                HasMipsStripped = AtLeast(2020),
+                HasPreProcessed = AtLeast(2020),
+                HasIgnoreMasterTextureLimit = AtLeast(2019, 3),
+                HasStreamingInfo = AtLeast(5, 3),
+            };
+        }
     }
 
     private static ushort ReadU16(byte[] d, ref int p, bool be)
@@ -428,6 +496,8 @@ public sealed class UnitySerializedFile
 
     private static byte[] SliceBigEndian(byte[] d, int p, int len, bool be)
     {
+        if (p < 0 || len < 0 || p > d.Length - len)
+            throw new CorruptAssetException("Serialized file is truncated.");
         var b = new byte[len];
         Array.Copy(d, p, b, 0, len);
         if (be) Array.Reverse(b);

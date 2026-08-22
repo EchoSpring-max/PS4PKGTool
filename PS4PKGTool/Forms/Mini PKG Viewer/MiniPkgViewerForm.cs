@@ -44,6 +44,7 @@ namespace PS4PKGTool
         // extraction worker after orbis-pub-cmd dies. volatile so the flag
         // crosses the thread boundary reliably (mirror of Main).
         private volatile bool _extractionStopRequested;
+        private CancellationTokenSource _extractionCancellation;
         private bool _extracting;
         private PkgInspectionSnapshot _snapshot;
         private bool _loadStarted;
@@ -140,7 +141,7 @@ namespace PS4PKGTool
 
             InitializeComponent();
             Icon = Helper.AppIcon;
-            Text = "PS4 PKG Tool - Mini PKG Viewer";
+            Text = "PS4 PKG Tool - PKG Viewer";
             toolStripStatusLabel2.Text = _currentPackagePath;
 
             // The visual designer repeatedly drops the toolbar File/Tools/Help
@@ -217,7 +218,7 @@ namespace PS4PKGTool
                 if (!IsDisposed && !Disposing)
                 {
                     AppMessageBox.Show(
-                        "Mini PKG Viewer",
+                        "PKG Viewer",
                         "The package could not be opened.\n\n" + ex.Message,
                         AppMessageType.Error,
                         AppMessageButtons.OK);
@@ -264,7 +265,7 @@ namespace PS4PKGTool
                 if (!IsDisposed && !Disposing)
                 {
                     AppMessageBox.Show(
-                        "Mini PKG Viewer",
+                    "PKG Viewer",
                         "The supplied file could not be read as a PS4 package.\n\n" + ex.Message,
                         AppMessageType.Error,
                         AppMessageButtons.OK);
@@ -276,7 +277,7 @@ namespace PS4PKGTool
         private void Populate(PkgInspectionSnapshot snapshot)
         {
             string displayTitle = ValueOrFallback(snapshot.Title, snapshot.FileName);
-            Text = displayTitle + " - Mini PKG Viewer";
+            Text = displayTitle + " - PKG Viewer";
             lblTitle.Text = displayTitle;
             lblSubtitle.Text = string.Join("  •  ", new[]
             {
@@ -901,8 +902,7 @@ namespace PS4PKGTool
 
         private PreviewResult BuildFilePreview(PkgFileNode file)
         {
-            string previewDir = Path.Combine(Path.GetTempPath(), "p4t_mini_preview_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(previewDir);
+            string previewDir = Helper.CreateOrbisTempDir("v");
             try
             {
                 string extracted = Path.Combine(previewDir, Path.GetFileName(file.FullPath));
@@ -1333,10 +1333,9 @@ namespace PS4PKGTool
                 return;
 
             _extractionStopRequested = true;
+            _extractionCancellation?.Cancel();
             btnStopExtract.Enabled = false;
-            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
-            toolStripProgressBar1.Value = 0;
-            labelDisplayTotalPKG.Text = "Extraction cancelled.";
+            labelDisplayTotalPKG.Text = "Stopping extraction...";
         }
 
         /// <summary>
@@ -1349,10 +1348,14 @@ namespace PS4PKGTool
         {
             _extracting = true;
             _extractionStopRequested = false;
+            _extractionCancellation?.Dispose();
+            _extractionCancellation = new CancellationTokenSource();
             btnStopExtract.Visible = true;
             btnStopExtract.Enabled = true;
-            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
-            toolStripProgressBar1.MarqueeAnimationSpeed = 30;
+            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+            toolStripProgressBar1.Minimum = 0;
+            toolStripProgressBar1.Maximum = 1;
+            toolStripProgressBar1.Value = 0;
             SetExtractionUiEnabled(false);
         }
 
@@ -1364,6 +1367,8 @@ namespace PS4PKGTool
             SetExtractionUiEnabled(true);
             _extracting = false;
             labelDisplayTotalPKG.Text = "Ready";
+            _extractionCancellation?.Dispose();
+            _extractionCancellation = null;
         }
 
         private void SetExtractionUiEnabled(bool enabled)
@@ -1600,7 +1605,7 @@ namespace PS4PKGTool
                     $"Mini viewer renamed: {Path.GetFileName(_currentPackagePath)} -> {Path.GetFileName(targetPkg)}");
                 _currentPackagePath = targetPkg;
                 toolStripStatusLabel2.Text = targetPkg;
-                Text = Path.GetFileName(targetPkg) + " - Mini PKG Viewer";
+                Text = Path.GetFileName(targetPkg) + " - PKG Viewer";
                 RebuildLazySessions();
                 ShowInformation("PKG renamed.", true);
             }
@@ -1774,13 +1779,26 @@ namespace PS4PKGTool
             // Lock the viewer (the status strip with Stop Extract stays live)
             // so no other operation touches the file.
             BeginExtractionUi();
-            labelDisplayTotalPKG.Text = "Extracting PKG...";
+            labelDisplayTotalPKG.Text = "Preparing extraction...";
+            CancellationToken extractionToken = _extractionCancellation?.Token ?? CancellationToken.None;
+
+            var progress = new Progress<(int Current, int Total, string CurrentFile)>(p =>
+            {
+                if (_resourcesReleased || _extractionStopRequested || p.Total <= 0)
+                    return;
+
+                int completed = Math.Min(p.Current + 1, p.Total);
+                toolStripProgressBar1.Minimum = 0;
+                toolStripProgressBar1.Maximum = p.Total;
+                toolStripProgressBar1.Value = completed;
+                labelDisplayTotalPKG.Text = $"Extracting {completed}/{p.Total}: {p.CurrentFile}";
+            });
 
             bool succeeded;
             string message;
             try
             {
-                (succeeded, message) = await Task.Run(() => ExtractFullPkgCore(sourcePath, extractLocation));
+                (succeeded, message) = await Task.Run(() => ExtractFullPkgCore(sourcePath, extractLocation, progress, extractionToken));
             }
             catch (Exception ex)
             {
@@ -1810,10 +1828,14 @@ namespace PS4PKGTool
         /// in-process extraction pipeline the Explorer shell integration
         /// uses.
         /// </summary>
-        private (bool Succeeded, string Message) ExtractFullPkgCore(string sourcePath, string extractLocation)
+        private (bool Succeeded, string Message) ExtractFullPkgCore(
+            string sourcePath, string extractLocation,
+            IProgress<(int Current, int Total, string CurrentFile)> progress,
+            CancellationToken cancellationToken)
         {
             var service = new PkgExtractionService(_fileListingPasscode);
-            return service.ExtractFullAsync(sourcePath, extractLocation).GetAwaiter().GetResult();
+            return service.ExtractFullAsync(sourcePath, extractLocation, ct: cancellationToken,
+                fileProgress: progress).GetAwaiter().GetResult();
         }
 
         /// <summary>Shared folder-name sanitization (same rules as the main app's extract flows).</summary>

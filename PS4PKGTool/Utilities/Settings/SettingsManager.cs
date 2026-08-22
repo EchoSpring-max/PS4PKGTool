@@ -20,12 +20,20 @@ namespace PS4PKGTool.Utilities.Settings
         public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.AppDataDirectory, "Settings.conf");
         public static void SaveSettings(AppSettings settings, string filePath)
         {
+            string? temporaryPath = null;
             try
             {
-                using (StreamWriter writer = new StreamWriter(filePath))
+                string? directory = Path.GetDirectoryName(Path.GetFullPath(filePath));
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+                temporaryPath = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                using (StreamWriter writer = new StreamWriter(temporaryPath, false, new UTF8Encoding(false)))
                 {
-                    string directories = string.Join(",", settings.PkgDirectories);
-                    writer.WriteLine($"pkg_directories={directories}");
+                    // One entry per line preserves legal commas in Windows paths.
+                    // LoadSettings still accepts the historical comma-delimited key.
+                    writer.WriteLine("pkg_directories_format=2");
+                    foreach (string pkgDirectory in settings.PkgDirectories.Where(path => !string.IsNullOrWhiteSpace(path)))
+                        writer.WriteLine($"pkg_directory={pkgDirectory}");
                     writer.WriteLine($"scan_recursive={settings.ScanRecursive}");
                     writer.WriteLine($"play_bgm={settings.PlayBgm}");
                     writer.WriteLine($"auto_sort_row={settings.AutoSortRow}");
@@ -71,12 +79,20 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"orbis_temp_directory={settings.OrbisTempDirectory}");
                     writer.WriteLine($"shadps4_config_detection_dismissed={settings.Shadps4ConfigDetectionDismissed}");
                     writer.WriteLine($"shell_integration_installed={settings.ShellIntegrationInstalled}");
-
                 }
+                File.Move(temporaryPath, filePath, true);
+                temporaryPath = null;
             }
             catch (Exception ex)
             {
                 ShowError("Error saving settings: " + ex.Message, true);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(temporaryPath))
+                {
+                    try { File.Delete(temporaryPath); } catch { }
+                }
             }
         }
 
@@ -87,16 +103,38 @@ namespace PS4PKGTool.Utilities.Settings
                 if (File.Exists(filePath))
                 {
                     bool loadedGlobalOrbisTemp = false;
+                    bool loadedPkgDirectoryEntries = false;
                     using (StreamReader reader = new StreamReader(filePath))
                     {
                         string line;
                         while ((line = reader.ReadLine()) != null)
                         {
-                            if (line.StartsWith("pkg_directories="))
+                            if (line.Equals("pkg_directories_format=2", StringComparison.Ordinal))
+                            {
+                                appSettings_.PkgDirectories.Clear();
+                                loadedPkgDirectoryEntries = true;
+                            }
+                            else if (line.StartsWith("pkg_directory=", StringComparison.Ordinal))
+                            {
+                                if (!loadedPkgDirectoryEntries)
+                                {
+                                    appSettings_.PkgDirectories.Clear();
+                                    loadedPkgDirectoryEntries = true;
+                                }
+                                string directory = line.Substring("pkg_directory=".Length);
+                                if (!string.IsNullOrWhiteSpace(directory))
+                                    appSettings_.PkgDirectories.Add(directory);
+                            }
+                            else if (line.StartsWith("pkg_directories=", StringComparison.Ordinal))
                             {
                                 string directories = line.Substring("pkg_directories=".Length);
-                                appSettings_.PkgDirectories.Clear();
-                                appSettings_.PkgDirectories.AddRange(directories.Split(',').Where(d => !string.IsNullOrEmpty(d)));
+                                // Legacy format. It cannot represent commas in a path,
+                                // but must remain readable for existing installations.
+                                if (!loadedPkgDirectoryEntries)
+                                {
+                                    appSettings_.PkgDirectories.Clear();
+                                    appSettings_.PkgDirectories.AddRange(directories.Split(',').Where(d => !string.IsNullOrEmpty(d)));
+                                }
                             }
                             else if (line.StartsWith("scan_recursive="))
                             {
@@ -463,18 +501,11 @@ namespace PS4PKGTool.Utilities.Settings
         }
 
         /// <summary>
-        /// Keeps the configured directory list clean. The move-PKG feature
-        /// once added one entry per destination folder, leaving hundreds of
-        /// redundant subfolders (226 entries from 2 real roots).
+        /// Keeps the configured directory list clean without broadening the
+        /// user's explicitly selected scan scope.
         /// Rules:
         ///  - empty and exact-duplicate entries are dropped;
-        ///  - sibling groups (2+) sharing the same parent collapse to that
-        ///    parent (&lt;lib&gt;\Base + Update\Title1, Title2, ... and even
-        ///    &lt;lib&gt;\Game &amp; Patch + &lt;lib&gt;\New folder become &lt;lib&gt;);
         ///  - entries still nested inside a kept entry are dropped.
-        /// Scanning a configured directory covers its children (recursive, or
-        /// via the immediate-subfolder scan), so the result - top-level roots
-        /// only - loses no coverage.
         /// </summary>
         private static void NormalizePkgDirectories(List<string> dirs)
         {
@@ -487,41 +518,15 @@ namespace PS4PKGTool.Utilities.Settings
                     unique.Add(d);
             }
 
-            // Collapse sibling groups to their common parent; lone entries stay.
-            var collapsed = new List<string>();
-            foreach (var group in unique.GroupBy(ParentPath, StringComparer.OrdinalIgnoreCase))
-            {
-                string parent = group.Key ?? "";
-                if (group.Count() >= 2 && !string.IsNullOrEmpty(parent))
-                {
-                    if (!collapsed.Any(c => string.Equals(c, parent, StringComparison.OrdinalIgnoreCase)))
-                        collapsed.Add(parent);
-                }
-                else
-                {
-                    foreach (string d in group)
-                        if (!collapsed.Any(c => string.Equals(c, d, StringComparison.OrdinalIgnoreCase)))
-                            collapsed.Add(d);
-                }
-            }
-
-            // Drop entries nested inside another entry (a collapsed parent may
-            // itself nest under a kept root).
-            var final = collapsed.Where(d => !collapsed.Any(other =>
+            // Preserve explicitly selected siblings. Collapsing C:\Games and
+            // C:\Downloads produced the drive-relative path C:, and collapsing
+            // normal siblings silently broadened the user's scan scope.
+            var final = unique.Where(d => !unique.Any(other =>
                 !string.Equals(other, d, StringComparison.OrdinalIgnoreCase)
                 && IsStrictChildOf(d, other))).ToList();
 
             dirs.Clear();
             dirs.AddRange(final);
-        }
-
-        /// <summary>Parent directory of a path (no trailing separator), or null when none.</summary>
-        private static string? ParentPath(string path)
-        {
-            string trimmed = path.TrimEnd('\\', '/');
-            int idx = trimmed.LastIndexOf('\\');
-            if (idx <= 0) return null;
-            return trimmed.Substring(0, idx);
         }
 
         private static bool IsStrictChildOf(string child, string parent)

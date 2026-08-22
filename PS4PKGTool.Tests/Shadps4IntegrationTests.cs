@@ -849,7 +849,7 @@ public class Shadps4IntegrationTests
     }
 
     [TestMethod]
-    public void Settings_PkgDirectories_SiblingGroupsCollapseUnrelatedRootsStay()
+    public void Settings_PkgDirectories_ExplicitSiblingRootsArePreserved()
     {
         string file = Path.Combine(_tempRoot, "Settings.conf");
         var settings = new PS4PKGTool.Utilities.Settings.AppSettings
@@ -857,7 +857,7 @@ public class Shadps4IntegrationTests
             PkgDirectories = new List<string>
             {
                 @"E:\Games\A",
-                @"E:\Games\B",   // sibling of A - both collapse to E:\Games
+                @"E:\Games\B",
                 @"E:\GamesX",    // NOT a child of E:\Games - kept
                 @"D:\Other",     // different root - kept
             },
@@ -867,17 +867,17 @@ public class Shadps4IntegrationTests
         var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
 
         CollectionAssert.AreEqual(
-            new[] { @"E:\Games", @"E:\GamesX", @"D:\Other" },
+            new[] { @"E:\Games\A", @"E:\Games\B", @"E:\GamesX", @"D:\Other" },
             loaded.PkgDirectories.ToArray(),
-            "sibling pollution collapses to the shared parent; unrelated roots stay");
+            "explicit sibling roots must not be broadened to their shared parent");
     }
 
     [TestMethod]
-    public void Settings_PkgDirectories_TitleMovePollutionCollapsesToSingleRoot()
+    public void Settings_PkgDirectories_DoesNotInferAParentFromSiblingEntries()
     {
-        // Real-world shape: moving by title once added one entry per title
-        // folder (226 entries from 2 real roots). Every entry is a sibling
-        // group under B:\PKG, so the whole list normalizes to B:\PKG.
+        // The move workflow now saves the selected destination root directly.
+        // If an older file contains explicit siblings, loading it must not
+        // silently broaden the user's scan to their common parent.
         string file = Path.Combine(_tempRoot, "Settings.conf");
         var settings = new PS4PKGTool.Utilities.Settings.AppSettings
         {
@@ -895,9 +895,49 @@ public class Shadps4IntegrationTests
         var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
 
         CollectionAssert.AreEqual(
-            new[] { @"B:\PKG" },
+            new[]
+            {
+                @"B:\PKG\Game & Patch",
+                @"B:\PKG\New folder",
+                @"B:\PKG\Base + Update\Title A",
+                @"B:\PKG\Base + Update\Title B",
+                @"B:\PKG\Base + Update\Title C",
+            },
             loaded.PkgDirectories.ToArray(),
-            "the polluted list normalizes to its common root");
+            "loading settings must preserve explicitly configured siblings");
+    }
+
+    [TestMethod]
+    public void Settings_PkgDirectories_CommasRoundTripAndTopLevelSiblingsStayAbsolute()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        var settings = new PS4PKGTool.Utilities.Settings.AppSettings
+        {
+            PkgDirectories = new List<string>
+            {
+                @"C:\Games, Sorted",
+                @"C:\Downloads",
+            },
+        };
+
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(settings, file);
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        CollectionAssert.AreEqual(settings.PkgDirectories.ToArray(), loaded.PkgDirectories.ToArray());
+        StringAssert.Contains(File.ReadAllText(file), "pkg_directory=C:\\Games, Sorted");
+    }
+
+    [TestMethod]
+    public void Settings_PkgDirectories_EmptyListClearsPreviouslyLoadedEntries()
+    {
+        string file = Path.Combine(_tempRoot, "Settings.conf");
+        PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_.PkgDirectories.Add(@"D:\Old");
+
+        PS4PKGTool.Utilities.Settings.SettingsManager.SaveSettings(
+            new PS4PKGTool.Utilities.Settings.AppSettings(), file);
+        var loaded = PS4PKGTool.Utilities.Settings.SettingsManager.LoadSettings(file);
+
+        Assert.HasCount(0, loaded.PkgDirectories);
     }
 
     // ── launcher ──

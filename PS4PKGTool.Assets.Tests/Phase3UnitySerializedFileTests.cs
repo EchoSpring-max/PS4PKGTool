@@ -22,6 +22,25 @@ public class Phase3UnitySerializedFileTests
 
     private readonly AssetInspectionService _service = GenericAssetRegistryBuilder.Build();
 
+    [TestMethod]
+    public void Texture2DLayout_SelectsFieldsByUnityVersion()
+    {
+        var unity53 = UnitySerializedFile.Texture2DLayout.FromUnityVersion("5.3.8f1");
+        Assert.IsTrue(unity53.HasReadAllowed);
+        Assert.IsTrue(unity53.HasMipCount);
+        Assert.IsFalse(unity53.HasSeparateWrapModes);
+        Assert.IsTrue(unity53.HasStreamingInfo);
+
+        var unity2017_1 = UnitySerializedFile.Texture2DLayout.FromUnityVersion("2017.1.3f1");
+        Assert.IsFalse(unity2017_1.HasFallbackFields);
+        Assert.IsTrue(unity2017_1.HasSeparateWrapModes);
+        Assert.IsTrue(unity2017_1.HasStreamingInfo);
+
+        var unity2018_2 = UnitySerializedFile.Texture2DLayout.FromUnityVersion("2018.2.0f2");
+        Assert.IsTrue(unity2018_2.HasFallbackFields);
+        Assert.IsTrue(unity2018_2.HasStreamingMipmaps);
+    }
+
     // ── synthetic fixtures: one object, LE, v17 ──
 
     /// <summary>8x8 DXT1 payload (4 blocks).</summary>

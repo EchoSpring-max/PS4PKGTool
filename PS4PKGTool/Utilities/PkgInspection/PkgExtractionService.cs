@@ -41,7 +41,8 @@ namespace PS4PKGTool.Utilities.PkgInspection
         /// </summary>
         public async Task<(bool Succeeded, string Message)> ExtractFullAsync(
             string sourcePath, string destination,
-            IProgress<string>? progress = null, CancellationToken ct = default)
+            IProgress<string>? progress = null, CancellationToken ct = default,
+            IProgress<(int Current, int Total, string CurrentFile)>? fileProgress = null)
         {
             try
             {
@@ -51,17 +52,19 @@ namespace PS4PKGTool.Utilities.PkgInspection
                 progress?.Report("Extracting game files...");
                 // Progress<T> built here captures the caller's context, so
                 // per-file reports keep marshaling to the UI thread.
-                var fileProgress = progress == null
+                var textProgress = progress == null
                     ? null
                     : new Progress<(int Current, int Total, string File)>(p =>
                         progress.Report(p.Total > 0
                             ? $"Extracting {p.Current + 1}/{p.Total}: {p.File}"
                             : $"Extracting {p.File}"));
 
+                var extractionProgress = fileProgress ?? textProgress;
+
                 var failures = await Task.Run(() =>
                 {
                     using var reader = new OrbisPkgTool.PkgReader(sourcePath, _passcode);
-                    return reader.ExtractAll(destination, fileProgress,
+                    return reader.ExtractAll(destination, extractionProgress,
                         new OrbisPkgTool.ExtractAllOptions { CancellationToken = ct });
                 }, ct).ConfigureAwait(false);
 

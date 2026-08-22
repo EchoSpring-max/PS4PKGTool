@@ -56,6 +56,7 @@ namespace PS4PKGTool
             contextMenuPKGGridView = new DarkUI.Controls.DarkContextMenu();
             toolStripMenuItem94 = new ToolStripMenuItem();
             checkForDuplicatePKGToolStripMenuItem2 = new ToolStripMenuItem();
+            checkForPatchesMissingBasePKGToolStripMenuItem2 = new ToolStripMenuItem();
             globalExportPKGListToExcelToolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem3 = new ToolStripMenuItem();
             globalExtractImagesAndIconToolStripMenuItem2 = new ToolStripMenuItem();
@@ -97,6 +98,7 @@ namespace PS4PKGTool
             removeBackportedToolStripMenuItem2 = new ToolStripMenuItem();
             deletePkgtoolStripMenuItem2 = new ToolStripMenuItem();
             selectedExportPKGListToExcelToolStripMenuItem2 = new ToolStripMenuItem();
+            mergeSelectedBaseAndUpdateToolStripMenuItem = new ToolStripMenuItem();
             GroupActionExtacrtImageToolStripMenuItem = new ToolStripMenuItem();
             selectedExtractImagesAndIconToolStripMenuItem2 = new ToolStripMenuItem();
             selectedExtractImageOnlyToolStripMenuItem2 = new ToolStripMenuItem();
@@ -558,7 +560,7 @@ namespace PS4PKGTool
             // contextMenuPKGGridView
             // 
             contextMenuPKGGridView.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21, toolStripSeparatorShadps4, sToolStripMenuItem, toolStripMenuItemShadps4Launch, toolStripMenuItemShadps4Install, toolStripMenuItemShadps4OpenManager });
+            contextMenuPKGGridView.Items.AddRange(new ToolStripItem[] { toolStripMenuItem94, checkForDuplicatePKGToolStripMenuItem2, checkForPatchesMissingBasePKGToolStripMenuItem2, globalExportPKGListToExcelToolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem111, toolStripMenuItem38, toolStripSeparator2, GroupActionTitleStripMenuItem, toolStripMenuItem127, backportToolStripMenuItem, deletePkgtoolStripMenuItem2, selectedExportPKGListToExcelToolStripMenuItem2, mergeSelectedBaseAndUpdateToolStripMenuItem, GroupActionExtacrtImageToolStripMenuItem, toolStripMenuItem133, viewPkgChangeInfotoolStripMenuItem2, viewPkgExplorerStripMenuItem2, downloadOfficialUpdateToolStripMenuItem2, toolStripSeparator7, toolStripMenuItem18, RpiCheckPkgInstalledtoolStripMenuItem2, RpiSendPkgtoolStripMenuItem2, toolStripMenuItem21, toolStripSeparatorShadps4, sToolStripMenuItem, toolStripMenuItemShadps4Launch, toolStripMenuItemShadps4Install, toolStripMenuItemShadps4OpenManager });
             contextMenuPKGGridView.Name = "DarkContextMenuStrip1";
             contextMenuPKGGridView.Size = new System.Drawing.Size(248, 553);
             // 
@@ -582,7 +584,16 @@ namespace PS4PKGTool
             checkForDuplicatePKGToolStripMenuItem2.Size = new System.Drawing.Size(247, 22);
             checkForDuplicatePKGToolStripMenuItem2.Text = "Check for duplicate PKG";
             checkForDuplicatePKGToolStripMenuItem2.Click += CheckForDuplicatePKG_Click;
-            // 
+            //
+            // checkForPatchesMissingBasePKGToolStripMenuItem2
+            //
+            checkForPatchesMissingBasePKGToolStripMenuItem2.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            checkForPatchesMissingBasePKGToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            checkForPatchesMissingBasePKGToolStripMenuItem2.Name = "checkForPatchesMissingBasePKGToolStripMenuItem2";
+            checkForPatchesMissingBasePKGToolStripMenuItem2.Size = new System.Drawing.Size(247, 22);
+            checkForPatchesMissingBasePKGToolStripMenuItem2.Text = "Check patches missing base PKG";
+            checkForPatchesMissingBasePKGToolStripMenuItem2.Click += CheckForPatchesMissingBasePKG_Click;
+            //
             // globalExportPKGListToExcelToolStripMenuItem2
             // 
             globalExportPKGListToExcelToolStripMenuItem2.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
@@ -748,7 +759,7 @@ namespace PS4PKGTool
             renameAllPkg12ToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             renameAllPkg12ToolStripMenuItem2.Name = "renameAllPkg12ToolStripMenuItem2";
             renameAllPkg12ToolStripMenuItem2.Size = new System.Drawing.Size(314, 22);
-            renameAllPkg12ToolStripMenuItem2.Text = "SORT BY INSTALL PRIORITY";
+            renameAllPkg12ToolStripMenuItem2.Text = "RENAME BY INSTALL PRIORITY";
             renameAllPkg12ToolStripMenuItem2.Click += RenamePkg_Click;
             // 
             // toolStripMenuItem38
@@ -964,7 +975,16 @@ namespace PS4PKGTool
             selectedExportPKGListToExcelToolStripMenuItem2.Size = new System.Drawing.Size(247, 22);
             selectedExportPKGListToExcelToolStripMenuItem2.Text = "Export as excel file";
             selectedExportPKGListToExcelToolStripMenuItem2.Click += ExportPKGToExcel_Click;
-            // 
+            //
+            // mergeSelectedBaseAndUpdateToolStripMenuItem
+            //
+            mergeSelectedBaseAndUpdateToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            mergeSelectedBaseAndUpdateToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            mergeSelectedBaseAndUpdateToolStripMenuItem.Name = "mergeSelectedBaseAndUpdateToolStripMenuItem";
+            mergeSelectedBaseAndUpdateToolStripMenuItem.Size = new System.Drawing.Size(247, 22);
+            mergeSelectedBaseAndUpdateToolStripMenuItem.Text = "Merge selected base + update";
+            mergeSelectedBaseAndUpdateToolStripMenuItem.Click += MergeSelectedBaseAndUpdate_Click;
+            //
             // GroupActionExtacrtImageToolStripMenuItem
             // 
             GroupActionExtacrtImageToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
@@ -1119,7 +1139,7 @@ namespace PS4PKGTool
             renameSelectedPkg12ToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             renameSelectedPkg12ToolStripMenuItem2.Name = "renameSelectedPkg12ToolStripMenuItem2";
             renameSelectedPkg12ToolStripMenuItem2.Size = new System.Drawing.Size(314, 22);
-            renameSelectedPkg12ToolStripMenuItem2.Text = "SORT BY INSTALL PRIORITY";
+            renameSelectedPkg12ToolStripMenuItem2.Text = "RENAME BY INSTALL PRIORITY";
             renameSelectedPkg12ToolStripMenuItem2.Click += RenamePkg_Click;
             // 
             // viewPkgChangeInfotoolStripMenuItem2
@@ -1451,7 +1471,7 @@ namespace PS4PKGTool
             loadFromManifestToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             loadFromManifestToolStripMenuItem.Name = "loadFromManifestToolStripMenuItem";
             loadFromManifestToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
-            loadFromManifestToolStripMenuItem.Text = "Load from manifest";
+            loadFromManifestToolStripMenuItem.Text = "Load Manifest From...";
             loadFromManifestToolStripMenuItem.Click += loadFromManifestToolStripMenuItem_Click;
             // 
             // saveManifestToolStripMenuItem
@@ -1460,7 +1480,7 @@ namespace PS4PKGTool
             saveManifestToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             saveManifestToolStripMenuItem.Name = "saveManifestToolStripMenuItem";
             saveManifestToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
-            saveManifestToolStripMenuItem.Text = "Save manifest";
+            saveManifestToolStripMenuItem.Text = "Save Manifest As...";
             saveManifestToolStripMenuItem.Click += saveManifestToolStripMenuItem_Click;
             // 
             // emptyListToolStripMenuItem
@@ -1551,7 +1571,7 @@ namespace PS4PKGTool
             checkForDuplicatePKGToolStripMenuItem1.Size = new System.Drawing.Size(254, 22);
             checkForDuplicatePKGToolStripMenuItem1.Text = "Check for duplicate PKG";
             checkForDuplicatePKGToolStripMenuItem1.Click += CheckForDuplicatePKG_Click;
-            // 
+            //
             // globalExportPKGListToExcelToolStripMenuItem1
             // 
             globalExportPKGListToExcelToolStripMenuItem1.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
@@ -1711,7 +1731,7 @@ namespace PS4PKGTool
             renameAllPkg12ToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             renameAllPkg12ToolStripMenuItem1.Name = "renameAllPkg12ToolStripMenuItem1";
             renameAllPkg12ToolStripMenuItem1.Size = new System.Drawing.Size(314, 22);
-            renameAllPkg12ToolStripMenuItem1.Text = "SORT BY INSTALL PRIORITY";
+            renameAllPkg12ToolStripMenuItem1.Text = "RENAME BY INSTALL PRIORITY";
             renameAllPkg12ToolStripMenuItem1.Click += RenamePkg_Click;
             // 
             // seperateAndMovePKGByTypeIntoFolderToolStripMenuItem
@@ -2061,7 +2081,7 @@ namespace PS4PKGTool
             renameSelectedPkg12ToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             renameSelectedPkg12ToolStripMenuItem1.Name = "renameSelectedPkg12ToolStripMenuItem1";
             renameSelectedPkg12ToolStripMenuItem1.Size = new System.Drawing.Size(314, 22);
-            renameSelectedPkg12ToolStripMenuItem1.Text = "SORT BY INSTALL PRIORITY";
+            renameSelectedPkg12ToolStripMenuItem1.Text = "RENAME BY INSTALL PRIORITY";
             renameSelectedPkg12ToolStripMenuItem1.Click += RenamePkg_Click;
             // 
             // viewPkgChangeInfotoolStripMenuItem1
@@ -2637,7 +2657,7 @@ namespace PS4PKGTool
             lblFilterSysVer.Name = "lblFilterSysVer";
             lblFilterSysVer.Size = new System.Drawing.Size(107, 15);
             lblFilterSysVer.TabIndex = 4;
-            lblFilterSysVer.Text = "System Version ≥";
+            lblFilterSysVer.Text = "Required Firmware ≥";
             // 
             // tbFilterSysVer
             // 
@@ -4258,6 +4278,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnExtractFullPKG;
         private ToolStripMenuItem GroupActionTitleStripMenuItem;
         private ToolStripMenuItem selectedExportPKGListToExcelToolStripMenuItem2;
+        private ToolStripMenuItem mergeSelectedBaseAndUpdateToolStripMenuItem;
         private ToolStripMenuItem GroupActionExtacrtImageToolStripMenuItem;
         private ToolStripMenuItem selectedExtractImagesAndIconToolStripMenuItem2;
         private ToolStripMenuItem selectedExtractImageOnlyToolStripMenuItem2;
@@ -4299,6 +4320,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem movePkgTitleToolStripMenuItem1;
         private ToolStripMenuItem checkForDuplicatePKGToolStripMenuItem2;
         private ToolStripMenuItem checkForDuplicatePKGToolStripMenuItem1;
+        private ToolStripMenuItem checkForPatchesMissingBasePKGToolStripMenuItem2;
         private ToolStripSeparator toolStripSeparator11;
         private ToolStripSeparator toolStripSeparator12;
         private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator13;

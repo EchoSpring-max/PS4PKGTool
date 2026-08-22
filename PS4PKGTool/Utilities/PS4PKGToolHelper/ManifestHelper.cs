@@ -51,9 +51,18 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
         public static ManifestData LoadManifest()
         {
+            return LoadManifest(ManifestFilePath);
+        }
+
+        /// <summary>
+        /// Loads a manifest from the supplied path. This is used for explicit
+        /// manifest imports and does not alter the configured PKG directories.
+        /// </summary>
+        public static ManifestData LoadManifest(string manifestFilePath)
+        {
             try
             {
-                string json = File.ReadAllText(ManifestFilePath);
+                string json = File.ReadAllText(manifestFilePath);
                 var manifest = JsonConvert.DeserializeObject<ManifestData>(json);
                 return manifest;
             }
@@ -203,6 +212,14 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         /// </summary>
         public static void SaveManifest(DataTable gridViewData, List<string> verifiedPkgList)
         {
+            SaveManifest(gridViewData, verifiedPkgList, ManifestFilePath);
+        }
+
+        /// <summary>
+        /// Saves the current PKGGridView data to the supplied manifest path.
+        /// </summary>
+        public static void SaveManifest(DataTable gridViewData, List<string> verifiedPkgList, string manifestFilePath)
+        {
             if (gridViewData == null || gridViewData.Rows.Count == 0)
                 return;
 
@@ -231,7 +248,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     TitleId = row["Title ID"]?.ToString() ?? "",
                     ContentId = row["Content ID"]?.ToString() ?? "",
                     Region = region,
-                    SystemVersion = row["System Version"]?.ToString() ?? "",
+                    SystemVersion = row[PkgColumns.SystemVersion]?.ToString() ?? "",
                     Version = row["Version [App Version]"]?.ToString() ?? "",
                     PkgType = row["PKG Type"]?.ToString() ?? "",
                     Category = row["Category"]?.ToString() ?? "",
@@ -257,8 +274,12 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             };
 
             string json = JsonConvert.SerializeObject(manifest, Formatting.Indented);
-            File.WriteAllText(ManifestFilePath, json);
-            Logger.LogInformation($"Manifest saved: {entries.Count} entries to {ManifestFilePath}");
+            string manifestDirectory = Path.GetDirectoryName(manifestFilePath);
+            if (!string.IsNullOrEmpty(manifestDirectory))
+                Directory.CreateDirectory(manifestDirectory);
+
+            File.WriteAllText(manifestFilePath, json);
+            Logger.LogInformation($"Manifest saved: {entries.Count} entries to {manifestFilePath}");
         }
 
         /// <summary>

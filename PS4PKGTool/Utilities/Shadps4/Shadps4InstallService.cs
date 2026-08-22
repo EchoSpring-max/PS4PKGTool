@@ -72,7 +72,8 @@ namespace PS4PKGTool.Utilities.Shadps4
         public Shadps4InstallResult Install(
             string pkgPath, string titleId, string libraryDir, bool replaceExisting,
             IProgress<string>? progress = null, CancellationToken ct = default,
-            bool mergeIntoExisting = false)
+            bool mergeIntoExisting = false,
+            IProgress<(int Current, int Total, string CurrentFile)>? fileProgress = null)
         {
             Logger.LogInformation($"Shadps4Install: {pkgPath}");
             Logger.LogInformation($"Shadps4Install: target = {Path.Combine(libraryDir, titleId)} (replace={replaceExisting}, merge={mergeIntoExisting})");
@@ -119,7 +120,7 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
                 else
                 {
-                    (extracted, extractDetail) = ExtractInProcess(pkgPath, staging, ct);
+                    (extracted, extractDetail) = ExtractInProcess(pkgPath, staging, ct, fileProgress);
                 }
                 if (!extracted)
                 {
@@ -388,12 +389,14 @@ namespace PS4PKGTool.Utilities.Shadps4
         /// decrypted straight into the staging folder. Unicode paths work.
         /// Cancellation throws OperationCanceledException (caught by Install).
         /// </summary>
-        private (bool Ok, string Detail) ExtractInProcess(string pkgPath, string destinationDir, CancellationToken ct)
+        private (bool Ok, string Detail) ExtractInProcess(
+            string pkgPath, string destinationDir, CancellationToken ct,
+            IProgress<(int Current, int Total, string CurrentFile)>? fileProgress = null)
         {
             try
             {
                 using var reader = new OrbisPkgTool.PkgReader(pkgPath, Passcode);
-                var failures = reader.ExtractAll(destinationDir, null,
+                var failures = reader.ExtractAll(destinationDir, fileProgress,
                     new OrbisPkgTool.ExtractAllOptions { CancellationToken = ct });
                 if (failures.Count > 0)
                 {

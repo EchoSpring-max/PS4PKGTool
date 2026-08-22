@@ -7,6 +7,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Windows.Forms;
 using ByteSizeLib;
 
@@ -19,6 +20,8 @@ namespace PS4PKGTool
         private BackgroundWorker _downloadWorker;
         private WebRequest _activeRequest;
         private Action<string> _logCallback;
+        private int _lookupGeneration;
+        private bool _closeWhenDownloadStops;
 
         public OfficialUpdateForm()
         {
@@ -33,6 +36,13 @@ namespace PS4PKGTool
 
         public void LoadUpdate(string titleId, string pkgType, string downloadDirectory)
         {
+            if (_downloadWorker?.IsBusy == true)
+            {
+                lblStatus.Text = "Finish or stop the current download before loading another game.";
+                return;
+            }
+            _ = Handle;
+            int lookupGeneration = Interlocked.Increment(ref _lookupGeneration);
             _currentTitleId = titleId;
             _downloadDir = downloadDirectory;
 
@@ -45,6 +55,8 @@ namespace PS4PKGTool
 
             lblSummary.Text = $"Loading updates for {titleId}...";
             dgvParts.DataSource = null;
+            btnDownloadSelected.Enabled = false;
+            btnDownloadAll.Enabled = false;
 
             var bg = new BackgroundWorker();
             bg.DoWork += (_, _) =>
@@ -78,15 +90,15 @@ namespace PS4PKGTool
                             dt.Rows.Add(
                                 $"Part {partNum}",
                                 ByteSize.FromBytes(size).ToString(),
-                                piece.HashValue.ToString(),
-                                piece.Url.ToString(),
+                                piece.HashValue ?? "",
+                                piece.Url ?? "",
                                 size
                             );
                         }
 
                         string sizeStr = ByteSize.FromBytes(totalBytes).ToString();
 
-                        this.Invoke((Action)(() =>
+                        ApplyLookupResult(lookupGeneration, () =>
                         {
                             lblSummary.Text = $"Version: {version}  |  System: {sysVer}  |  Type: {type}  |  Mandatory: {mandatory}  |  Remaster: {remaster}  |  Files: {fileCount}  |  Size: {sizeStr}";
                             dgvParts.DataSource = dt;
@@ -94,25 +106,27 @@ namespace PS4PKGTool
                                 dgvParts.Columns[4].Visible = false;
                             btnDownloadSelected.Enabled = dt.Rows.Count > 0;
                             btnDownloadAll.Enabled = dt.Rows.Count > 0;
-                        }));
+                        });
                     }
                     else
                     {
-                        this.Invoke((Action)(() =>
+                        ApplyLookupResult(lookupGeneration, () =>
                         {
                             lblSummary.Text = $"No updates available for {titleId}.";
                             dgvParts.DataSource = null;
                             btnDownloadSelected.Enabled = false;
                             btnDownloadAll.Enabled = false;
-                        }));
+                        });
                     }
                 }
                 catch (Exception ex)
                 {
-                    this.Invoke((Action)(() =>
+                    ApplyLookupResult(lookupGeneration, () =>
                     {
                         lblSummary.Text = $"Failed to check updates: {ex.Message}";
-                    }));
+                        btnDownloadSelected.Enabled = false;
+                        btnDownloadAll.Enabled = false;
+                    });
                 }
             };
             bg.RunWorkerAsync();
@@ -120,7 +134,9 @@ namespace PS4PKGTool
 
         private void DownloadParts(IEnumerable<DataGridViewRow> rows)
         {
-            var downloads = new List<(string url, string filename, long size)>();
+            string titleId = _currentTitleId;
+            string downloadDir = _downloadDir;
+            var downloads = new List<(string url, string filename, long size, string sha256)>();
             foreach (var row in rows)
             {
                 string url = row.Cells[3].Value?.ToString();
@@ -129,13 +145,14 @@ namespace PS4PKGTool
                 {
                     long size = 0;
                     long.TryParse(row.Cells[4].Value?.ToString(), out size);
-                    downloads.Add((url, $"{_currentTitleId}_{part}.pkg", size));
+                    string sha256 = row.Cells[2].Value?.ToString() ?? "";
+                    downloads.Add((url, $"{titleId}_{part}.pkg", size, sha256));
                 }
             }
 
             if (downloads.Count == 0) { lblStatus.Text = "No URLs to download."; return; }
-            if (string.IsNullOrEmpty(_downloadDir)) { lblStatus.Text = "No download directory configured."; return; }
-            try { Directory.CreateDirectory(_downloadDir); } catch (Exception ex) { lblStatus.Text = "Failed to create download directory: " + ex.Message; return; }
+            if (string.IsNullOrEmpty(downloadDir)) { lblStatus.Text = "No download directory configured."; return; }
+            try { Directory.CreateDirectory(downloadDir); } catch (Exception ex) { lblStatus.Text = "Failed to create download directory: " + ex.Message; return; }
 
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13 | SecurityProtocolType.Tls11;
 
@@ -153,14 +170,15 @@ namespace PS4PKGTool
             {
                 int total = downloads.Count;
                 int done = 0, failed = 0;
-                _logCallback?.Invoke($"Download official update: {total} part(s) for {_currentTitleId}");
+                _logCallback?.Invoke($"Download official update: {total} part(s) for {titleId}");
 
                 for (int i = 0; i < total; i++)
                 {
                     if (bg.CancellationPending) break;
 
-                    var (url, filename, _) = downloads[i];
-                    string outPath = Path.Combine(_downloadDir, filename);
+                    var (url, filename, expectedSize, expectedSha256) = downloads[i];
+                    string outPath = Path.Combine(downloadDir, filename);
+                    string partialPath = outPath + "." + Guid.NewGuid().ToString("N") + ".part";
 
                     bg.ReportProgress((done + failed) * 10000 / total, $"Downloading {i + 1}/{total}...");
 
@@ -181,7 +199,7 @@ namespace PS4PKGTool
                             long bytesWritten = 0;
                             int lastPct = -1;
 
-                            using (var fs = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                            using (var fs = new FileStream(partialPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                             {
                                 while (true)
                                 {
@@ -210,10 +228,13 @@ namespace PS4PKGTool
 
                             if (bg.CancellationPending)
                             {
-                                try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on cancel: " + ex.Message); }
+                                TryDeletePartial(partialPath);
                                 break;
                             }
 
+                            PS4PKGTool.Utilities.WorkflowGuards.VerifyDownloadedPiece(
+                                partialPath, bytesWritten, expectedSize, expectedSha256);
+                            File.Move(partialPath, outPath, true);
                             done++;
                             _logCallback?.Invoke($"Download part {i + 1}/{total}: {filename}");
                             bg.ReportProgress(Math.Min((done + failed) * 10000 / total, 10000));
@@ -221,18 +242,19 @@ namespace PS4PKGTool
                     }
                     catch (WebException wex) when (wex.Status == WebExceptionStatus.RequestCanceled)
                     {
-                        try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on WebException: " + ex.Message); }
+                        TryDeletePartial(partialPath);
                         break;
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         if (bg.CancellationPending)
                         {
-                            try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on cancel: " + ex.Message); }
+                            TryDeletePartial(partialPath);
                             break;
                         }
                         failed++;
-                        try { if (File.Exists(outPath)) File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on error: " + ex.Message); }
+                        _logCallback?.Invoke($"Download failed for {filename}: {ex.Message}");
+                        TryDeletePartial(partialPath);
                     }
                     finally
                     {
@@ -244,17 +266,17 @@ namespace PS4PKGTool
                 if (bg.CancellationPending)
                 {
                     finalText = "Download stopped.";
-                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: stopped by user.");
+                    _logCallback?.Invoke($"Download official update for {titleId}: stopped by user.");
                 }
                 else if (failed > 0)
                 {
                     finalText = $"Downloaded {done} file(s). {failed} failed.";
-                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: {done} OK, {failed} failed.");
+                    _logCallback?.Invoke($"Download official update for {titleId}: {done} OK, {failed} failed.");
                 }
                 else
                 {
                     finalText = $"Downloaded {done} file(s).";
-                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: {done} part(s) downloaded.");
+                    _logCallback?.Invoke($"Download official update for {titleId}: {done} part(s) downloaded.");
                 }
 
                 bg.ReportProgress(10000, finalText);
@@ -274,9 +296,35 @@ namespace PS4PKGTool
                 toolStripProgress.Visible = false;
                 btnDownloadSelected.Enabled = true;
                 btnDownloadAll.Enabled = true;
+                if (_closeWhenDownloadStops)
+                {
+                    _closeWhenDownloadStops = false;
+                    Close();
+                }
             };
 
             bg.RunWorkerAsync();
+        }
+
+        private void ApplyLookupResult(int generation, Action action)
+        {
+            if (generation != Volatile.Read(ref _lookupGeneration) || IsDisposed || Disposing || !IsHandleCreated)
+                return;
+            try
+            {
+                BeginInvoke((Action)(() =>
+                {
+                    if (generation == Volatile.Read(ref _lookupGeneration) && !IsDisposed && !Disposing)
+                        action();
+                }));
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        private static void TryDeletePartial(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); }
+            catch (Exception ex) { Logger.LogWarning("Failed to delete partial download: " + ex.Message); }
         }
 
         private void btnDownloadSelected_Click(object sender, EventArgs e)
@@ -352,6 +400,7 @@ namespace PS4PKGTool
 
         private void OfficialUpdateForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            Interlocked.Increment(ref _lookupGeneration);
             var bg = _downloadWorker;
             if (bg == null || !bg.IsBusy) return;
 
@@ -365,6 +414,8 @@ namespace PS4PKGTool
 
             bg.CancelAsync();
             _activeRequest?.Abort();
+            _closeWhenDownloadStops = true;
+            e.Cancel = true;
         }
     }
 }

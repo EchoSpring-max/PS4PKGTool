@@ -335,8 +335,18 @@ namespace PS4PKGTool.Shell
                 (progress, ct) => Task.Run(async () =>
                 {
                     var p = new Progress<string>(s => progress.Report(new ShellOperationProgress(s)));
+                    var fileProgress = new Progress<(int Current, int Total, string CurrentFile)>(entry =>
+                    {
+                        if (entry.Total <= 0)
+                            return;
+
+                        int completed = Math.Min(entry.Current + 1, entry.Total);
+                        int percent = (int)Math.Round(completed * 100.0 / entry.Total);
+                        progress.Report(new ShellOperationProgress(
+                            $"Extracting {completed}/{entry.Total}: {entry.CurrentFile}", percent));
+                    });
                     var (succeeded, message) = await new PkgExtractionService(passcode: passcode)
-                        .ExtractFullAsync(path, extractLocation, p, ct).ConfigureAwait(false);
+                        .ExtractFullAsync(path, extractLocation, p, ct, fileProgress).ConfigureAwait(false);
 
                     for (int attempt = 0; attempt < 5; attempt++)
                     {
@@ -352,7 +362,7 @@ namespace PS4PKGTool.Shell
                         passcode = custom;
                         progress.Report(new ShellOperationProgress("Extracting game files..."));
                         (succeeded, message) = await new PkgExtractionService(passcode: passcode)
-                            .ExtractFullAsync(path, extractLocation, p, ct).ConfigureAwait(false);
+                            .ExtractFullAsync(path, extractLocation, p, ct, fileProgress).ConfigureAwait(false);
                     }
 
                     if (succeeded)
@@ -484,12 +494,23 @@ namespace PS4PKGTool.Shell
                 {
                     var stageProgress = new Progress<string>(s => progress.Report(
                         new ShellOperationProgress(s, null, !s.StartsWith("Finalizing", StringComparison.Ordinal))));
+                    var fileProgress = new Progress<(int Current, int Total, string CurrentFile)>(entry =>
+                    {
+                        if (entry.Total <= 0)
+                            return;
+
+                        int completed = Math.Min(entry.Current + 1, entry.Total);
+                        int percent = (int)Math.Round(completed * 100.0 / entry.Total);
+                        progress.Report(new ShellOperationProgress(
+                            $"Extracting {completed}/{entry.Total}: {entry.CurrentFile}", percent));
+                    });
                     var svc = new Shadps4InstallService
                     {
                         Passcode = passcode,
                     };
                     var result = svc.Install(
-                        path, titleId, library, replace, stageProgress, ct, mergeIntoExisting: isPatch);
+                        path, titleId, library, replace, stageProgress, ct, mergeIntoExisting: isPatch,
+                        fileProgress: fileProgress);
 
                     for (int attempt = 0; attempt < 5; attempt++)
                     {
@@ -506,7 +527,8 @@ namespace PS4PKGTool.Shell
                         passcode = custom;
                         svc.Passcode = custom;
                         result = svc.Install(
-                            path, titleId, library, replace, stageProgress, ct, mergeIntoExisting: isPatch);
+                            path, titleId, library, replace, stageProgress, ct, mergeIntoExisting: isPatch,
+                            fileProgress: fileProgress);
                     }
 
                     return Task.FromResult(result.Status switch

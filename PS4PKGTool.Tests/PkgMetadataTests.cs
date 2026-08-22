@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OrbisPkgTool;
 using OrbisPkgTool.Pkg;
 using OrbisPkgTool.Trp;
 using PS4PKGTool.Utilities.PkgMeta;
@@ -55,6 +56,33 @@ public sealed class PkgMetadataTests
     }
 
     [TestMethod]
+    public void ReadMetadataOnly_MapsAllLibraryGridFieldsWithoutArtwork()
+    {
+        using var fixture = PkgFixture.CreateWithSceSys("meta-grid",
+            ("icon0.png", PngBytes(1)),
+            ("pic0.png", PngBytes(2)),
+            ("trophy/trophy00.trp", TrpBytes()));
+
+        var meta = PkgMetadataReader.ReadMetadataOnly(fixture.PackagePath);
+
+        // These are the values used by the main package-list scan.
+        Assert.AreEqual("Fix", meta.PS4_Title);
+        Assert.AreEqual("CUSA09999", meta.TITLEID);
+        Assert.AreEqual("EP0001-CUSA09999_00-FIX0000000000001", meta.Content_ID);
+        Assert.AreEqual(PkgKind.Game, meta.PKG_Type);
+        Assert.AreEqual(PkgBuildState.Fake, meta.PKGState);
+        Assert.AreEqual("EU", meta.Region);
+        Assert.AreEqual("01.00", meta.APP_VER);
+        Assert.IsTrue(meta.SfoTables!.Any(t => t.Name == "SYSTEM_VER"));
+
+        // Bulk scans deliberately skip data not displayed in the grid.
+        Assert.IsNull(meta.Icon);
+        Assert.IsNull(meta.Pic0);
+        Assert.IsNull(meta.Pic1);
+        Assert.IsNull(meta.TrpData);
+    }
+
+    [TestMethod]
     public void Read_TrophyFallback_SuppliesIconFromTrp()
     {
         byte[] trp = TrpBytes();
@@ -72,6 +100,25 @@ public sealed class PkgMetadataTests
     }
 
     [TestMethod]
+    public void ReadArtwork_SkipsTrophyAndReaderStreamsItToFile()
+    {
+        byte[] trp = TrpBytes();
+        using var fixture = PkgFixture.CreateWithSceSys("meta-stream-trp",
+            ("pic0.png", PngBytes(2)),
+            ("trophy/trophy00.trp", trp));
+        string destination = Path.Combine(Path.GetDirectoryName(fixture.PackagePath)!, "trophy00.trp");
+
+        var artwork = PkgMetadataReader.ReadArtwork(fixture.PackagePath);
+        Assert.IsNotNull(artwork.Pic0);
+        Assert.IsNull(artwork.TrpData);
+
+        using (var reader = new PkgReader(fixture.PackagePath))
+            reader.ExtractEntryToFile(PkgEntryIds.Trophy00Trp, destination);
+
+        CollectionAssert.AreEqual(trp, File.ReadAllBytes(destination));
+    }
+
+    [TestMethod]
     public void Read_SystemVerRow_IsDecimalString()
     {
         using var fixture = PkgFixture.Create("meta-sysver", ("app/data.bin", 64));
@@ -84,6 +131,15 @@ public sealed class PkgMetadataTests
         Assert.AreEqual(0x0404, sysVer.Format);
         // The full table is exposed in SFO order.
         Assert.IsTrue(meta.SfoTables.Any(t => t.Name == "TITLE" && t.Value == "Fix"));
+    }
+
+    [TestMethod]
+    public void FormatSdkVersion_UsesBcdDigits()
+    {
+        Assert.AreEqual("9.50", PkgSystemVersion.FormatSdkVersion("09500000"));
+        Assert.AreEqual("1.75", PkgSystemVersion.FormatSdkVersion("01750000"));
+        Assert.AreEqual("10.50", PkgSystemVersion.FormatSdkVersion("0A500000"));
+        Assert.AreEqual("10.50", PkgSystemVersion.Format("0x0A500000"));
     }
 
     [TestMethod]

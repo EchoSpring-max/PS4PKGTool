@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using PS4PKGTool.Assets.Abstractions;
 using PS4PKGTool.Assets.Codecs;
 using PS4PKGTool.Assets.Containers;
+using PS4PKGTool.Assets.Errors;
 using PS4PKGTool.Assets.Models;
 
 namespace PS4PKGTool.Assets.Unity;
@@ -27,6 +28,11 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
     {
         var sf = GetParse(source);
         return sf.Objects
+            // Some Unity files include zero-sized Texture2D placeholders. They
+            // have no pixels to preview and a few use a private stripped layout;
+            // omit them from the browse list rather than presenting a preview
+            // action that is guaranteed to fail.
+            .Where(o => o.ClassId != 28 || sf.Version < 16 || IsPreviewableTexture(source, sf, o))
             .Select(o =>
             {
                 // Textures carry their real name in the object data - read it so
@@ -39,12 +45,23 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
             .ToList();
     }
 
+    private static bool IsPreviewableTexture(IAssetSource source, UnitySerializedFile sf, UnitySerializedFile.ObjectInfo obj)
+    {
+        try
+        {
+            var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian,
+                UnitySerializedFile.Texture2DLayout.FromUnityVersion(sf.UnityVersion));
+            return info is { Width: > 0, Height: > 0 };
+        }
+        catch (AssetException) { return false; }
+    }
+
     private static string? ReadTextureName(IAssetSource source, UnitySerializedFile sf, UnitySerializedFile.ObjectInfo obj)
     {
         try
         {
             var info = UnitySerializedFile.ReadTexture2D(source, obj, sf.BigEndian,
-                HasTextureFallbackFields(sf.UnityVersion), HasSeparateWrapModes(sf.UnityVersion));
+                UnitySerializedFile.Texture2DLayout.FromUnityVersion(sf.UnityVersion));
             return string.IsNullOrEmpty(info.Name) ? null : info.Name;
         }
         catch { return null; }
@@ -58,7 +75,7 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
         if (match == null) return null;
 
         var info = UnitySerializedFile.ReadTexture2D(source, match, sf.BigEndian,
-            HasTextureFallbackFields(sf.UnityVersion), HasSeparateWrapModes(sf.UnityVersion));
+            UnitySerializedFile.Texture2DLayout.FromUnityVersion(sf.UnityVersion));
         return new UnityTextureInfo
         {
             Name = info.Name,
@@ -174,17 +191,4 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
         return dst;
     }
 
-    // m_ForcedFallbackFormat and m_DownscaleFallback arrived in Unity 2017.3.
-    // Unity 5.x Texture2D objects begin directly with m_Width.
-    private static bool HasTextureFallbackFields(string unityVersion)
-    {
-        int dot = unityVersion.IndexOf('.');
-        return dot > 0 && int.TryParse(unityVersion[..dot], out int major) && major >= 2017;
-    }
-
-    private static bool HasSeparateWrapModes(string unityVersion)
-    {
-        int dot = unityVersion.IndexOf('.');
-        return dot > 0 && int.TryParse(unityVersion[..dot], out int major) && major >= 2017;
-    }
 }

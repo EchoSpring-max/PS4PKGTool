@@ -22,6 +22,10 @@ namespace PS4PKGTool
             cmbTheme = new DarkUI.Controls.DarkComboBox();
             btnOpenAppData = new DarkUI.Controls.DarkButton();
             grpPkgExtraction = new DarkUI.Controls.DarkSectionPanel();
+            lblOrbisTempDirectory = new DarkUI.Controls.DarkLabel();
+            tbOrbisTempDirectory = new DarkUI.Controls.DarkTextBox();
+            btnBrowseOrbisTempDirectory = new DarkUI.Controls.DarkButton();
+            btnUseDefaultOrbisTempDirectory = new DarkUI.Controls.DarkButton();
             grpColors = new DarkUI.Controls.DarkSectionPanel();
             darkLabel13 = new DarkUI.Controls.DarkLabel();
             darkLabel7 = new DarkUI.Controls.DarkLabel();
@@ -278,6 +282,10 @@ namespace PS4PKGTool
             //
             // grpPkgExtraction
             //
+            grpPkgExtraction.Controls.Add(btnUseDefaultOrbisTempDirectory);
+            grpPkgExtraction.Controls.Add(btnBrowseOrbisTempDirectory);
+            grpPkgExtraction.Controls.Add(tbOrbisTempDirectory);
+            grpPkgExtraction.Controls.Add(lblOrbisTempDirectory);
             grpPkgExtraction.Location = new System.Drawing.Point(12, 196);
             grpPkgExtraction.Margin = new System.Windows.Forms.Padding(6);
             grpPkgExtraction.Name = "grpPkgExtraction";
@@ -285,6 +293,42 @@ namespace PS4PKGTool
             grpPkgExtraction.SectionHeader = "PKG Extraction";
             grpPkgExtraction.Size = new System.Drawing.Size(601, 150);
             grpPkgExtraction.TabIndex = 2;
+            //
+            // lblOrbisTempDirectory
+            //
+            lblOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblOrbisTempDirectory.Location = new System.Drawing.Point(13, 36);
+            lblOrbisTempDirectory.Name = "lblOrbisTempDirectory";
+            lblOrbisTempDirectory.Size = new System.Drawing.Size(570, 28);
+            lblOrbisTempDirectory.TabIndex = 0;
+            lblOrbisTempDirectory.Text = "Temporary directory for PKG preview and extraction staging. Leave blank to use the Windows temporary directory.";
+            //
+            // tbOrbisTempDirectory
+            //
+            tbOrbisTempDirectory.Location = new System.Drawing.Point(13, 76);
+            tbOrbisTempDirectory.Name = "tbOrbisTempDirectory";
+            tbOrbisTempDirectory.Size = new System.Drawing.Size(405, 23);
+            tbOrbisTempDirectory.TabIndex = 1;
+            //
+            // btnBrowseOrbisTempDirectory
+            //
+            btnBrowseOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnBrowseOrbisTempDirectory.Location = new System.Drawing.Point(426, 74);
+            btnBrowseOrbisTempDirectory.Name = "btnBrowseOrbisTempDirectory";
+            btnBrowseOrbisTempDirectory.Size = new System.Drawing.Size(75, 26);
+            btnBrowseOrbisTempDirectory.TabIndex = 2;
+            btnBrowseOrbisTempDirectory.Text = "Browse...";
+            btnBrowseOrbisTempDirectory.Click += btnBrowseOrbisTempDirectory_Click;
+            //
+            // btnUseDefaultOrbisTempDirectory
+            //
+            btnUseDefaultOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnUseDefaultOrbisTempDirectory.Location = new System.Drawing.Point(509, 74);
+            btnUseDefaultOrbisTempDirectory.Name = "btnUseDefaultOrbisTempDirectory";
+            btnUseDefaultOrbisTempDirectory.Size = new System.Drawing.Size(75, 26);
+            btnUseDefaultOrbisTempDirectory.TabIndex = 3;
+            btnUseDefaultOrbisTempDirectory.Text = "Default";
+            btnUseDefaultOrbisTempDirectory.Click += btnUseDefaultOrbisTempDirectory_Click;
             //
             // grpShellIntegration
             //
@@ -598,7 +642,7 @@ namespace PS4PKGTool
             SystemFirmware.Name = "SystemFirmware";
             SystemFirmware.Size = new System.Drawing.Size(105, 19);
             SystemFirmware.TabIndex = 4;
-            SystemFirmware.Text = "System Version";
+            SystemFirmware.Text = "Required Firmware";
             // 
             // Version
             // 
@@ -1434,6 +1478,9 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkTextBox tbPS4IP;
         private DarkUI.Controls.DarkButton btnPingPs4, btnInstallNodejs, btnInstalleServerModule;
         private DarkUI.Controls.DarkSectionPanel grpRename;
+        private DarkUI.Controls.DarkLabel lblOrbisTempDirectory;
+        private DarkUI.Controls.DarkTextBox tbOrbisTempDirectory;
+        private DarkUI.Controls.DarkButton btnBrowseOrbisTempDirectory, btnUseDefaultOrbisTempDirectory;
         private DarkUI.Controls.DarkLabel darkLabel12, darkLabelPlaceholderHint, darkLabelNamingPatternExample;
         private DarkUI.Controls.DarkButton btnPlaceTitle, btnPlaceTitleId, btnPlaceVersion, btnPlaceAppVer, btnPlaceCategory, btnPlaceContentId, btnPlaceRegion, btnPlaceSysVer;
         private DarkUI.Controls.DarkButton darkButton1;

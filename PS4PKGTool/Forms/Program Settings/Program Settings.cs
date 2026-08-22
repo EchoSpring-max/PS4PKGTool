@@ -105,6 +105,7 @@ namespace PS4PKGTool
             // directory settings
             darkCheckBoxRecursive.Checked = appSettings_.ScanRecursive;
             lbPkgDirectoryList.Items.AddRange(appSettings_.PkgDirectories?.Cast<string>().ToArray() ?? Array.Empty<string>());
+            tbOrbisTempDirectory.Text = appSettings_.OrbisTempDirectory;
 
             AutoSortRow.Checked = appSettings_.AutoSortRow;
             PKGColorLabeling.Checked = appSettings_.PkgColorLabel;
@@ -220,6 +221,7 @@ namespace PS4PKGTool
             appSettings_.AppPkgBackColor = darkLabelAppPkgColorLabel.BackColor;
 
             appSettings_.RenameCustomName = tbCustomNamePattern.Text;
+            appSettings_.OrbisTempDirectory = tbOrbisTempDirectory.Text.Trim();
             appSettings_.pkgtitleIdColumn = TitleId.Checked;
             appSettings_.pkgcontentIdColumn = ContentId.Checked;
             appSettings_.pkgregionColumn = Region.Checked;
@@ -257,6 +259,23 @@ namespace PS4PKGTool
                 appSettings_.Ps5BcJsonLastDownloadDate = DateTime.Parse(labelPs5BcJsonDownloadDate.Text);
 
             SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+        }
+
+        private void btnBrowseOrbisTempDirectory_Click(object sender, EventArgs e)
+        {
+            using var dialog = new FolderBrowserDialog
+            {
+                Description = "Choose a temporary directory for PKG working files.",
+                ShowNewFolderButton = true
+            };
+
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+                tbOrbisTempDirectory.Text = dialog.SelectedPath;
+        }
+
+        private void btnUseDefaultOrbisTempDirectory_Click(object sender, EventArgs e)
+        {
+            tbOrbisTempDirectory.Text = string.Empty;
         }
 
         private void ThemeManager_ThemeChanged(object sender, EventArgs e)

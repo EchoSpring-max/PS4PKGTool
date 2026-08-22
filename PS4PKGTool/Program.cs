@@ -92,7 +92,7 @@ namespace PS4PKGTool
             if (route.Kind == StartupRouteKind.InvalidArguments)
             {
                 AppMessageBox.Show(
-                    "Mini PKG Viewer",
+                    "PKG Viewer",
                     route.ErrorMessage,
                     AppMessageType.Error,
                     AppMessageButtons.OK);

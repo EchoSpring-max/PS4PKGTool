@@ -30,36 +30,6 @@ namespace PS4PKGTool
             dgvSfo = new DarkUI.Controls.DarkDataGridView();
             colSfoKey = new System.Windows.Forms.DataGridViewTextBoxColumn();
             colSfoValue = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            ctxPkgOperations = new DarkUI.Controls.DarkContextMenu();
-            fileMenu = new System.Windows.Forms.ToolStripMenuItem();
-            copyMenu = new System.Windows.Forms.ToolStripMenuItem();
-            copyTitleIdItem = new System.Windows.Forms.ToolStripMenuItem();
-            copyContentIdItem = new System.Windows.Forms.ToolStripMenuItem();
-            copyTitleItem = new System.Windows.Forms.ToolStripMenuItem();
-            copyFilenameItem = new System.Windows.Forms.ToolStripMenuItem();
-            sepRename = new System.Windows.Forms.ToolStripSeparator();
-            renameMenu = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem1 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem2 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem3 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem4 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem5 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem6 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem7 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem8 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem9 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem10 = new System.Windows.Forms.ToolStripMenuItem();
-            renameItem11 = new System.Windows.Forms.ToolStripMenuItem();
-            sepDelete = new System.Windows.Forms.ToolStripSeparator();
-            deleteItem = new System.Windows.Forms.ToolStripMenuItem();
-            toolsMenu = new System.Windows.Forms.ToolStripMenuItem();
-            artworkMenu = new System.Windows.Forms.ToolStripMenuItem();
-            artworkAllItem = new System.Windows.Forms.ToolStripMenuItem();
-            artworkImagesItem = new System.Windows.Forms.ToolStripMenuItem();
-            artworkIconItem = new System.Windows.Forms.ToolStripMenuItem();
-            extractFullPkgItem = new System.Windows.Forms.ToolStripMenuItem();
-            sepChangeInfo = new System.Windows.Forms.ToolStripSeparator();
-            changeInfoItem = new System.Windows.Forms.ToolStripMenuItem();
             overviewPanel = new DarkUI.Controls.DarkSectionPanel();
             overviewTable = new System.Windows.Forms.TableLayoutPanel();
             lblOverviewTitleCaption = new DarkUI.Controls.DarkLabel();
@@ -121,6 +91,36 @@ namespace PS4PKGTool
             pic1Panel = new DarkUI.Controls.DarkSectionPanel();
             lblNoPic1 = new DarkUI.Controls.DarkLabel();
             picPic1 = new System.Windows.Forms.PictureBox();
+            ctxPkgOperations = new DarkUI.Controls.DarkContextMenu();
+            fileMenu = new System.Windows.Forms.ToolStripMenuItem();
+            copyMenu = new System.Windows.Forms.ToolStripMenuItem();
+            copyTitleIdItem = new System.Windows.Forms.ToolStripMenuItem();
+            copyContentIdItem = new System.Windows.Forms.ToolStripMenuItem();
+            copyTitleItem = new System.Windows.Forms.ToolStripMenuItem();
+            copyFilenameItem = new System.Windows.Forms.ToolStripMenuItem();
+            sepRename = new System.Windows.Forms.ToolStripSeparator();
+            renameMenu = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem2 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem3 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem4 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem5 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem6 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem7 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem8 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem9 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem10 = new System.Windows.Forms.ToolStripMenuItem();
+            renameItem11 = new System.Windows.Forms.ToolStripMenuItem();
+            sepDelete = new System.Windows.Forms.ToolStripSeparator();
+            deleteItem = new System.Windows.Forms.ToolStripMenuItem();
+            toolsMenu = new System.Windows.Forms.ToolStripMenuItem();
+            artworkMenu = new System.Windows.Forms.ToolStripMenuItem();
+            artworkAllItem = new System.Windows.Forms.ToolStripMenuItem();
+            artworkImagesItem = new System.Windows.Forms.ToolStripMenuItem();
+            artworkIconItem = new System.Windows.Forms.ToolStripMenuItem();
+            extractFullPkgItem = new System.Windows.Forms.ToolStripMenuItem();
+            sepChangeInfo = new System.Windows.Forms.ToolStripSeparator();
+            changeInfoItem = new System.Windows.Forms.ToolStripMenuItem();
             colFileName = new System.Windows.Forms.ColumnHeader();
             colFileType = new System.Windows.Forms.ColumnHeader();
             colFilePath = new System.Windows.Forms.ColumnHeader();
@@ -178,7 +178,6 @@ namespace PS4PKGTool
             tabOverview.SuspendLayout();
             darkSectionPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvSfo).BeginInit();
-            ctxPkgOperations.SuspendLayout();
             overviewPanel.SuspendLayout();
             overviewTable.SuspendLayout();
             tabPackage.SuspendLayout();
@@ -199,6 +198,7 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)picPic0).BeginInit();
             pic1Panel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picPic1).BeginInit();
+            ctxPkgOperations.SuspendLayout();
             ctxFileList.SuspendLayout();
             darkStatusStrip1.SuspendLayout();
             darkMenuStrip1.SuspendLayout();
@@ -244,7 +244,7 @@ namespace PS4PKGTool
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new System.Drawing.Size(636, 27);
             lblTitle.TabIndex = 1;
-            lblTitle.Text = "Mini PKG Viewer";
+            lblTitle.Text = "PKG Viewer";
             // 
             // picIcon
             // 
@@ -272,7 +272,7 @@ namespace PS4PKGTool
             tabsViewer.Controls.Add(tabFiles);
             tabsViewer.Controls.Add(tabArtwork);
             tabsViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            tabsViewer.ItemSize = new System.Drawing.Size(86, 28);
+            tabsViewer.ItemSize = new System.Drawing.Size(108, 28);
             tabsViewer.Location = new System.Drawing.Point(0, 128);
             tabsViewer.Name = "tabsViewer";
             tabsViewer.Padding = new System.Drawing.Point(0, 0);
@@ -323,242 +323,16 @@ namespace PS4PKGTool
             colSfoKey.FillWeight = 35F;
             colSfoKey.HeaderText = "Key";
             colSfoKey.Name = "colSfoKey";
-            colSfoKey.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colSfoKey.ReadOnly = true;
+            colSfoKey.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colSfoValue
             // 
             colSfoValue.FillWeight = 65F;
             colSfoValue.HeaderText = "Value";
             colSfoValue.Name = "colSfoValue";
-            colSfoValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colSfoValue.ReadOnly = true;
-            // 
-            // ctxPkgOperations
-            // 
-            ctxPkgOperations.Font = new System.Drawing.Font("Segoe UI", 9F);
-            ctxPkgOperations.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { fileMenu, toolsMenu });
-            ctxPkgOperations.Name = "ctxPkgOperations";
-            ctxPkgOperations.Size = new System.Drawing.Size(103, 48);
-            // 
-            // fileMenu
-            // 
-            fileMenu.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            fileMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { copyMenu, sepRename, renameMenu, sepDelete, deleteItem });
-            fileMenu.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            fileMenu.Name = "fileMenu";
-            fileMenu.Size = new System.Drawing.Size(102, 22);
-            fileMenu.Text = "File";
-            // 
-            // copyMenu
-            // 
-            copyMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { copyTitleIdItem, copyContentIdItem, copyTitleItem, copyFilenameItem });
-            copyMenu.Name = "copyMenu";
-            copyMenu.Size = new System.Drawing.Size(141, 22);
-            copyMenu.Text = "Copy";
-            // 
-            // copyTitleIdItem
-            // 
-            copyTitleIdItem.Name = "copyTitleIdItem";
-            copyTitleIdItem.Size = new System.Drawing.Size(145, 22);
-            copyTitleIdItem.Tag = "title_id";
-            copyTitleIdItem.Text = "TITLE_ID";
-            copyTitleIdItem.Click += CopyInfoItem_Click;
-            // 
-            // copyContentIdItem
-            // 
-            copyContentIdItem.Name = "copyContentIdItem";
-            copyContentIdItem.Size = new System.Drawing.Size(145, 22);
-            copyContentIdItem.Tag = "content_id";
-            copyContentIdItem.Text = "CONTENT_ID";
-            copyContentIdItem.Click += CopyInfoItem_Click;
-            // 
-            // copyTitleItem
-            // 
-            copyTitleItem.Name = "copyTitleItem";
-            copyTitleItem.Size = new System.Drawing.Size(145, 22);
-            copyTitleItem.Tag = "title";
-            copyTitleItem.Text = "TITLE";
-            copyTitleItem.Click += CopyInfoItem_Click;
-            // 
-            // copyFilenameItem
-            // 
-            copyFilenameItem.Name = "copyFilenameItem";
-            copyFilenameItem.Size = new System.Drawing.Size(145, 22);
-            copyFilenameItem.Tag = "filename";
-            copyFilenameItem.Text = "FILENAME";
-            copyFilenameItem.Click += CopyInfoItem_Click;
-            // 
-            // sepRename
-            // 
-            sepRename.Name = "sepRename";
-            sepRename.Size = new System.Drawing.Size(138, 6);
-            // 
-            // renameMenu
-            // 
-            renameMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { renameItem1, renameItem2, renameItem3, renameItem4, renameItem5, renameItem6, renameItem7, renameItem8, renameItem9, renameItem10, renameItem11 });
-            renameMenu.Name = "renameMenu";
-            renameMenu.Size = new System.Drawing.Size(141, 22);
-            renameMenu.Text = "Rename PKG";
-            // 
-            // renameItem1
-            // 
-            renameItem1.Name = "renameItem1";
-            renameItem1.Size = new System.Drawing.Size(314, 22);
-            renameItem1.Tag = 1;
-            renameItem1.Text = "TITLE";
-            renameItem1.Click += RenamePkgItem_Click;
-            // 
-            // renameItem2
-            // 
-            renameItem2.Name = "renameItem2";
-            renameItem2.Size = new System.Drawing.Size(314, 22);
-            renameItem2.Tag = 2;
-            renameItem2.Text = "TITLE [TITLE_ID]";
-            renameItem2.Click += RenamePkgItem_Click;
-            // 
-            // renameItem3
-            // 
-            renameItem3.Name = "renameItem3";
-            renameItem3.Size = new System.Drawing.Size(314, 22);
-            renameItem3.Tag = 3;
-            renameItem3.Text = "TITLE [TITLE_ID] [APP_VERSION]";
-            renameItem3.Click += RenamePkgItem_Click;
-            // 
-            // renameItem4
-            // 
-            renameItem4.Name = "renameItem4";
-            renameItem4.Size = new System.Drawing.Size(314, 22);
-            renameItem4.Tag = 4;
-            renameItem4.Text = "TITLE [CATEGORY]";
-            renameItem4.Click += RenamePkgItem_Click;
-            // 
-            // renameItem5
-            // 
-            renameItem5.Name = "renameItem5";
-            renameItem5.Size = new System.Drawing.Size(314, 22);
-            renameItem5.Tag = 5;
-            renameItem5.Text = "TITLE_ID";
-            renameItem5.Click += RenamePkgItem_Click;
-            // 
-            // renameItem6
-            // 
-            renameItem6.Name = "renameItem6";
-            renameItem6.Size = new System.Drawing.Size(314, 22);
-            renameItem6.Tag = 6;
-            renameItem6.Text = "TITLE_ID [TITLE]";
-            renameItem6.Click += RenamePkgItem_Click;
-            // 
-            // renameItem7
-            // 
-            renameItem7.Name = "renameItem7";
-            renameItem7.Size = new System.Drawing.Size(314, 22);
-            renameItem7.Tag = 7;
-            renameItem7.Text = "[TITLE_ID] [CATEGORY] [APP_VERSION] TITLE";
-            renameItem7.Click += RenamePkgItem_Click;
-            // 
-            // renameItem8
-            // 
-            renameItem8.Name = "renameItem8";
-            renameItem8.Size = new System.Drawing.Size(314, 22);
-            renameItem8.Tag = 8;
-            renameItem8.Text = "TITLE [CATEGORY] [VERSION]";
-            renameItem8.Click += RenamePkgItem_Click;
-            // 
-            // renameItem9
-            // 
-            renameItem9.Name = "renameItem9";
-            renameItem9.Size = new System.Drawing.Size(314, 22);
-            renameItem9.Tag = 9;
-            renameItem9.Text = "CONTENT_ID";
-            renameItem9.Click += RenamePkgItem_Click;
-            // 
-            // renameItem10
-            // 
-            renameItem10.Name = "renameItem10";
-            renameItem10.Size = new System.Drawing.Size(314, 22);
-            renameItem10.Tag = 10;
-            renameItem10.Text = "CONTENT_ID 2";
-            renameItem10.Click += RenamePkgItem_Click;
-            // 
-            // renameItem11
-            // 
-            renameItem11.Name = "renameItem11";
-            renameItem11.Size = new System.Drawing.Size(314, 22);
-            renameItem11.Tag = 11;
-            renameItem11.Text = "CUSTOM NAME";
-            renameItem11.Click += RenamePkgItem_Click;
-            // 
-            // sepDelete
-            // 
-            sepDelete.Name = "sepDelete";
-            sepDelete.Size = new System.Drawing.Size(138, 6);
-            // 
-            // deleteItem
-            // 
-            deleteItem.Name = "deleteItem";
-            deleteItem.Size = new System.Drawing.Size(141, 22);
-            deleteItem.Text = "Delete PKG";
-            deleteItem.Click += DeletePkgItem_Click;
-            // 
-            // toolsMenu
-            // 
-            toolsMenu.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            toolsMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { artworkMenu, extractFullPkgItem, sepChangeInfo, changeInfoItem });
-            toolsMenu.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            toolsMenu.Name = "toolsMenu";
-            toolsMenu.Size = new System.Drawing.Size(102, 22);
-            toolsMenu.Text = "Tools";
-            // 
-            // artworkMenu
-            // 
-            artworkMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { artworkAllItem, artworkImagesItem, artworkIconItem });
-            artworkMenu.Name = "artworkMenu";
-            artworkMenu.Size = new System.Drawing.Size(191, 22);
-            artworkMenu.Text = "Save artwork";
-            // 
-            // artworkAllItem
-            // 
-            artworkAllItem.Name = "artworkAllItem";
-            artworkAllItem.Size = new System.Drawing.Size(180, 22);
-            artworkAllItem.Tag = "ALL";
-            artworkAllItem.Text = "Backgrounds + Icon";
-            artworkAllItem.Click += SaveArtworkItem_Click;
-            // 
-            // artworkImagesItem
-            // 
-            artworkImagesItem.Name = "artworkImagesItem";
-            artworkImagesItem.Size = new System.Drawing.Size(180, 22);
-            artworkImagesItem.Tag = "IMAGE";
-            artworkImagesItem.Text = "Backgrounds only";
-            artworkImagesItem.Click += SaveArtworkItem_Click;
-            // 
-            // artworkIconItem
-            // 
-            artworkIconItem.Name = "artworkIconItem";
-            artworkIconItem.Size = new System.Drawing.Size(180, 22);
-            artworkIconItem.Tag = "ICON";
-            artworkIconItem.Text = "Icon only";
-            artworkIconItem.Click += SaveArtworkItem_Click;
-            // 
-            // extractFullPkgItem
-            // 
-            extractFullPkgItem.Name = "extractFullPkgItem";
-            extractFullPkgItem.Size = new System.Drawing.Size(191, 22);
-            extractFullPkgItem.Text = "Extract Full PKG...";
-            extractFullPkgItem.Click += ExtractFullPkgItem_Click;
-            // 
-            // sepChangeInfo
-            // 
-            sepChangeInfo.Name = "sepChangeInfo";
-            sepChangeInfo.Size = new System.Drawing.Size(188, 6);
-            // 
-            // changeInfoItem
-            // 
-            changeInfoItem.Name = "changeInfoItem";
-            changeInfoItem.Size = new System.Drawing.Size(191, 22);
-            changeInfoItem.Text = "View PKG Change Info";
-            changeInfoItem.Click += ViewChangeInfoItem_Click;
+            colSfoValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // overviewPanel
             // 
@@ -816,7 +590,7 @@ namespace PS4PKGTool
             tabPackage.Padding = new System.Windows.Forms.Padding(12);
             tabPackage.Size = new System.Drawing.Size(996, 408);
             tabPackage.TabIndex = 2;
-            tabPackage.Text = "Package";
+            tabPackage.Text = "PKG Internals";
             // 
             // packageTabs
             // 
@@ -861,20 +635,19 @@ namespace PS4PKGTool
             // 
             // colHeaderName
             // 
-            colHeaderName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            colHeaderName.Width = 200;
             colHeaderName.FillWeight = 38F;
             colHeaderName.HeaderText = "Field";
             colHeaderName.Name = "colHeaderName";
             colHeaderName.ReadOnly = true;
+            colHeaderName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colHeaderValue
             // 
             colHeaderValue.FillWeight = 62F;
             colHeaderValue.HeaderText = "Value";
             colHeaderValue.Name = "colHeaderValue";
-            colHeaderValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colHeaderValue.ReadOnly = true;
+            colHeaderValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // tabPackageBuildInfo
             // 
@@ -903,20 +676,19 @@ namespace PS4PKGTool
             // 
             // colBuildName
             // 
-            colBuildName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            colBuildName.Width = 200;
             colBuildName.FillWeight = 38F;
             colBuildName.HeaderText = "Field";
             colBuildName.Name = "colBuildName";
             colBuildName.ReadOnly = true;
+            colBuildName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colBuildValue
             // 
             colBuildValue.FillWeight = 62F;
             colBuildValue.HeaderText = "Value";
             colBuildValue.Name = "colBuildValue";
-            colBuildValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colBuildValue.ReadOnly = true;
+            colBuildValue.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // tabPackageEntries
             // 
@@ -945,52 +717,51 @@ namespace PS4PKGTool
             // 
             // colEntryName
             // 
-            colEntryName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            colEntryName.Width = 280;
             colEntryName.FillWeight = 24F;
             colEntryName.HeaderText = "Name";
             colEntryName.Name = "colEntryName";
             colEntryName.ReadOnly = true;
+            colEntryName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colEntryOffset
             // 
             colEntryOffset.FillWeight = 17F;
             colEntryOffset.HeaderText = "Offset";
             colEntryOffset.Name = "colEntryOffset";
-            colEntryOffset.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colEntryOffset.ReadOnly = true;
+            colEntryOffset.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colEntrySize
             // 
             colEntrySize.FillWeight = 17F;
             colEntrySize.HeaderText = "Size";
             colEntrySize.Name = "colEntrySize";
-            colEntrySize.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colEntrySize.ReadOnly = true;
+            colEntrySize.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colEntryFlags1
             // 
             colEntryFlags1.FillWeight = 14F;
             colEntryFlags1.HeaderText = "Flags 1";
             colEntryFlags1.Name = "colEntryFlags1";
-            colEntryFlags1.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colEntryFlags1.ReadOnly = true;
+            colEntryFlags1.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colEntryFlags2
             // 
             colEntryFlags2.FillWeight = 14F;
             colEntryFlags2.HeaderText = "Flags 2";
             colEntryFlags2.Name = "colEntryFlags2";
-            colEntryFlags2.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colEntryFlags2.ReadOnly = true;
+            colEntryFlags2.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colEntryEncrypted
             // 
             colEntryEncrypted.FillWeight = 14F;
             colEntryEncrypted.HeaderText = "Encrypted?";
             colEntryEncrypted.Name = "colEntryEncrypted";
-            colEntryEncrypted.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colEntryEncrypted.ReadOnly = true;
+            colEntryEncrypted.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // tabTrophy
             // 
@@ -1027,48 +798,48 @@ namespace PS4PKGTool
             colTrophyIcon.HeaderText = "Icon";
             colTrophyIcon.ImageLayout = System.Windows.Forms.DataGridViewImageCellLayout.Zoom;
             colTrophyIcon.Name = "colTrophyIcon";
-            colTrophyIcon.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyIcon.ReadOnly = true;
+            colTrophyIcon.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colTrophyId
             // 
             colTrophyId.FillWeight = 8F;
             colTrophyId.HeaderText = "ID";
             colTrophyId.Name = "colTrophyId";
-            colTrophyId.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyId.ReadOnly = true;
+            colTrophyId.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colTrophyName
             // 
             colTrophyName.FillWeight = 23F;
             colTrophyName.HeaderText = "Name";
             colTrophyName.Name = "colTrophyName";
-            colTrophyName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyName.ReadOnly = true;
+            colTrophyName.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colTrophyDescription
             // 
             colTrophyDescription.FillWeight = 39F;
             colTrophyDescription.HeaderText = "Description";
             colTrophyDescription.Name = "colTrophyDescription";
-            colTrophyDescription.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyDescription.ReadOnly = true;
+            colTrophyDescription.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colTrophyType
             // 
             colTrophyType.FillWeight = 12F;
             colTrophyType.HeaderText = "Type";
             colTrophyType.Name = "colTrophyType";
-            colTrophyType.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyType.ReadOnly = true;
+            colTrophyType.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // colTrophyHidden
             // 
             colTrophyHidden.FillWeight = 8F;
             colTrophyHidden.HeaderText = "Hidden";
             colTrophyHidden.Name = "colTrophyHidden";
-            colTrophyHidden.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             colTrophyHidden.ReadOnly = true;
+            colTrophyHidden.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // lblTrophyState
             // 
@@ -1091,7 +862,7 @@ namespace PS4PKGTool
             tabFiles.Padding = new System.Windows.Forms.Padding(12);
             tabFiles.Size = new System.Drawing.Size(996, 408);
             tabFiles.TabIndex = 4;
-            tabFiles.Text = "Files";
+            tabFiles.Text = "File Browser";
             // 
             // fileBrowserLayout
             // 
@@ -1266,6 +1037,232 @@ namespace PS4PKGTool
             picPic1.TabStop = false;
             picPic1.Visible = false;
             // 
+            // ctxPkgOperations
+            // 
+            ctxPkgOperations.Font = new System.Drawing.Font("Segoe UI", 9F);
+            ctxPkgOperations.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { fileMenu, toolsMenu });
+            ctxPkgOperations.Name = "ctxPkgOperations";
+            ctxPkgOperations.Size = new System.Drawing.Size(103, 48);
+            // 
+            // fileMenu
+            // 
+            fileMenu.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            fileMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { copyMenu, sepRename, renameMenu, sepDelete, deleteItem });
+            fileMenu.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            fileMenu.Name = "fileMenu";
+            fileMenu.Size = new System.Drawing.Size(102, 22);
+            fileMenu.Text = "File";
+            // 
+            // copyMenu
+            // 
+            copyMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { copyTitleIdItem, copyContentIdItem, copyTitleItem, copyFilenameItem });
+            copyMenu.Name = "copyMenu";
+            copyMenu.Size = new System.Drawing.Size(141, 22);
+            copyMenu.Text = "Copy";
+            // 
+            // copyTitleIdItem
+            // 
+            copyTitleIdItem.Name = "copyTitleIdItem";
+            copyTitleIdItem.Size = new System.Drawing.Size(145, 22);
+            copyTitleIdItem.Tag = "title_id";
+            copyTitleIdItem.Text = "TITLE_ID";
+            copyTitleIdItem.Click += CopyInfoItem_Click;
+            // 
+            // copyContentIdItem
+            // 
+            copyContentIdItem.Name = "copyContentIdItem";
+            copyContentIdItem.Size = new System.Drawing.Size(145, 22);
+            copyContentIdItem.Tag = "content_id";
+            copyContentIdItem.Text = "CONTENT_ID";
+            copyContentIdItem.Click += CopyInfoItem_Click;
+            // 
+            // copyTitleItem
+            // 
+            copyTitleItem.Name = "copyTitleItem";
+            copyTitleItem.Size = new System.Drawing.Size(145, 22);
+            copyTitleItem.Tag = "title";
+            copyTitleItem.Text = "TITLE";
+            copyTitleItem.Click += CopyInfoItem_Click;
+            // 
+            // copyFilenameItem
+            // 
+            copyFilenameItem.Name = "copyFilenameItem";
+            copyFilenameItem.Size = new System.Drawing.Size(145, 22);
+            copyFilenameItem.Tag = "filename";
+            copyFilenameItem.Text = "FILENAME";
+            copyFilenameItem.Click += CopyInfoItem_Click;
+            // 
+            // sepRename
+            // 
+            sepRename.Name = "sepRename";
+            sepRename.Size = new System.Drawing.Size(138, 6);
+            // 
+            // renameMenu
+            // 
+            renameMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { renameItem1, renameItem2, renameItem3, renameItem4, renameItem5, renameItem6, renameItem7, renameItem8, renameItem9, renameItem10, renameItem11 });
+            renameMenu.Name = "renameMenu";
+            renameMenu.Size = new System.Drawing.Size(141, 22);
+            renameMenu.Text = "Rename PKG";
+            // 
+            // renameItem1
+            // 
+            renameItem1.Name = "renameItem1";
+            renameItem1.Size = new System.Drawing.Size(314, 22);
+            renameItem1.Tag = 1;
+            renameItem1.Text = "TITLE";
+            renameItem1.Click += RenamePkgItem_Click;
+            // 
+            // renameItem2
+            // 
+            renameItem2.Name = "renameItem2";
+            renameItem2.Size = new System.Drawing.Size(314, 22);
+            renameItem2.Tag = 2;
+            renameItem2.Text = "TITLE [TITLE_ID]";
+            renameItem2.Click += RenamePkgItem_Click;
+            // 
+            // renameItem3
+            // 
+            renameItem3.Name = "renameItem3";
+            renameItem3.Size = new System.Drawing.Size(314, 22);
+            renameItem3.Tag = 3;
+            renameItem3.Text = "TITLE [TITLE_ID] [APP_VERSION]";
+            renameItem3.Click += RenamePkgItem_Click;
+            // 
+            // renameItem4
+            // 
+            renameItem4.Name = "renameItem4";
+            renameItem4.Size = new System.Drawing.Size(314, 22);
+            renameItem4.Tag = 4;
+            renameItem4.Text = "TITLE [CATEGORY]";
+            renameItem4.Click += RenamePkgItem_Click;
+            // 
+            // renameItem5
+            // 
+            renameItem5.Name = "renameItem5";
+            renameItem5.Size = new System.Drawing.Size(314, 22);
+            renameItem5.Tag = 5;
+            renameItem5.Text = "TITLE_ID";
+            renameItem5.Click += RenamePkgItem_Click;
+            // 
+            // renameItem6
+            // 
+            renameItem6.Name = "renameItem6";
+            renameItem6.Size = new System.Drawing.Size(314, 22);
+            renameItem6.Tag = 6;
+            renameItem6.Text = "TITLE_ID [TITLE]";
+            renameItem6.Click += RenamePkgItem_Click;
+            // 
+            // renameItem7
+            // 
+            renameItem7.Name = "renameItem7";
+            renameItem7.Size = new System.Drawing.Size(314, 22);
+            renameItem7.Tag = 7;
+            renameItem7.Text = "[TITLE_ID] [CATEGORY] [APP_VERSION] TITLE";
+            renameItem7.Click += RenamePkgItem_Click;
+            // 
+            // renameItem8
+            // 
+            renameItem8.Name = "renameItem8";
+            renameItem8.Size = new System.Drawing.Size(314, 22);
+            renameItem8.Tag = 8;
+            renameItem8.Text = "TITLE [CATEGORY] [VERSION]";
+            renameItem8.Click += RenamePkgItem_Click;
+            // 
+            // renameItem9
+            // 
+            renameItem9.Name = "renameItem9";
+            renameItem9.Size = new System.Drawing.Size(314, 22);
+            renameItem9.Tag = 9;
+            renameItem9.Text = "CONTENT_ID";
+            renameItem9.Click += RenamePkgItem_Click;
+            // 
+            // renameItem10
+            // 
+            renameItem10.Name = "renameItem10";
+            renameItem10.Size = new System.Drawing.Size(314, 22);
+            renameItem10.Tag = 10;
+            renameItem10.Text = "CONTENT_ID 2";
+            renameItem10.Click += RenamePkgItem_Click;
+            // 
+            // renameItem11
+            // 
+            renameItem11.Name = "renameItem11";
+            renameItem11.Size = new System.Drawing.Size(314, 22);
+            renameItem11.Tag = 11;
+            renameItem11.Text = "CUSTOM NAME";
+            renameItem11.Click += RenamePkgItem_Click;
+            // 
+            // sepDelete
+            // 
+            sepDelete.Name = "sepDelete";
+            sepDelete.Size = new System.Drawing.Size(138, 6);
+            // 
+            // deleteItem
+            // 
+            deleteItem.Name = "deleteItem";
+            deleteItem.Size = new System.Drawing.Size(141, 22);
+            deleteItem.Text = "Delete PKG";
+            deleteItem.Click += DeletePkgItem_Click;
+            // 
+            // toolsMenu
+            // 
+            toolsMenu.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            toolsMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { artworkMenu, extractFullPkgItem, sepChangeInfo, changeInfoItem });
+            toolsMenu.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            toolsMenu.Name = "toolsMenu";
+            toolsMenu.Size = new System.Drawing.Size(102, 22);
+            toolsMenu.Text = "Tools";
+            // 
+            // artworkMenu
+            // 
+            artworkMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { artworkAllItem, artworkImagesItem, artworkIconItem });
+            artworkMenu.Name = "artworkMenu";
+            artworkMenu.Size = new System.Drawing.Size(191, 22);
+            artworkMenu.Text = "Save artwork";
+            // 
+            // artworkAllItem
+            // 
+            artworkAllItem.Name = "artworkAllItem";
+            artworkAllItem.Size = new System.Drawing.Size(180, 22);
+            artworkAllItem.Tag = "ALL";
+            artworkAllItem.Text = "Backgrounds + Icon";
+            artworkAllItem.Click += SaveArtworkItem_Click;
+            // 
+            // artworkImagesItem
+            // 
+            artworkImagesItem.Name = "artworkImagesItem";
+            artworkImagesItem.Size = new System.Drawing.Size(180, 22);
+            artworkImagesItem.Tag = "IMAGE";
+            artworkImagesItem.Text = "Backgrounds only";
+            artworkImagesItem.Click += SaveArtworkItem_Click;
+            // 
+            // artworkIconItem
+            // 
+            artworkIconItem.Name = "artworkIconItem";
+            artworkIconItem.Size = new System.Drawing.Size(180, 22);
+            artworkIconItem.Tag = "ICON";
+            artworkIconItem.Text = "Icon only";
+            artworkIconItem.Click += SaveArtworkItem_Click;
+            // 
+            // extractFullPkgItem
+            // 
+            extractFullPkgItem.Name = "extractFullPkgItem";
+            extractFullPkgItem.Size = new System.Drawing.Size(191, 22);
+            extractFullPkgItem.Text = "Extract Full PKG...";
+            extractFullPkgItem.Click += ExtractFullPkgItem_Click;
+            // 
+            // sepChangeInfo
+            // 
+            sepChangeInfo.Name = "sepChangeInfo";
+            sepChangeInfo.Size = new System.Drawing.Size(188, 6);
+            // 
+            // changeInfoItem
+            // 
+            changeInfoItem.Name = "changeInfoItem";
+            changeInfoItem.Size = new System.Drawing.Size(191, 22);
+            changeInfoItem.Text = "View PKG Change Info";
+            changeInfoItem.Click += ViewChangeInfoItem_Click;
+            // 
             // colFileName
             // 
             colFileName.Text = "Name";
@@ -1437,7 +1434,7 @@ namespace PS4PKGTool
             tbArtworkMenu.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbArtworkMenu.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             tbArtworkMenu.Name = "tbArtworkMenu";
-            tbArtworkMenu.Size = new System.Drawing.Size(180, 22);
+            tbArtworkMenu.Size = new System.Drawing.Size(210, 22);
             tbArtworkMenu.Tag = "ALL";
             tbArtworkMenu.Text = "Save Artwork";
             tbArtworkMenu.Click += SaveArtworkItem_Click;
@@ -1448,24 +1445,25 @@ namespace PS4PKGTool
             tbSepChangeInfo.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             tbSepChangeInfo.Margin = new System.Windows.Forms.Padding(0, 0, 0, 1);
             tbSepChangeInfo.Name = "tbSepChangeInfo";
-            tbSepChangeInfo.Size = new System.Drawing.Size(177, 6);
+            tbSepChangeInfo.Size = new System.Drawing.Size(207, 6);
             // 
             // tbChangeInfoItem
             // 
             tbChangeInfoItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbChangeInfoItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             tbChangeInfoItem.Name = "tbChangeInfoItem";
-            tbChangeInfoItem.Size = new System.Drawing.Size(180, 22);
+            tbChangeInfoItem.Size = new System.Drawing.Size(210, 22);
             tbChangeInfoItem.Text = "View Change Info";
             tbChangeInfoItem.Click += ViewChangeInfoItem_Click;
-            //
+            // 
             // tbDownloadUpdateItem
-            //
+            // 
             tbDownloadUpdateItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbDownloadUpdateItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             tbDownloadUpdateItem.Name = "tbDownloadUpdateItem";
-            tbDownloadUpdateItem.Size = new System.Drawing.Size(180, 22);
+            tbDownloadUpdateItem.Size = new System.Drawing.Size(210, 22);
             tbDownloadUpdateItem.Text = "Download Official Update";
+            tbDownloadUpdateItem.Visible = false;
             tbDownloadUpdateItem.Click += DownloadUpdateItem_Click;
             // 
             // tbExtractFullPkgItem
@@ -1473,7 +1471,7 @@ namespace PS4PKGTool
             tbExtractFullPkgItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             tbExtractFullPkgItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             tbExtractFullPkgItem.Name = "tbExtractFullPkgItem";
-            tbExtractFullPkgItem.Size = new System.Drawing.Size(180, 22);
+            tbExtractFullPkgItem.Size = new System.Drawing.Size(210, 22);
             tbExtractFullPkgItem.Text = "Extract PKG";
             tbExtractFullPkgItem.Click += ExtractFullPkgItem_Click;
             // 
@@ -1604,7 +1602,7 @@ namespace PS4PKGTool
             toolStripStatusLabel2.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             toolStripStatusLabel2.Font = new System.Drawing.Font("Segoe UI", 8.25F);
             toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            toolStripStatusLabel2.Size = new System.Drawing.Size(693, 16);
+            toolStripStatusLabel2.Size = new System.Drawing.Size(796, 16);
             toolStripStatusLabel2.Spring = true;
             toolStripStatusLabel2.Text = "... ";
             toolStripStatusLabel2.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -1702,7 +1700,6 @@ namespace PS4PKGTool
             tabOverview.ResumeLayout(false);
             darkSectionPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvSfo).EndInit();
-            ctxPkgOperations.ResumeLayout(false);
             overviewPanel.ResumeLayout(false);
             overviewTable.ResumeLayout(false);
             tabPackage.ResumeLayout(false);
@@ -1723,6 +1720,7 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)picPic0).EndInit();
             pic1Panel.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picPic1).EndInit();
+            ctxPkgOperations.ResumeLayout(false);
             ctxFileList.ResumeLayout(false);
             darkStatusStrip1.ResumeLayout(false);
             darkStatusStrip1.PerformLayout();

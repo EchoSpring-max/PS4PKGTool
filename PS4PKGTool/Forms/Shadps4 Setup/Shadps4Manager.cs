@@ -30,7 +30,8 @@ namespace PS4PKGTool
         public const int GamesTabIndex = 1;
         public const int BuildsTabIndex = 2;
         public const int SavesTabIndex = 3;
-        public const int SettingsTabIndex = 4;
+        public const int PatchesTabIndex = 4;
+        public const int SettingsTabIndex = 5;
 
         private readonly AppSettings _settings;
         private bool _loadingSettings;
@@ -81,6 +82,7 @@ namespace PS4PKGTool
             RefreshOverview();
             RefreshGames();
             RefreshSaves();
+            RefreshPatches();
             RefreshSettingsTab();
             RefreshBuildsTab();
             SetStatus("", false);
@@ -104,6 +106,7 @@ namespace PS4PKGTool
                 case GamesTabIndex: RefreshGames(); break;
                 case BuildsTabIndex: RefreshBuildsTab(); break;
                 case SavesTabIndex: RefreshSaves(); break;
+                case PatchesTabIndex: RefreshPatches(); break;
                 case SettingsTabIndex: RefreshSettingsTab(); break;
             }
         }
@@ -610,18 +613,34 @@ namespace PS4PKGTool
         private sealed record ManagerGameRow(string Folder, string Title, string TitleId, string Version, string LastTest);
 
         private readonly List<ManagerGameRow> _gameRows = new();
+        private sealed record PatchGameChoice(ManagerGameRow Row)
+        {
+            public override string ToString() => $"{Row.Title}   {Row.TitleId}   {Row.Version}";
+        }
+        private readonly Shadps4PatchCheatStore _patchCheatStore = new();
+        private bool _loadingPatchGames;
+        private bool _loadingPatchRows;
+        private sealed record PatchWorkingRow(string FilePath, int MetadataIndex, string TargetVersion, bool OriginalEnabled);
+        private readonly Dictionary<string, long> _gameSizeCache = new(StringComparer.OrdinalIgnoreCase);
+        private int _gameDetailsVersion;
 
         /// <summary>Title id per Overview reports row, so double-clicking a row opens its viewer.</summary>
         private readonly List<string> _overviewTitleIds = new();
 
         private void RefreshGames()
         {
+            string selectedFolder = SelectedGameIndex() is int selectedIndex
+                && selectedIndex >= 0
+                && selectedIndex < _gameRows.Count
+                ? _gameRows[selectedIndex].Folder
+                : "";
             lvManagerGames.BeginUpdate();
             try
             {
                 lvManagerGames.Items.Clear();
                 imageListManagerGames.Images.Clear();
                 _gameRows.Clear();
+                _gameSizeCache.Clear();
                 ClearGameIcon();
                 ResetGameDetails();
                 btnManagerGameLaunch.Enabled = false;
@@ -651,30 +670,11 @@ namespace PS4PKGTool
                 foreach (string folder in folders)
                 {
                     string path = Path.Combine(installDir, folder);
-                    string title = "", titleId = "", version = "";
-
-                    string sfoPath = Path.Combine(path, "sce_sys", "param.sfo");
-                    if (File.Exists(sfoPath))
+                    if (!TryReadInstalledGame(path, out string title, out string titleId, out string version))
                     {
-                        try
-                        {
-                            using var fs = File.OpenRead(sfoPath);
-                            using var ms = new MemoryStream();
-                            fs.CopyTo(ms);
-                            var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(ms.ToArray());
-                            title = SfoString(sfo, "TITLE");
-                            titleId = SfoString(sfo, "TITLE_ID");
-                            // APP_VER is the installed application version.
-                            // VERSION is package metadata and can remain at the
-                            // base-game value after a patch merge.
-                            version = SfoString(sfo, "APP_VER");
-                            if (string.IsNullOrWhiteSpace(version))
-                                version = SfoString(sfo, "VERSION");
-                        }
-                        catch { /* not a readable SFO - fall back to the folder name */ }
+                        Logger.LogWarning($"Ignoring non-game directory in shadPS4 library: {path}");
+                        continue;
                     }
-                    if (string.IsNullOrWhiteSpace(title)) title = folder;
-                    if (string.IsNullOrWhiteSpace(titleId)) titleId = folder;
 
                     string lastTest = "";
                     if (lastReport.TryGetValue(folder, out var report))
@@ -702,9 +702,12 @@ namespace PS4PKGTool
                     lvManagerGames.Items.Add(item);
                 }
 
-                lblManagerGamesHint.Text = folders.Count == 0
+                lblManagerGamesHint.Text = _gameRows.Count == 0
                     ? "No installed games found in the install directory."
                     : $"Installed games in: {installDir}";
+
+                if (!string.IsNullOrWhiteSpace(selectedFolder))
+                    SelectGameByTitleId(selectedFolder);
             }
             catch (Exception ex)
             {
@@ -715,6 +718,224 @@ namespace PS4PKGTool
                 lvManagerGames.EndUpdate();
             }
         }
+
+        private static bool TryReadInstalledGame(string path, out string title, out string titleId, out string version)
+        {
+            title = "";
+            titleId = "";
+            version = "";
+            if (string.IsNullOrWhiteSpace(path)
+                || Path.GetFileName(path).StartsWith(".ps4pkgtool-", StringComparison.OrdinalIgnoreCase)
+                || !File.Exists(Path.Combine(path, "eboot.bin")))
+                return false;
+
+            string sfoPath = Path.Combine(path, "sce_sys", "param.sfo");
+            if (!File.Exists(sfoPath)) return false;
+            try
+            {
+                var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(File.ReadAllBytes(sfoPath));
+                title = SfoString(sfo, "TITLE");
+                titleId = SfoString(sfo, "TITLE_ID");
+                version = SfoString(sfo, "APP_VER");
+                if (string.IsNullOrWhiteSpace(version))
+                    version = SfoString(sfo, "VERSION");
+                return !string.IsNullOrWhiteSpace(title) && !string.IsNullOrWhiteSpace(titleId);
+            }
+            catch
+            {
+                title = titleId = version = "";
+                return false;
+            }
+        }
+
+        private void btnManagerGamesRefresh_Click(object sender, EventArgs e)
+        {
+            if (IsInstallationActive)
+            {
+                MessageBoxHelper.ShowWarning("A shadPS4 installation is in progress. Games will refresh when it completes.", false);
+                return;
+            }
+
+            RefreshGames();
+            RefreshPatches();
+            RefreshOverview();
+            SetStatus("Games refreshed.", false);
+        }
+
+        // ── Patches & Cheats tab ───────────────────────────────────────
+
+        private void RefreshPatches()
+        {
+            _loadingPatchGames = true;
+            try
+            {
+                string selectedId = (cmbPatchesGame.SelectedItem as PatchGameChoice)?.Row.Folder ?? "";
+                cmbPatchesGame.Items.Clear();
+                foreach (var game in _gameRows) cmbPatchesGame.Items.Add(new PatchGameChoice(game));
+                int selected = _gameRows.FindIndex(row => string.Equals(row.Folder, selectedId, StringComparison.OrdinalIgnoreCase));
+                if (selected < 0 && cmbPatchesGame.Items.Count > 0) selected = 0;
+                cmbPatchesGame.SelectedIndex = selected;
+                if (selected < 0) PopulatePatchGrids(null);
+            }
+            finally { _loadingPatchGames = false; }
+            if (cmbPatchesGame.SelectedIndex >= 0) LoadLocalDefinitions();
+        }
+
+        private Shadps4GamePatchContext? SelectedPatchGame()
+        {
+            if (cmbPatchesGame.SelectedItem is not PatchGameChoice selected) return null;
+            string? userDirectory = CurrentUserDir();
+            if (string.IsNullOrWhiteSpace(userDirectory)) return null;
+            return new Shadps4GamePatchContext(selected.Row.Title, selected.Row.TitleId, selected.Row.Version,
+                Path.Combine(_settings.Shadps4InstallDirectory ?? "", selected.Row.Folder), userDirectory);
+        }
+
+        private void cmbPatchesGame_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (!_loadingPatchGames) LoadLocalDefinitions();
+        }
+
+        private void LoadLocalDefinitions()
+        {
+            var game = SelectedPatchGame();
+            if (game == null)
+            {
+                PopulatePatchGrids(null);
+                lblPatchesHint.Text = _gameRows.Count == 0 ? "No installed games are available for patch management." : "shadPS4 user directory is unavailable.";
+                return;
+            }
+            try
+            {
+                var definitions = _patchCheatStore.ListLocal(game);
+                PopulatePatchGrids((game, definitions));
+                lblPatchesHint.Text = definitions.Diagnostics.Count == 0
+                    ? "Source: official shadPS4. Definitions are read only here. Enable state is managed by QtLauncher."
+                    : $"Source: official shadPS4. {definitions.Diagnostics.Count} malformed definition(s) were skipped. Enable state is managed by QtLauncher.";
+            }
+            catch (Exception ex)
+            {
+                PopulatePatchGrids(null);
+                lblPatchesHint.Text = "Could not read local definitions: " + ex.Message;
+            }
+        }
+
+        private void PopulatePatchGrids((Shadps4GamePatchContext Game, Shadps4LocalDefinitions Definitions)? data)
+        {
+            _loadingPatchRows = true;
+            dgvPatchesCheats.Rows.Clear();
+            dgvPatches.Rows.Clear();
+            btnPatchesApply.Enabled = false;
+            btnPatchesRevert.Enabled = false;
+            if (data == null) { _loadingPatchRows = false; return; }
+            foreach (var cheat in data.Value.Definitions.Cheats)
+            {
+                string author = string.Join(", ", cheat.Authors);
+                string name = cheat.Mods.Count == 0 ? (string.IsNullOrWhiteSpace(cheat.Game) ? Path.GetFileName(cheat.FilePath) : cheat.Game) : string.Join(", ", cheat.Mods.Select(m => m.Name).Where(n => !string.IsNullOrWhiteSpace(n)));
+                int operations = cheat.Mods.Sum(m => m.OperationCount);
+                dgvPatchesCheats.Rows.Add(name, cheat.Version, author, operations, Shadps4DefinitionMatcher.Display(Shadps4DefinitionMatcher.Version(data.Value.Game.AppVersion, cheat.Version)));
+            }
+            foreach (var patch in data.Value.Definitions.Patches)
+                foreach (var entry in patch.Entries)
+                {
+                    int row = dgvPatches.Rows.Add(entry.Enabled == true, entry.Name, entry.AppVersion, entry.Author, entry.AppElf,
+                        entry.OperationCount + (string.IsNullOrWhiteSpace(entry.OperationSummary) ? "" : "  " + entry.OperationSummary),
+                        Shadps4DefinitionMatcher.Display(Shadps4DefinitionMatcher.Version(data.Value.Game.AppVersion, entry.AppVersion)));
+                    dgvPatches.Rows[row].Tag = new PatchWorkingRow(patch.FilePath, entry.MetadataIndex, entry.AppVersion, entry.Enabled == true);
+                }
+            _loadingPatchRows = false;
+        }
+
+        private void dgvPatches_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (dgvPatches.IsCurrentCellDirty) dgvPatches.CommitEdit(DataGridViewDataErrorContexts.Commit);
+        }
+
+        private void dgvPatches_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_loadingPatchRows || e.RowIndex < 0 || e.ColumnIndex != colPatchEnabled.Index) return;
+            var row = dgvPatches.Rows[e.RowIndex];
+            if (row.Tag is not PatchWorkingRow working) return;
+            bool enabled = row.Cells[colPatchEnabled.Index].Value is true;
+            if (enabled && Shadps4DefinitionMatcher.Version((SelectedPatchGame()?.AppVersion) ?? "", working.TargetVersion) == Shadps4DefinitionMatch.VersionMismatch)
+            {
+                var result = AppMessageBox.Show("Patches & Cheats",
+                    "This patch targets game version " + working.TargetVersion + ".\nThe installed game version is " + (SelectedPatchGame()?.AppVersion ?? "") + ".\n\nThe patch may not work correctly with this version.\n\nEnable it anyway?",
+                    AppMessageType.Warning, AppMessageButtons.YesNo);
+                if (result != DialogResult.Yes)
+                {
+                    _loadingPatchRows = true;
+                    row.Cells[colPatchEnabled.Index].Value = false;
+                    _loadingPatchRows = false;
+                    return;
+                }
+            }
+            UpdatePatchDirtyState();
+        }
+
+        private void UpdatePatchDirtyState()
+        {
+            bool dirty = dgvPatches.Rows.Cast<DataGridViewRow>().Any(row => row.Tag is PatchWorkingRow working && (row.Cells[colPatchEnabled.Index].Value is true) != working.OriginalEnabled);
+            btnPatchesApply.Enabled = dirty;
+            btnPatchesRevert.Enabled = dirty;
+            if (dirty) lblPatchesHint.Text = "Unsaved patch changes. Cheats are applied at runtime by QtLauncher.";
+        }
+
+        private void btnPatchesRevert_Click(object sender, EventArgs e) => LoadLocalDefinitions();
+
+        private void btnPatchesApply_Click(object sender, EventArgs e)
+        {
+            if (Process.GetProcessesByName("shadPS4").Length != 0 || Process.GetProcessesByName("shadPS4QtLauncher").Length != 0)
+            {
+                MessageBoxHelper.ShowWarning("Close shadPS4 and QtLauncher before applying patch changes.", false);
+                return;
+            }
+            var changes = dgvPatches.Rows.Cast<DataGridViewRow>()
+                .Where(row => row.Tag is PatchWorkingRow working && (row.Cells[colPatchEnabled.Index].Value is true) != working.OriginalEnabled)
+                .Select(row =>
+                {
+                    var working = (PatchWorkingRow)row.Tag;
+                    return new Shadps4PatchStateChange(working.FilePath, working.MetadataIndex, row.Cells[colPatchEnabled.Index].Value is true);
+                }).ToArray();
+            try
+            {
+                // Recheck immediately before atomic replacement to avoid racing either upstream process.
+                if (Process.GetProcessesByName("shadPS4").Length != 0 || Process.GetProcessesByName("shadPS4QtLauncher").Length != 0)
+                    throw new InvalidOperationException("shadPS4 or QtLauncher started while changes were being prepared.");
+                _patchCheatStore.SetPatchEnabledStates(changes);
+                string? userDirectory = CurrentUserDir();
+                if (!string.IsNullOrWhiteSpace(userDirectory)) _patchCheatStore.RebuildPatchIndex(userDirectory);
+                LoadLocalDefinitions();
+                AppMessageBox.Show("Patches & Cheats", "Patch changes applied.", AppMessageType.Info, AppMessageButtons.OK);
+            }
+            catch (Exception ex) { MessageBoxHelper.ShowWarning("Could not apply patch changes:\n" + ex.Message, false); }
+        }
+
+        private async void btnPatchesDownload_Click(object sender, EventArgs e)
+        {
+            var game = SelectedPatchGame();
+            if (game == null) { MessageBoxHelper.ShowWarning("Select an installed game and configure shadPS4 first.", false); return; }
+            btnPatchesDownload.Enabled = false;
+            SetStatus("Downloading official patch and cheat definitions...", true);
+            try
+            {
+                var result = await new Shadps4OfficialDefinitionRepository().DownloadForGameAsync(game, _patchCheatStore);
+                if (!result.Succeeded) MessageBoxHelper.ShowWarning(result.Message, false);
+                else AppMessageBox.Show("Patches & Cheats", result.Message, AppMessageType.Info, AppMessageButtons.OK);
+                LoadLocalDefinitions();
+            }
+            catch (Exception ex) { MessageBoxHelper.ShowWarning("Definition download failed:\n" + ex.Message, false); }
+            finally { btnPatchesDownload.Enabled = true; SetStatus("", false); }
+        }
+
+        private void btnPatchesOpenData_Click(object sender, EventArgs e)
+        {
+            string? userDirectory = CurrentUserDir();
+            if (string.IsNullOrWhiteSpace(userDirectory)) { MessageBoxHelper.ShowWarning("The shadPS4 user directory is unavailable.", false); return; }
+            if (!Directory.Exists(userDirectory)) { MessageBoxHelper.ShowWarning("The shadPS4 user directory does not exist yet:\n" + userDirectory, false); return; }
+            Process.Start("explorer.exe", userDirectory);
+        }
+
+        private void btnPatchesOpenQtLauncher_Click(object sender, EventArgs e) => OpenQtLauncher();
 
         private int SelectedGameIndex()
         {
@@ -739,6 +960,7 @@ namespace PS4PKGTool
 
         private void UpdateGameDetails()
         {
+            int detailVersion = Interlocked.Increment(ref _gameDetailsVersion);
             int idx = SelectedGameIndex();
             bool valid = idx >= 0 && idx < _gameRows.Count;
             btnManagerGameLaunch.Enabled = valid;
@@ -790,7 +1012,13 @@ namespace PS4PKGTool
                     recent.Select(f => $"{FeedbackWhen(f.TimestampUtc)}  {f.Status}"));
             }
 
-            lblGameDetailSize.Text = "Size: " + Helper.RoundBytes(ComputeFolderSize(path));
+            if (_gameSizeCache.TryGetValue(path, out long cachedSize))
+                lblGameDetailSize.Text = "Size: " + Helper.RoundBytes(cachedSize);
+            else
+            {
+                lblGameDetailSize.Text = "Size: Calculating...";
+                LoadGameSizeAsync(path, detailVersion);
+            }
             lblGameDetailPath.Text = path;
 
             // Game icon (sce_sys/icon0.png) - copied into an independent
@@ -805,6 +1033,24 @@ namespace PS4PKGTool
                 }
             }
             catch { /* unreadable icon - show nothing */ }
+        }
+
+        private void OpenQtLauncher() => btnManagerOpenQtLauncher_Click(this, EventArgs.Empty);
+
+        private async void LoadGameSizeAsync(string path, int detailVersion)
+        {
+            try
+            {
+                long size = await Task.Run(() => ComputeFolderSize(path));
+                _gameSizeCache[path] = size;
+                if (detailVersion == _gameDetailsVersion)
+                    lblGameDetailSize.Text = "Size: " + Helper.RoundBytes(size);
+            }
+            catch
+            {
+                if (detailVersion == _gameDetailsVersion)
+                    lblGameDetailSize.Text = "Size: Unavailable";
+            }
         }
 
         private void ClearGameIcon()
@@ -1002,6 +1248,17 @@ namespace PS4PKGTool
             string folder = _gameRows[idx].Folder;
             string path = SelectedGamePath(folder);
 
+            string installDir = Path.TrimEndingDirectorySeparator(
+                Path.GetFullPath(_settings.Shadps4InstallDirectory ?? ""));
+            string resolvedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            if (!string.Equals(Path.GetDirectoryName(resolvedPath), installDir, StringComparison.OrdinalIgnoreCase)
+                || !TryReadInstalledGame(resolvedPath, out _, out _, out _))
+            {
+                MessageBoxHelper.ShowWarning("The selected folder is not a validated installed game. Nothing was deleted.", false);
+                return;
+            }
+            path = resolvedPath;
+
             if (Shadps4Launcher.IsEmulatorRunning())
             {
                 var warn = AppMessageBox.Show("shadPS4",
@@ -1101,7 +1358,10 @@ namespace PS4PKGTool
             btnInstallDismiss.Visible = false;
             grpInstallActivity.Visible = true;
 
-            prgInstallProgress.Marquee = true; // indeterminate; the control animates itself
+            prgInstallProgress.Marquee = false;
+            prgInstallProgress.Minimum = 0;
+            prgInstallProgress.Maximum = 1;
+            prgInstallProgress.Value = 0;
             _installCts = new CancellationTokenSource();
             CancellationTokenSource cts = _installCts;
             InstallRequest installRequest = request;
@@ -1110,6 +1370,7 @@ namespace PS4PKGTool
             // Progress<T> is created here (UI thread) so stage callbacks land
             // on the UI thread; completion marshals explicitly.
             var progress = new Progress<string>(OnInstallStage);
+            var fileProgress = new Progress<(int Current, int Total, string CurrentFile)>(OnInstallFileProgress);
             _ = Task.Run(() =>
             {
                 // The worker must ALWAYS reach OnInstallCompleted: an
@@ -1120,7 +1381,8 @@ namespace PS4PKGTool
                     var svc = new Shadps4InstallService();
                     Logger.LogInformation($"Shadps4Manager install: starting {installRequest.TitleId} into {installRequest.Library} (replace={installRequest.Replace}, patch={installRequest.IsPatch})");
                     var result = svc.Install(installRequest.PkgPath, installRequest.TitleId, installRequest.Library,
-                        installRequest.Replace, progress, cts.Token, mergeIntoExisting: installRequest.IsPatch);
+                        installRequest.Replace, progress, cts.Token, mergeIntoExisting: installRequest.IsPatch,
+                        fileProgress: fileProgress);
                     Logger.LogInformation($"Shadps4Manager install: finished {result.Status} - {result.Message}");
                     if (IsDisposed) return;
                     try { BeginInvoke((MethodInvoker)(() => OnInstallCompleted(result, installRequest))); }
@@ -1160,6 +1422,23 @@ namespace PS4PKGTool
             }
             if (_installState != InstallActivityState.Cancelling)
                 lblInstallStage.Text = stage;
+        }
+
+        /// <summary>Per-file extraction progress callback, marshalled to the UI thread by Progress&lt;T&gt;.</summary>
+        private void OnInstallFileProgress((int Current, int Total, string CurrentFile) progress)
+        {
+            if (_installState == InstallActivityState.Cancelling || progress.Total <= 0)
+                return;
+
+            if (_installState == InstallActivityState.Preparing)
+                SetInstallState(InstallActivityState.Running);
+
+            int completed = Math.Min(progress.Current + 1, progress.Total);
+            prgInstallProgress.Marquee = false;
+            prgInstallProgress.Minimum = 0;
+            prgInstallProgress.Maximum = progress.Total;
+            prgInstallProgress.Value = completed;
+            lblInstallStage.Text = $"Extracting {completed}/{progress.Total}: {progress.CurrentFile}";
         }
 
         private void OnInstallCompleted(Shadps4InstallResult result, InstallRequest request)
@@ -1996,6 +2275,69 @@ namespace PS4PKGTool
             RefreshOverview();
             MessageBoxHelper.ShowWarning(
                 "shadPS4 setup has been reset.\n\nUse Install Build to start fresh.", false);
+        }
+
+        private void miMaintenanceRemoveAll_Click(object sender, EventArgs e)
+        {
+            if (Process.GetProcessesByName("shadPS4").Length != 0 || Process.GetProcessesByName("shadPS4QtLauncher").Length != 0)
+            {
+                MessageBoxHelper.ShowWarning("Close shadPS4 and QtLauncher before removing data.", false);
+                return;
+            }
+
+            var targets = ResolveFullRemovalTargets();
+            if (targets.Count == 0)
+            {
+                MessageBoxHelper.ShowWarning("No removable shadPS4 data folders are configured.", false);
+                return;
+            }
+
+            string list = string.Join("\n", targets.Select(path => "  " + path));
+            var choice = AppMessageBox.Show("Remove All shadPS4 Data",
+                "This permanently removes the following folders and their contents:\n\n" + list +
+                "\n\nThis includes installed games, shadPS4 user data, saves, cheats, patches and managed builds.\n" +
+                "It also clears PS4 PKG Tool shadPS4 settings.\n\nRemove all data?",
+                AppMessageType.Warning, AppMessageButtons.YesNo);
+            if (choice != DialogResult.Yes) return;
+
+            try
+            {
+                // Recheck immediately before the irreversible filesystem operation.
+                if (Process.GetProcessesByName("shadPS4").Length != 0 || Process.GetProcessesByName("shadPS4QtLauncher").Length != 0)
+                    throw new InvalidOperationException("shadPS4 or QtLauncher started while removal was being prepared.");
+                foreach (string target in targets.OrderByDescending(path => path.Length))
+                    if (Directory.Exists(target)) Directory.Delete(target, true);
+                Shadps4SetupReset.Reset(_buildsStore, _settings);
+                SettingsManager.SaveSettings(_settings, SettingsManager.SettingFilePath);
+                RefreshBuildsTab();
+                RefreshGames();
+                RefreshSaves();
+                RefreshPatches();
+                RefreshSettingsTab();
+                RefreshHeaderState();
+                RefreshOverview();
+                AppMessageBox.Show("Remove All shadPS4 Data", "All configured shadPS4 data has been removed.", AppMessageType.Info, AppMessageButtons.OK);
+            }
+            catch (Exception ex)
+            {
+                MessageBoxHelper.ShowWarning("Could not remove all shadPS4 data:\n" + ex.Message, false);
+            }
+        }
+
+        private List<string> ResolveFullRemovalTargets()
+        {
+            var candidates = new List<string>();
+            string? userDirectory = CurrentUserDir();
+            if (!string.IsNullOrWhiteSpace(userDirectory)) candidates.Add(userDirectory);
+            string installDirectory = _settings.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(installDirectory)) candidates.Add(installDirectory);
+            string managedRoot = _settings.Shadps4ManagedRoot?.Trim();
+            if (string.IsNullOrWhiteSpace(managedRoot)) managedRoot = Shadps4ManagedBuilds.DefaultRootPath();
+            candidates.Add(managedRoot);
+
+            return candidates.Select(path => Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                .Where(path => !string.IsNullOrWhiteSpace(path) && !string.Equals(path, Path.GetPathRoot(path)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         // ── Settings tab (moved from Program Settings) ───────────────────

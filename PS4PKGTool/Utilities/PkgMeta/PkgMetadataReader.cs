@@ -18,12 +18,46 @@ public static class PkgMetadataReader
     public static PkgMetadata Read(string pkgPath)
     {
         using var reader = new PkgReader(pkgPath);
-        return Read(reader);
+        return Read(reader, includeIcon: true, includeLargeAssets: true, includeTrophy: true);
+    }
+
+    /// <summary>
+    /// Reads the information needed to show a newly selected package promptly.
+    /// Background images and trophy data can be large, so callers should load
+    /// them separately after presenting the title and ICON0.PNG.
+    /// </summary>
+    public static PkgMetadata ReadQuick(string pkgPath)
+    {
+        using var reader = new PkgReader(pkgPath);
+        return Read(reader, includeIcon: true, includeLargeAssets: false, includeTrophy: false);
+    }
+
+    /// <summary>
+    /// Reads only header and PARAM.SFO-derived metadata. Use this for bulk
+    /// scans where no package artwork is displayed.
+    /// </summary>
+    public static PkgMetadata ReadMetadataOnly(string pkgPath)
+    {
+        using var reader = new PkgReader(pkgPath);
+        return Read(reader, includeIcon: false, includeLargeAssets: false, includeTrophy: false);
+    }
+
+    /// <summary>
+    /// Loads artwork for a selected package without loading its potentially
+    /// large trophy archive. Trophy extraction streams directly to disk later.
+    /// </summary>
+    public static PkgMetadata ReadArtwork(string pkgPath)
+    {
+        using var reader = new PkgReader(pkgPath);
+        return Read(reader, includeIcon: true, includeLargeAssets: true, includeTrophy: false);
     }
 
     /// <summary>Reads metadata through an already-open reader (callers that
     /// need the reader afterwards, e.g. late trophy extraction).</summary>
     public static PkgMetadata Read(PkgReader reader)
+        => Read(reader, includeIcon: true, includeLargeAssets: true, includeTrophy: true);
+
+    private static PkgMetadata Read(PkgReader reader, bool includeIcon, bool includeLargeAssets, bool includeTrophy)
     {
         var header = reader.Header;
         var sfo = reader.ReadParamSfo();
@@ -33,13 +67,18 @@ public static class PkgMetadataReader
         var kind = PkgMetadata.GetPkgType(sfo?.GetString("CATEGORY") ?? "");
 
         byte[]? icon = null, pic0 = null, pic1 = null, trp = null;
-        FindEntry(reader, PkgEntryIds.Icon0Png, ref icon);
-        FindEntry(reader, PkgEntryIds.Pic0Png, ref pic0);
-        FindEntry(reader, PkgEntryIds.Pic1Png, ref pic1);
-        FindEntry(reader, PkgEntryIds.Trophy00Trp, ref trp);
+        if (includeIcon)
+            FindEntry(reader, PkgEntryIds.Icon0Png, ref icon);
+        if (includeLargeAssets)
+        {
+            FindEntry(reader, PkgEntryIds.Pic0Png, ref pic0);
+            FindEntry(reader, PkgEntryIds.Pic1Png, ref pic1);
+            if (includeTrophy)
+                FindEntry(reader, PkgEntryIds.Trophy00Trp, ref trp);
+        }
 
         // Legacy fallback: no icon0.png → pull ICON0.PNG out of the trophy pack.
-        if ((icon == null || icon.Length == 0) && trp is { Length: > 0 })
+        if (includeTrophy && (icon == null || icon.Length == 0) && trp is { Length: > 0 })
         {
             try
             {

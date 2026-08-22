@@ -99,4 +99,12 @@
     <ProjectReference Include="..\PS4PKGTool.Assets\PS4PKGTool.Assets.csproj" />
     <ProjectReference Include="..\..\PS4 Fake Pkg Tools\OrbisPkgTool\OrbisPkgTool\OrbisPkgTool.csproj" />
   </ItemGroup>
+  <!-- OrbisPkgTool is referenced in-process as a DLL. Its own CLI artifacts
+       are copied by the project reference but are not used by this app. -->
+  <Target Name="RemoveUnusedOrbisPkgToolCliArtifacts" AfterTargets="Build">
+    <Delete Files="$(TargetDir)OrbisPkgTool.exe;
+                   $(TargetDir)OrbisPkgTool.deps.json;
+                   $(TargetDir)OrbisPkgTool.runtimeconfig.json;
+                   $(TargetDir)OrbisPkgTool.pdb" />
+  </Target>
 </Project>

@@ -47,7 +47,7 @@ namespace PS4PKGTool.Tests
 
             string expr = PkgFilter.BuildExpression(state);
 
-            Assert.AreEqual("[System Version (Num)] >= 5.05", expr);
+            Assert.AreEqual("[Required Firmware (Num)] >= 5.05", expr);
         }
 
         [TestMethod]

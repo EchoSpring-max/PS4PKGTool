@@ -56,6 +56,7 @@ namespace PS4PKGTool
             lblInstallMeta = new DarkUI.Controls.DarkLabel();
             lblInstallTitle = new DarkUI.Controls.DarkLabel();
             lblManagerGamesHint = new DarkUI.Controls.DarkLabel();
+            btnManagerGamesRefresh = new DarkUI.Controls.DarkButton();
             btnManagerGameMore = new DarkUI.Controls.DarkButton();
             btnManagerGameOpenFolder = new DarkUI.Controls.DarkButton();
             btnManagerGameReports = new DarkUI.Controls.DarkButton();
@@ -116,6 +117,33 @@ namespace PS4PKGTool
             btnSavesBackup = new DarkUI.Controls.DarkButton();
             lstManagerSaves = new DarkUI.Controls.DarkListBox(components);
             lblSavesHeader = new DarkUI.Controls.DarkLabel();
+            tabManagerPatches = new DarkUI.Controls.SidebarPage();
+            grpPatchesDefinitions = new DarkUI.Controls.DarkSectionPanel();
+            tabsPatchesDefinitions = new DarkUI.Controls.DarkTabControl();
+            tabCheatsDefinitions = new System.Windows.Forms.TabPage();
+            dgvPatchesCheats = new DarkUI.Controls.DarkDataGridView();
+            colCheatName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colCheatVersion = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colCheatAuthor = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colCheatOperations = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colCheatStatus = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            tabPatchDefinitions = new System.Windows.Forms.TabPage();
+            dgvPatches = new DarkUI.Controls.DarkDataGridView();
+            colPatchEnabled = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            colPatchName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colPatchVersion = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colPatchAuthor = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colPatchElf = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colPatchOperations = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            colPatchStatus = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            btnPatchesDownload = new DarkUI.Controls.DarkButton();
+            btnPatchesApply = new DarkUI.Controls.DarkButton();
+            btnPatchesRevert = new DarkUI.Controls.DarkButton();
+            btnPatchesOpenData = new DarkUI.Controls.DarkButton();
+            btnPatchesOpenQtLauncher = new DarkUI.Controls.DarkButton();
+            lblPatchesHint = new DarkUI.Controls.DarkLabel();
+            lblPatchesGame = new DarkUI.Controls.DarkLabel();
+            cmbPatchesGame = new DarkUI.Controls.DarkComboBox();
             tabManagerSettings = new DarkUI.Controls.SidebarPage();
             grpSettingsDetection = new DarkUI.Controls.DarkSectionPanel();
             btncopyDetectioninfo = new DarkUI.Controls.DarkButton();
@@ -144,6 +172,7 @@ namespace PS4PKGTool
             miGameUninstall = new System.Windows.Forms.ToolStripMenuItem();
             ctxMaintenance = new DarkUI.Controls.DarkContextMenu();
             miMaintenanceReset = new System.Windows.Forms.ToolStripMenuItem();
+            miMaintenanceRemoveAll = new System.Windows.Forms.ToolStripMenuItem();
             miMaintenanceOpenFolder = new System.Windows.Forms.ToolStripMenuItem();
             toolTipBuilds = new System.Windows.Forms.ToolTip(components);
             ctxHeaderMore.SuspendLayout();
@@ -170,6 +199,13 @@ namespace PS4PKGTool
             grpLauncherCard.SuspendLayout();
             tabManagerSaves.SuspendLayout();
             grpSavesSelected.SuspendLayout();
+            tabManagerPatches.SuspendLayout();
+            grpPatchesDefinitions.SuspendLayout();
+            tabsPatchesDefinitions.SuspendLayout();
+            tabCheatsDefinitions.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvPatchesCheats).BeginInit();
+            tabPatchDefinitions.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvPatches).BeginInit();
             tabManagerSettings.SuspendLayout();
             grpSettingsDetection.SuspendLayout();
             grpSettingsUpdate.SuspendLayout();
@@ -266,7 +302,7 @@ namespace PS4PKGTool
             shadps4Tabs.Dock = System.Windows.Forms.DockStyle.Fill;
             shadps4Tabs.Location = new System.Drawing.Point(0, 40);
             shadps4Tabs.Name = "shadps4Tabs";
-            shadps4Tabs.Pages.AddRange(new DarkUI.Controls.SidebarPage[] { tabManagerOverview, tabManagerGames, tabManagerBuilds, tabManagerSaves, tabManagerSettings });
+            shadps4Tabs.Pages.AddRange(new DarkUI.Controls.SidebarPage[] { tabManagerOverview, tabManagerGames, tabManagerBuilds, tabManagerSaves, tabManagerPatches, tabManagerSettings });
             shadps4Tabs.SidebarWidth = 108;
             shadps4Tabs.Size = new System.Drawing.Size(872, 816);
             shadps4Tabs.TabIndex = 2;
@@ -497,6 +533,7 @@ namespace PS4PKGTool
             tabManagerGames.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             tabManagerGames.Controls.Add(grpInstallActivity);
             tabManagerGames.Controls.Add(lblManagerGamesHint);
+            tabManagerGames.Controls.Add(btnManagerGamesRefresh);
             tabManagerGames.Controls.Add(btnManagerGameMore);
             tabManagerGames.Controls.Add(btnManagerGameOpenFolder);
             tabManagerGames.Controls.Add(btnManagerGameReports);
@@ -611,6 +648,15 @@ namespace PS4PKGTool
             lblManagerGamesHint.Size = new System.Drawing.Size(752, 16);
             lblManagerGamesHint.TabIndex = 14;
             lblManagerGamesHint.Text = "Installed games in the install directory.";
+            // 
+            // btnManagerGamesRefresh
+            // 
+            btnManagerGamesRefresh.Location = new System.Drawing.Point(367, 590);
+            btnManagerGamesRefresh.Name = "btnManagerGamesRefresh";
+            btnManagerGamesRefresh.Size = new System.Drawing.Size(94, 26);
+            btnManagerGamesRefresh.TabIndex = 16;
+            btnManagerGamesRefresh.Text = "Refresh";
+            btnManagerGamesRefresh.Click += btnManagerGamesRefresh_Click;
             // 
             // btnManagerGameMore
             // 
@@ -768,7 +814,7 @@ namespace PS4PKGTool
             lvManagerGames.Location = new System.Drawing.Point(12, 12);
             lvManagerGames.MultiSelect = false;
             lvManagerGames.Name = "lvManagerGames";
-            lvManagerGames.Size = new System.Drawing.Size(449, 608);
+            lvManagerGames.Size = new System.Drawing.Size(449, 572);
             lvManagerGames.SmallImageList = imageListManagerGames;
             lvManagerGames.TabIndex = 0;
             lvManagerGames.UseCompatibleStateImageBehavior = false;
@@ -1226,6 +1272,252 @@ namespace PS4PKGTool
             lblSavesHeader.TabIndex = 0;
             lblSavesHeader.Text = "Saves";
             // 
+            // tabManagerPatches
+            // 
+            tabManagerPatches.Controls.Add(grpPatchesDefinitions);
+            tabManagerPatches.Controls.Add(btnPatchesDownload);
+            tabManagerPatches.Controls.Add(btnPatchesApply);
+            tabManagerPatches.Controls.Add(btnPatchesRevert);
+            tabManagerPatches.Controls.Add(btnPatchesOpenData);
+            tabManagerPatches.Controls.Add(btnPatchesOpenQtLauncher);
+            tabManagerPatches.Controls.Add(lblPatchesHint);
+            tabManagerPatches.Controls.Add(lblPatchesGame);
+            tabManagerPatches.Controls.Add(cmbPatchesGame);
+            tabManagerPatches.Location = new System.Drawing.Point(108, 0);
+            tabManagerPatches.Name = "tabManagerPatches";
+            tabManagerPatches.Padding = new System.Windows.Forms.Padding(12);
+            tabManagerPatches.Size = new System.Drawing.Size(764, 816);
+            tabManagerPatches.TabIndex = 4;
+            tabManagerPatches.Text = "Patches && Cheats";
+            // 
+            // grpPatchesDefinitions
+            // 
+            grpPatchesDefinitions.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            grpPatchesDefinitions.Controls.Add(tabsPatchesDefinitions);
+            grpPatchesDefinitions.Location = new System.Drawing.Point(12, 94);
+            grpPatchesDefinitions.Name = "grpPatchesDefinitions";
+            grpPatchesDefinitions.Padding = new System.Windows.Forms.Padding(12);
+            grpPatchesDefinitions.SectionHeader = "Local definitions";
+            grpPatchesDefinitions.Size = new System.Drawing.Size(738, 610);
+            grpPatchesDefinitions.TabIndex = 6;
+            // 
+            // tabsPatchesDefinitions
+            // 
+            tabsPatchesDefinitions.Controls.Add(tabCheatsDefinitions);
+            tabsPatchesDefinitions.Controls.Add(tabPatchDefinitions);
+            tabsPatchesDefinitions.Dock = System.Windows.Forms.DockStyle.Fill;
+            tabsPatchesDefinitions.Location = new System.Drawing.Point(12, 35);
+            tabsPatchesDefinitions.Name = "tabsPatchesDefinitions";
+            tabsPatchesDefinitions.SelectedIndex = 0;
+            tabsPatchesDefinitions.Size = new System.Drawing.Size(714, 561);
+            tabsPatchesDefinitions.TabIndex = 0;
+            // 
+            // tabCheatsDefinitions
+            // 
+            tabCheatsDefinitions.Controls.Add(dgvPatchesCheats);
+            tabCheatsDefinitions.Location = new System.Drawing.Point(4, 24);
+            tabCheatsDefinitions.Name = "tabCheatsDefinitions";
+            tabCheatsDefinitions.Padding = new System.Windows.Forms.Padding(3);
+            tabCheatsDefinitions.Size = new System.Drawing.Size(706, 533);
+            tabCheatsDefinitions.TabIndex = 0;
+            tabCheatsDefinitions.Text = "Cheats";
+            tabCheatsDefinitions.UseVisualStyleBackColor = true;
+            // 
+            // dgvPatchesCheats
+            // 
+            dgvPatchesCheats.AllowUserToAddRows = false;
+            dgvPatchesCheats.AllowUserToDeleteRows = false;
+            dgvPatchesCheats.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            dgvPatchesCheats.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvPatchesCheats.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] { colCheatName, colCheatVersion, colCheatAuthor, colCheatOperations, colCheatStatus });
+            dgvPatchesCheats.Dock = System.Windows.Forms.DockStyle.Fill;
+            dgvPatchesCheats.Location = new System.Drawing.Point(3, 3);
+            dgvPatchesCheats.MultiSelect = false;
+            dgvPatchesCheats.Name = "dgvPatchesCheats";
+            dgvPatchesCheats.ReadOnly = true;
+            dgvPatchesCheats.RowHeadersVisible = false;
+            dgvPatchesCheats.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            dgvPatchesCheats.Size = new System.Drawing.Size(700, 527);
+            dgvPatchesCheats.TabIndex = 0;
+            // 
+            // colCheatName
+            // 
+            colCheatName.FillWeight = 180F;
+            colCheatName.HeaderText = "Name";
+            colCheatName.Name = "colCheatName";
+            colCheatName.ReadOnly = true;
+            // 
+            // colCheatVersion
+            // 
+            colCheatVersion.HeaderText = "Version";
+            colCheatVersion.Name = "colCheatVersion";
+            colCheatVersion.ReadOnly = true;
+            // 
+            // colCheatAuthor
+            // 
+            colCheatAuthor.HeaderText = "Author";
+            colCheatAuthor.Name = "colCheatAuthor";
+            colCheatAuthor.ReadOnly = true;
+            // 
+            // colCheatOperations
+            // 
+            colCheatOperations.HeaderText = "Operations";
+            colCheatOperations.Name = "colCheatOperations";
+            colCheatOperations.ReadOnly = true;
+            // 
+            // colCheatStatus
+            // 
+            colCheatStatus.HeaderText = "Status";
+            colCheatStatus.Name = "colCheatStatus";
+            colCheatStatus.ReadOnly = true;
+            // 
+            // tabPatchDefinitions
+            // 
+            tabPatchDefinitions.Controls.Add(dgvPatches);
+            tabPatchDefinitions.Location = new System.Drawing.Point(4, 24);
+            tabPatchDefinitions.Name = "tabPatchDefinitions";
+            tabPatchDefinitions.Padding = new System.Windows.Forms.Padding(3);
+            tabPatchDefinitions.Size = new System.Drawing.Size(706, 533);
+            tabPatchDefinitions.TabIndex = 1;
+            tabPatchDefinitions.Text = "Patches";
+            tabPatchDefinitions.UseVisualStyleBackColor = true;
+            // 
+            // dgvPatches
+            // 
+            dgvPatches.AllowUserToAddRows = false;
+            dgvPatches.AllowUserToDeleteRows = false;
+            dgvPatches.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            dgvPatches.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvPatches.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] { colPatchEnabled, colPatchName, colPatchVersion, colPatchAuthor, colPatchElf, colPatchOperations, colPatchStatus });
+            dgvPatches.Dock = System.Windows.Forms.DockStyle.Fill;
+            dgvPatches.Location = new System.Drawing.Point(3, 3);
+            dgvPatches.MultiSelect = false;
+            dgvPatches.Name = "dgvPatches";
+            dgvPatches.ReadOnly = false;
+            dgvPatches.RowHeadersVisible = false;
+            dgvPatches.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            dgvPatches.Size = new System.Drawing.Size(700, 527);
+            dgvPatches.TabIndex = 0;
+            dgvPatches.CurrentCellDirtyStateChanged += dgvPatches_CurrentCellDirtyStateChanged;
+            dgvPatches.CellValueChanged += dgvPatches_CellValueChanged;
+            // 
+            // colPatchEnabled
+            // 
+            colPatchEnabled.FillWeight = 55F;
+            colPatchEnabled.HeaderText = "Enabled";
+            colPatchEnabled.Name = "colPatchEnabled";
+            // 
+            // colPatchName
+            // 
+            colPatchName.FillWeight = 180F;
+            colPatchName.HeaderText = "Name";
+            colPatchName.Name = "colPatchName";
+            colPatchName.ReadOnly = true;
+            // 
+            // colPatchVersion
+            // 
+            colPatchVersion.HeaderText = "App version";
+            colPatchVersion.Name = "colPatchVersion";
+            colPatchVersion.ReadOnly = true;
+            // 
+            // colPatchAuthor
+            // 
+            colPatchAuthor.HeaderText = "Author";
+            colPatchAuthor.Name = "colPatchAuthor";
+            colPatchAuthor.ReadOnly = true;
+            // 
+            // colPatchElf
+            // 
+            colPatchElf.HeaderText = "ELF";
+            colPatchElf.Name = "colPatchElf";
+            colPatchElf.ReadOnly = true;
+            // 
+            // colPatchOperations
+            // 
+            colPatchOperations.HeaderText = "Operations";
+            colPatchOperations.Name = "colPatchOperations";
+            colPatchOperations.ReadOnly = true;
+            // 
+            // colPatchStatus
+            // 
+            colPatchStatus.HeaderText = "Status";
+            colPatchStatus.Name = "colPatchStatus";
+            colPatchStatus.ReadOnly = true;
+            // 
+            // btnPatchesDownload
+            // 
+            btnPatchesDownload.Location = new System.Drawing.Point(12, 62);
+            btnPatchesDownload.Name = "btnPatchesDownload";
+            btnPatchesDownload.Size = new System.Drawing.Size(142, 26);
+            btnPatchesDownload.TabIndex = 2;
+            btnPatchesDownload.Text = "Download / Update";
+            btnPatchesDownload.Click += btnPatchesDownload_Click;
+            // 
+            // btnPatchesApply
+            // 
+            btnPatchesApply.Enabled = false;
+            btnPatchesApply.Location = new System.Drawing.Point(428, 62);
+            btnPatchesApply.Name = "btnPatchesApply";
+            btnPatchesApply.Size = new System.Drawing.Size(80, 26);
+            btnPatchesApply.TabIndex = 5;
+            btnPatchesApply.Text = "Apply";
+            btnPatchesApply.Click += btnPatchesApply_Click;
+            // 
+            // btnPatchesRevert
+            // 
+            btnPatchesRevert.Enabled = false;
+            btnPatchesRevert.Location = new System.Drawing.Point(514, 62);
+            btnPatchesRevert.Name = "btnPatchesRevert";
+            btnPatchesRevert.Size = new System.Drawing.Size(80, 26);
+            btnPatchesRevert.TabIndex = 6;
+            btnPatchesRevert.Text = "Revert";
+            btnPatchesRevert.Click += btnPatchesRevert_Click;
+            // 
+            // btnPatchesOpenData
+            // 
+            btnPatchesOpenData.Location = new System.Drawing.Point(160, 62);
+            btnPatchesOpenData.Name = "btnPatchesOpenData";
+            btnPatchesOpenData.Size = new System.Drawing.Size(128, 26);
+            btnPatchesOpenData.TabIndex = 3;
+            btnPatchesOpenData.Text = "Open Data Folder";
+            btnPatchesOpenData.Click += btnPatchesOpenData_Click;
+            // 
+            // btnPatchesOpenQtLauncher
+            // 
+            btnPatchesOpenQtLauncher.Location = new System.Drawing.Point(294, 62);
+            btnPatchesOpenQtLauncher.Name = "btnPatchesOpenQtLauncher";
+            btnPatchesOpenQtLauncher.Size = new System.Drawing.Size(128, 26);
+            btnPatchesOpenQtLauncher.TabIndex = 4;
+            btnPatchesOpenQtLauncher.Text = "Open QtLauncher";
+            btnPatchesOpenQtLauncher.Click += btnPatchesOpenQtLauncher_Click;
+            // 
+            // lblPatchesHint
+            // 
+            lblPatchesHint.AutoEllipsis = true;
+            lblPatchesHint.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Italic);
+            lblPatchesHint.Location = new System.Drawing.Point(12, 42);
+            lblPatchesHint.Name = "lblPatchesHint";
+            lblPatchesHint.Size = new System.Drawing.Size(700, 16);
+            lblPatchesHint.TabIndex = 1;
+            lblPatchesHint.Text = "Source: official shadPS4. Definitions are read only here. Enable state is managed by QtLauncher.";
+            // 
+            // lblPatchesGame
+            // 
+            lblPatchesGame.Location = new System.Drawing.Point(12, 17);
+            lblPatchesGame.Name = "lblPatchesGame";
+            lblPatchesGame.Size = new System.Drawing.Size(48, 20);
+            lblPatchesGame.TabIndex = 0;
+            lblPatchesGame.Text = "Game:";
+            // 
+            // cmbPatchesGame
+            // 
+            cmbPatchesGame.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cmbPatchesGame.Location = new System.Drawing.Point(65, 14);
+            cmbPatchesGame.Name = "cmbPatchesGame";
+            cmbPatchesGame.Size = new System.Drawing.Size(420, 23);
+            cmbPatchesGame.TabIndex = 1;
+            cmbPatchesGame.SelectedIndexChanged += cmbPatchesGame_SelectedIndexChanged;
+            // 
             // tabManagerSettings
             // 
             tabManagerSettings.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
@@ -1236,7 +1528,7 @@ namespace PS4PKGTool
             tabManagerSettings.Name = "tabManagerSettings";
             tabManagerSettings.Padding = new System.Windows.Forms.Padding(12);
             tabManagerSettings.Size = new System.Drawing.Size(764, 816);
-            tabManagerSettings.TabIndex = 4;
+            tabManagerSettings.TabIndex = 5;
             tabManagerSettings.Text = "Settings";
             // 
             // grpSettingsDetection
@@ -1461,9 +1753,9 @@ namespace PS4PKGTool
             // ctxMaintenance
             // 
             ctxMaintenance.Font = new System.Drawing.Font("Segoe UI", 9F);
-            ctxMaintenance.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { miMaintenanceReset, miMaintenanceOpenFolder });
+            ctxMaintenance.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { miMaintenanceReset, miMaintenanceRemoveAll, miMaintenanceOpenFolder });
             ctxMaintenance.Name = "ctxMaintenance";
-            ctxMaintenance.Size = new System.Drawing.Size(228, 48);
+            ctxMaintenance.Size = new System.Drawing.Size(260, 70);
             // 
             // miMaintenanceReset
             // 
@@ -1473,6 +1765,15 @@ namespace PS4PKGTool
             miMaintenanceReset.Size = new System.Drawing.Size(227, 22);
             miMaintenanceReset.Text = "Reset Managed Setup...";
             miMaintenanceReset.Click += miMaintenanceReset_Click;
+            // 
+            // miMaintenanceRemoveAll
+            // 
+            miMaintenanceRemoveAll.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            miMaintenanceRemoveAll.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            miMaintenanceRemoveAll.Name = "miMaintenanceRemoveAll";
+            miMaintenanceRemoveAll.Size = new System.Drawing.Size(259, 22);
+            miMaintenanceRemoveAll.Text = "Remove All shadPS4 Data...";
+            miMaintenanceRemoveAll.Click += miMaintenanceRemoveAll_Click;
             // 
             // miMaintenanceOpenFolder
             // 
@@ -1524,6 +1825,13 @@ namespace PS4PKGTool
             grpLauncherCard.ResumeLayout(false);
             tabManagerSaves.ResumeLayout(false);
             grpSavesSelected.ResumeLayout(false);
+            tabManagerPatches.ResumeLayout(false);
+            grpPatchesDefinitions.ResumeLayout(false);
+            tabsPatchesDefinitions.ResumeLayout(false);
+            tabCheatsDefinitions.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvPatchesCheats).EndInit();
+            tabPatchDefinitions.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvPatches).EndInit();
             tabManagerSettings.ResumeLayout(false);
             grpSettingsDetection.ResumeLayout(false);
             grpSettingsUpdate.ResumeLayout(false);
@@ -1591,6 +1899,33 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel lblSaveGameUser;
         private DarkUI.Controls.DarkLabel lblSaveGamePath;
         private DarkUI.Controls.DarkLabel lblSaveNotInstalled;
+        private DarkUI.Controls.SidebarPage tabManagerPatches;
+        private DarkUI.Controls.DarkSectionPanel grpPatchesDefinitions;
+        private DarkUI.Controls.DarkTabControl tabsPatchesDefinitions;
+        private System.Windows.Forms.TabPage tabCheatsDefinitions;
+        private DarkUI.Controls.DarkDataGridView dgvPatchesCheats;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheatName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheatVersion;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheatAuthor;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheatOperations;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheatStatus;
+        private System.Windows.Forms.TabPage tabPatchDefinitions;
+        private DarkUI.Controls.DarkDataGridView dgvPatches;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn colPatchEnabled;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchVersion;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchAuthor;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchElf;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchOperations;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPatchStatus;
+        private DarkUI.Controls.DarkButton btnPatchesDownload;
+        private DarkUI.Controls.DarkButton btnPatchesApply;
+        private DarkUI.Controls.DarkButton btnPatchesRevert;
+        private DarkUI.Controls.DarkButton btnPatchesOpenData;
+        private DarkUI.Controls.DarkButton btnPatchesOpenQtLauncher;
+        private DarkUI.Controls.DarkLabel lblPatchesHint;
+        private DarkUI.Controls.DarkLabel lblPatchesGame;
+        private DarkUI.Controls.DarkComboBox cmbPatchesGame;
         private DarkUI.Controls.SidebarPage tabManagerSettings;
         private DarkUI.Controls.DarkSectionPanel grpSettingsPaths;
         private DarkUI.Controls.DarkLabel darkLabelSettingsCore;
@@ -1633,6 +1968,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnMaintenance;
         private DarkUI.Controls.DarkContextMenu ctxMaintenance;
         private System.Windows.Forms.ToolStripMenuItem miMaintenanceReset;
+        private System.Windows.Forms.ToolStripMenuItem miMaintenanceRemoveAll;
         private System.Windows.Forms.ToolStripMenuItem miMaintenanceOpenFolder;
         private DarkUI.Controls.DarkLabel lblStatus;
         private System.Windows.Forms.ToolTip toolTipBuilds;
@@ -1647,6 +1983,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkLabel lblInstallMeta;
         private DarkUI.Controls.DarkLabel lblInstallTitle;
         private DarkUI.Controls.DarkLabel lblManagerGamesHint;
+        private DarkUI.Controls.DarkButton btnManagerGamesRefresh;
         private DarkUI.Controls.DarkButton btnManagerGameMore;
         private DarkUI.Controls.DarkButton btnManagerGameOpenFolder;
         private DarkUI.Controls.DarkButton btnManagerGameReports;

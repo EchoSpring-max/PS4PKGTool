@@ -16,7 +16,7 @@ namespace PS4PKGTool.Utilities
         public const string TitleId = "Title ID";
         public const string ContentId = "Content ID";
         public const string Region = "Region";
-        public const string SystemVersion = "System Version";
+        public const string SystemVersion = "Required Firmware";
         public const string AppVersion = "Version [App Version]";
         public const string PkgType = "PKG Type";
         public const string Category = "Category";
@@ -30,10 +30,10 @@ namespace PS4PKGTool.Utilities
         public const string Shadps4 = "ShadPS4";
         /// <summary>Hidden string column (region NAME) used by the row filter - Region itself is a byte[] icon.</summary>
         public const string RegionName = "Region Name";
-        /// <summary>Hidden numeric column (parsed System Version) used by the "&gt;= firmware" filter.</summary>
-        public const string SystemVersionNum = "System Version (Num)";
+        /// <summary>Hidden numeric column (parsed required firmware) used by the "&gt;= firmware" filter.</summary>
+        public const string SystemVersionNum = "Required Firmware (Num)";
 
-        /// <summary>Creates the main PKG grid schema (19 columns, Region is byte[]; Region Name and System Version (Num) are hidden filter columns).</summary>
+        /// <summary>Creates the main PKG grid schema (19 columns, Region is byte[]; Region Name and Required Firmware (Num) are hidden filter columns).</summary>
         public static DataTable CreateSchema()
         {
             var dt = new DataTable();

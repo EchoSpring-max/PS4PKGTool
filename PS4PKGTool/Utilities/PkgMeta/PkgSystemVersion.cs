@@ -27,7 +27,9 @@ namespace PS4PKGTool.Utilities.PkgMeta
 
             // Some readers return 0xMMmm; others return the full 0xMMmm0000 SFO value.
             uint compact = encoded <= ushort.MaxValue ? encoded : encoded >> 16;
-            return $"{(compact >> 8) & 0xFF}.{compact & 0xFF:D2}";
+            uint major = (compact >> 8) & 0xFF;
+            uint minor = compact & 0xFF;
+            return $"{major}.{minor:X2}";
         }
 
         /// <summary>Formats PUBTOOLINFO's hexadecimal sdk_ver field (for example 09500000 → 9.50).</summary>
@@ -42,7 +44,13 @@ namespace PS4PKGTool.Utilities.PkgMeta
                 return string.Empty;
 
             uint compact = encoded >> 16;
-            return $"{(compact >> 8) & 0xFF}.{compact & 0xFF:D2}";
+
+            // sdk_ver is BCD-like: 0x01750000 represents 1.75, not
+            // 1.117. Render the two bytes as hexadecimal digits rather than
+            // converting their values to base-10 integers.
+            uint major = (compact >> 8) & 0xFF;
+            uint minor = compact & 0xFF;
+            return $"{major}.{minor:X2}";
         }
     }
 }

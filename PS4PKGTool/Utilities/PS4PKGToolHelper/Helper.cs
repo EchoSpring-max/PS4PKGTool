@@ -69,7 +69,23 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         /// </summary>
         public static string CreateOrbisTempDir(string tag)
         {
-            string dir = Path.Combine(Path.GetTempPath(), "p4t_" + tag + "_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            string root = Path.GetTempPath();
+            string configuredRoot = PS4PKGTool.Utilities.Settings.SettingsManager.appSettings_?.OrbisTempDirectory;
+            if (!string.IsNullOrWhiteSpace(configuredRoot))
+            {
+                try
+                {
+                    root = Path.GetFullPath(configuredRoot);
+                    Directory.CreateDirectory(root);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning("Configured PKG temporary directory is unavailable. Using the Windows temporary directory: " + ex.Message);
+                    root = Path.GetTempPath();
+                }
+            }
+
+            string dir = Path.Combine(root, "p4t_" + tag + "_" + Guid.NewGuid().ToString("N").Substring(0, 6));
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -181,13 +197,14 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
             public static System.Drawing.Bitmap BytesToBitmap(byte[] ImgBytes)
             {
-                System.Drawing.Bitmap result = null;
-                if (ImgBytes != null)
-                {
-                    MemoryStream stream = new MemoryStream(ImgBytes);
-                    result = (System.Drawing.Bitmap)Image.FromStream(stream);
-                }
-                return result;
+                if (ImgBytes == null) return null;
+
+                // Image.FromStream retains the stream for the image lifetime.
+                // Clone into a detached bitmap so both the input stream and the
+                // replaced PictureBox bitmap can be released deterministically.
+                using var stream = new MemoryStream(ImgBytes, writable: false);
+                using var source = Image.FromStream(stream);
+                return new System.Drawing.Bitmap(source);
             }
 
             public static Image BytesToImage(byte[] ImageBytes)

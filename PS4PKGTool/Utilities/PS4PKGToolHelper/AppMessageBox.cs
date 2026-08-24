@@ -14,7 +14,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public AppMessageBox(string title, string message, AppMessageType type, AppMessageButtons buttons)
         {
             InitializeComponent();
-            this.Icon = Helper.AppIcon;
 
             this.Text = title;
             darkLabelTitle.Text = title;

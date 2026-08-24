@@ -6,7 +6,7 @@ using PS4PKGTool.Utilities.PkgMeta;
 namespace PS4PKGTool.Utilities.PkgRename;
 
 /// <summary>
-/// PKG rename-token engine — port of PS4_Tools.PKG.SceneRelated.GetNewPKGName.
+/// PKG rename-token engine, ported from PS4_Tools.PKG.SceneRelated.GetNewPKGName.
 /// Expands {TITLE} {TITLE_ID} {APP_VERSION} {VERSION} {CATEGORY} {CONTENT_ID}
 /// {CONTENT_ID2} {REGION} {SYSTEM_VERSION} from the package's param.sfo.
 /// </summary>

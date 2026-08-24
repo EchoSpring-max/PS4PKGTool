@@ -52,18 +52,12 @@ namespace PS4PKGTool
 
         // The mini viewer intentionally creates this pane in code so its
         // hand-maintained file-browser designer layout remains stable.
-        private DarkUI.Controls.DarkSectionPanel _filePreviewPanel;
-        private Panel _filePreviewBody;
-        private PictureBox _filePreviewImage;
-        private DarkUI.Controls.DarkTextBox _filePreviewText;
-        private DarkUI.Controls.DarkLabel _filePreviewInfo;
-        private ListView _filePreviewAssetList;
-        private Button _filePreviewBackButton;
         private Assets.Abstractions.IAssetSource _filePreviewContainerSource;
         private Assets.Models.AssetDetectionResult _filePreviewContainerDetection;
         private readonly List<Assets.Abstractions.IAssetSource> _filePreviewContainerChildren = new();
         private string _filePreviewContainerTempDir;
         private int _filePreviewVersion;
+        private int _filePreviewBusy;
         private static readonly Assets.AssetInspectionService AssetService = Assets.GenericAssetRegistryBuilder.Build();
 
         public MiniPkgViewerForm()
@@ -140,34 +134,8 @@ namespace PS4PKGTool
                 _currentPackagePath, _fileListingPasscode, _fileListingLoader);
 
             InitializeComponent();
-            Icon = Helper.AppIcon;
             Text = "PS4 PKG Tool - PKG Viewer";
             toolStripStatusLabel2.Text = _currentPackagePath;
-
-            // The visual designer repeatedly drops the toolbar File/Tools/Help
-            // DropDownItems wiring when it re-serializes this form (same
-            // hazard as the games-list columns). The wiring lives in the
-            // Designer file so it is visible and editable there; these guards
-            // only re-add it if a designer save dropped it again.
-            if (fileToolStripMenuItem.DropDownItems.Count == 0)
-                fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
-                    { tbCopyMenu, tbSepRename, tbRenameMenu, tbSepExit, exitToolStripMenuItem });
-            if (toolsToolStripMenuItem.DropDownItems.Count == 0)
-                toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
-                    { tbArtworkMenu, tbExtractFullPkgItem, tbSepChangeInfo, tbChangeInfoItem, tbDownloadUpdateItem });
-            if (helpToolStripMenuItem.DropDownItems.Count == 0)
-                helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
-                    { helpAboutItem, helpCoffeeItem, helpUpdateItem });
-
-            // Same designer hazard: the Files list's column collection keeps
-            // getting dropped on re-serialization, and a Details ListView with
-            // zero columns renders nothing. Wire it here (guarded so a future
-            // designer save re-adding the line cannot double the columns).
-            if (lvFiles.Columns.Count == 0)
-                lvFiles.Columns.AddRange(new ColumnHeader[]
-                    { colFileName, colFileType, colFilePath, colFileSize });
-
-            CreateFilePreviewPane();
 
             // File browser icons from embedded resources, same set and
             // ordering as the main app (imageList1) so the tree and list
@@ -196,8 +164,6 @@ namespace PS4PKGTool
                 Logger.LogWarning("File browser icon load failed: " + ex.Message);
             }
 
-            Shown += MiniPkgViewerForm_Shown;
-            FormClosing += MiniPkgViewerForm_FormClosing;
         }
 
         private async void MiniPkgViewerForm_Shown(object sender, EventArgs e)
@@ -390,8 +356,6 @@ namespace PS4PKGTool
             {
                 if (tabsViewer.SelectedTab == tabTrophy)
                     await LoadTrophiesAsync();
-                else if (tabsViewer.SelectedTab == tabFiles)
-                    await LoadFilesAsync();
             }
             catch (Exception ex)
             {
@@ -754,104 +718,19 @@ namespace PS4PKGTool
             PreviewPackageFileAsync(model);
         }
 
-        /// <summary>
-        /// Adds the same preview surface as the main File Browser: a decoded
-        /// image where possible, otherwise text or a bounded hex dump. Keeping
-        /// it runtime-created avoids designer re-serialization dropping the
-        /// Mini viewer's existing file-browser setup.
-        /// </summary>
-        private void CreateFilePreviewPane()
-        {
-            _filePreviewPanel = new DarkUI.Controls.DarkSectionPanel
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(8, 0, 0, 0),
-                SectionHeader = "File Preview",
-            };
-            _filePreviewBody = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(20, 20, 20),
-                Padding = new Padding(1),
-            };
-            _filePreviewInfo = new DarkUI.Controls.DarkLabel
-            {
-                Dock = DockStyle.Top,
-                Height = 34,
-                Padding = new Padding(8, 0, 8, 0),
-                AutoEllipsis = true,
-                Text = "Double-click a file to preview it.",
-                TextAlign = ContentAlignment.MiddleLeft,
-            };
-            _filePreviewImage = new PictureBox
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(20, 20, 20),
-                SizeMode = PictureBoxSizeMode.Zoom,
-                Visible = false,
-            };
-            _filePreviewText = new DarkUI.Controls.DarkTextBox
-            {
-                Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.None,
-                Font = new Font("Consolas", 9F),
-                HideSelection = false,
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Both,
-                Visible = false,
-                WordWrap = false,
-            };
-            _filePreviewAssetList = new ListView
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(20, 20, 20),
-                ForeColor = Color.Gainsboro,
-                BorderStyle = BorderStyle.None,
-                FullRowSelect = true,
-                GridLines = true,
-                HideSelection = false,
-                View = View.Details,
-                Visible = false,
-            };
-            _filePreviewAssetList.Columns.Add("Name", 190);
-            _filePreviewAssetList.Columns.Add("Type", 90);
-            _filePreviewAssetList.Columns.Add("Size", 75);
-            _filePreviewAssetList.ItemActivate += filePreviewAssetList_ItemActivate;
-            _filePreviewBackButton = new Button
-            {
-                Dock = DockStyle.Bottom,
-                Height = 28,
-                FlatStyle = FlatStyle.Flat,
-                Text = "Back to asset list",
-                Visible = false,
-            };
-            _filePreviewBackButton.Click += filePreviewBackButton_Click;
-
-            _filePreviewBody.Controls.Add(_filePreviewImage);
-            _filePreviewBody.Controls.Add(_filePreviewText);
-            _filePreviewBody.Controls.Add(_filePreviewAssetList);
-            _filePreviewBody.Controls.Add(_filePreviewBackButton);
-            _filePreviewPanel.Controls.Add(_filePreviewBody);
-            _filePreviewPanel.Controls.Add(_filePreviewInfo);
-
-            fileBrowserLayout.ColumnStyles.Clear();
-            fileBrowserLayout.ColumnCount = 3;
-            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28F));
-            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
-            fileBrowserLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
-            fileBrowserLayout.SetColumn(tvFiles, 0);
-            fileBrowserLayout.SetColumn(lvFiles, 1);
-            fileBrowserLayout.Controls.Add(_filePreviewPanel, 2, 0);
-        }
-
         private async void PreviewPackageFileAsync(PkgFileNode file)
         {
             if (_resourcesReleased || _extracting || !File.Exists(_currentPackagePath))
                 return;
+            if (Interlocked.CompareExchange(ref _filePreviewBusy, 1, 0) != 0)
+            {
+                _filePreviewInfo.Text = "Preview already in progress...";
+                return;
+            }
 
             int version = Interlocked.Increment(ref _filePreviewVersion);
             CleanupFilePreviewContainer();
+            ClearFilePreviewImage();
             _filePreviewImage.Visible = false;
             _filePreviewText.Visible = false;
             _filePreviewAssetList.Visible = false;
@@ -897,6 +776,10 @@ namespace PS4PKGTool
                     _filePreviewText.Text = string.Empty;
                     _filePreviewText.Visible = true;
                 }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _filePreviewBusy, 0);
             }
         }
 
@@ -981,7 +864,14 @@ namespace PS4PKGTool
 
         private async void PreviewPackageAssetAsync(Assets.Abstractions.IAssetSource child)
         {
+            if (Interlocked.CompareExchange(ref _filePreviewBusy, 1, 0) != 0)
+            {
+                _filePreviewInfo.Text = "Preview already in progress...";
+                return;
+            }
+
             int version = Interlocked.Increment(ref _filePreviewVersion);
+            ClearFilePreviewImage();
             _filePreviewAssetList.Visible = false;
             _filePreviewImage.Visible = false;
             _filePreviewText.Visible = false;
@@ -1017,6 +907,10 @@ namespace PS4PKGTool
                     _filePreviewBackButton.Visible = true;
                 }
             }
+            finally
+            {
+                Interlocked.Exchange(ref _filePreviewBusy, 0);
+            }
         }
 
         private PreviewResult BuildPackageAssetPreview(Assets.Abstractions.IAssetSource child)
@@ -1049,7 +943,18 @@ namespace PS4PKGTool
             finally { try { File.Delete(temp); } catch { } }
         }
 
-        private void filePreviewBackButton_Click(object sender, EventArgs e) => PopulateFilePreviewAssetList();
+        private void filePreviewBackButton_Click(object sender, EventArgs e)
+        {
+            ClearFilePreviewImage();
+            PopulateFilePreviewAssetList();
+        }
+
+        private void ClearFilePreviewImage()
+        {
+            if (_filePreviewImage?.Image == null) return;
+            _filePreviewImage.Image.Dispose();
+            _filePreviewImage.Image = null;
+        }
 
         private void CleanupFilePreviewContainer()
         {
@@ -1408,6 +1313,7 @@ namespace PS4PKGTool
             _trophySession.Dispose();
             _fileListingSession.Dispose();
             CleanupFilePreviewContainer();
+            ClearFilePreviewImage();
             _loadCancellation.Cancel();
             picIcon.Image = null;
             picPic0.Image = null;
@@ -1472,7 +1378,7 @@ namespace PS4PKGTool
 
         private async void HelpUpdateItem_Click(object sender, EventArgs e)
         {
-            if (!Helper.Tool.CheckForInternetConnection())
+            if (!await Task.Run(() => Helper.Tool.CheckForInternetConnection()))
             {
                 ShowWarning("No internet connection detected. Cannot check for updates.", false);
                 return;
@@ -1607,6 +1513,7 @@ namespace PS4PKGTool
                 toolStripStatusLabel2.Text = targetPkg;
                 Text = Path.GetFileName(targetPkg) + " - PKG Viewer";
                 RebuildLazySessions();
+                _ = LoadFilesAsync();
                 ShowInformation("PKG renamed.", true);
             }
             catch (Exception ex)
@@ -1782,7 +1689,7 @@ namespace PS4PKGTool
             labelDisplayTotalPKG.Text = "Preparing extraction...";
             CancellationToken extractionToken = _extractionCancellation?.Token ?? CancellationToken.None;
 
-            var progress = new Progress<(int Current, int Total, string CurrentFile)>(p =>
+            using var progress = new UiProgress<(int Current, int Total, string CurrentFile)>(p =>
             {
                 if (_resourcesReleased || _extractionStopRequested || p.Total <= 0)
                     return;

@@ -13,9 +13,6 @@
     <Compile Update="Forms\About\AboutForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Forms\DLC\DLC.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="Forms\Game Feedback\GameFeedbackForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -29,6 +26,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\Main\Main.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Main\MissingBasePkgResultsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Main\PkgMergeForms.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\Manifest Loader\DropFolderPrompt.cs">
@@ -61,19 +64,18 @@
     <Compile Update="Forms\Shadps4 Setup\Shadps4VersionPicker.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Forms\Staged Pkg Recovery\ManualRecoveryForm.cs">
+    <Compile Update="Shell\ShellConfirmForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Forms\Staged Pkg Recovery\StagedPkgRecoveryForm.cs">
+    <Compile Update="Shell\ShellOperationForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Shell\ShellRenameDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Utilities\PS4PKGToolHelper\AppMessageBox.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Update="Forms\DLC\DLC.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-  </ItemGroup>
+  <ItemGroup />
 </Project>

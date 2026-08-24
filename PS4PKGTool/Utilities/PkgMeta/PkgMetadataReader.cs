@@ -8,7 +8,7 @@ using OrbisPkgTool.Trp;
 namespace PS4PKGTool.Utilities.PkgMeta;
 
 /// <summary>
-/// Loads <see cref="PkgMetadata"/> from a PKG file — the drop-in replacement
+/// Loads <see cref="PkgMetadata"/> from a PKG file as the drop-in replacement
 /// for PS4_Tools.PKG.SceneRelated.Read_PKG. Metadata (SFO, icon/pic artwork,
 /// trophy TRP) is fully materialized eagerly, exactly like the legacy eager
 /// loader; no file handles remain open after Read returns.
@@ -120,14 +120,14 @@ public static class PkgMetadataReader
         }
         catch (FileNotFoundException)
         {
-            // Entry absent — matches legacy (fields stay null).
+            // An absent entry matches legacy behavior; fields stay null.
         }
     }
 
     /// <summary>
     /// Official-pkg probes from the legacy reader (decompiled
     /// Read_PKG(Stream)): u16BE@0x04 ∈ {0x8300, 0x8100} → official;
-    /// u16BE@0x77 == 0x1E43 (7747) → Official_DP — and the DP probe wins
+    /// u16BE@0x77 == 0x1E43 (7747) → Official_DP, and the DP probe wins
     /// when both match (legacy: if (flag) official = true; then
     /// num != 7747 ? Official : Official_DP).
     ///

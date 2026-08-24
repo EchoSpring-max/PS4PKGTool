@@ -82,6 +82,7 @@
             Controls.Add(tbPasscodeInput);
             Controls.Add(lblPasscodePrompt);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "PasscodePromptForm";

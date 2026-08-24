@@ -489,7 +489,7 @@ namespace PS4PKGTool.Shell
             // re-prompts so a typo does not end the run).
             string passcode = PkgFileListingService.DefaultPasscode;
             ShellOperationForm.Run("Installing to shadPS4", title,
-                $"{titleId} Â· {(isPatch ? "Update" : "Base Game")} Â· v{meta.ApplicationVersion}", finalDir,
+                $"{titleId} | {(isPatch ? "Update" : "Base Game")} | v{meta.ApplicationVersion}", finalDir,
                 (progress, ct) => Task.Run(() =>
                 {
                     var stageProgress = new Progress<string>(s => progress.Report(
@@ -546,10 +546,10 @@ namespace PS4PKGTool.Shell
         private static string? ReadMetaLine(string path)
         {
             var meta = ReadMetadata(path);
-            return meta == null ? null : $"{meta.TitleId} Â· {meta.PackageCategory}";
+            return meta == null ? null : $"{meta.TitleId} | {meta.PackageCategory}";
         }
 
         private static string MetaLine(PkgInspectionSnapshot? meta)
-            => meta == null ? "" : $"{meta.TitleId} Â· {meta.PackageCategory} Â· v{meta.ApplicationVersion}";
+            => meta == null ? "" : $"{meta.TitleId} | {meta.PackageCategory} | v{meta.ApplicationVersion}";
     }
 }

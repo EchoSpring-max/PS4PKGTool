@@ -82,6 +82,16 @@ namespace PS4PKGTool
             tvFiles = new DarkUI.Controls.DarkTreeView();
             imageListFiles = new System.Windows.Forms.ImageList(components);
             lvFiles = new DarkUI.Controls.DarkListView();
+            _filePreviewPanel = new DarkUI.Controls.DarkSectionPanel();
+            _filePreviewInfo = new DarkUI.Controls.DarkLabel();
+            _filePreviewBody = new System.Windows.Forms.Panel();
+            _filePreviewImage = new System.Windows.Forms.PictureBox();
+            _filePreviewText = new DarkUI.Controls.DarkTextBox();
+            _filePreviewAssetList = new DarkUI.Controls.DarkListView();
+            colAssetName = new System.Windows.Forms.ColumnHeader();
+            colAssetType = new System.Windows.Forms.ColumnHeader();
+            colAssetSize = new System.Windows.Forms.ColumnHeader();
+            _filePreviewBackButton = new DarkUI.Controls.DarkButton();
             tbFilterFiles = new DarkUI.Controls.DarkSearchBox();
             tabArtwork = new DarkUI.Controls.DarkTabPage();
             artworkTable = new System.Windows.Forms.TableLayoutPanel();
@@ -98,7 +108,7 @@ namespace PS4PKGTool
             copyContentIdItem = new System.Windows.Forms.ToolStripMenuItem();
             copyTitleItem = new System.Windows.Forms.ToolStripMenuItem();
             copyFilenameItem = new System.Windows.Forms.ToolStripMenuItem();
-            sepRename = new System.Windows.Forms.ToolStripSeparator();
+            sepRename = new DarkUI.Controls.DarkToolStripSeparator();
             renameMenu = new System.Windows.Forms.ToolStripMenuItem();
             renameItem1 = new System.Windows.Forms.ToolStripMenuItem();
             renameItem2 = new System.Windows.Forms.ToolStripMenuItem();
@@ -111,7 +121,7 @@ namespace PS4PKGTool
             renameItem9 = new System.Windows.Forms.ToolStripMenuItem();
             renameItem10 = new System.Windows.Forms.ToolStripMenuItem();
             renameItem11 = new System.Windows.Forms.ToolStripMenuItem();
-            sepDelete = new System.Windows.Forms.ToolStripSeparator();
+            sepDelete = new DarkUI.Controls.DarkToolStripSeparator();
             deleteItem = new System.Windows.Forms.ToolStripMenuItem();
             toolsMenu = new System.Windows.Forms.ToolStripMenuItem();
             artworkMenu = new System.Windows.Forms.ToolStripMenuItem();
@@ -119,7 +129,7 @@ namespace PS4PKGTool
             artworkImagesItem = new System.Windows.Forms.ToolStripMenuItem();
             artworkIconItem = new System.Windows.Forms.ToolStripMenuItem();
             extractFullPkgItem = new System.Windows.Forms.ToolStripMenuItem();
-            sepChangeInfo = new System.Windows.Forms.ToolStripSeparator();
+            sepChangeInfo = new DarkUI.Controls.DarkToolStripSeparator();
             changeInfoItem = new System.Windows.Forms.ToolStripMenuItem();
             colFileName = new System.Windows.Forms.ColumnHeader();
             colFileType = new System.Windows.Forms.ColumnHeader();
@@ -131,7 +141,7 @@ namespace PS4PKGTool
             tbCopyTitleIdItem = new System.Windows.Forms.ToolStripMenuItem();
             tbCopyContentIdItem = new System.Windows.Forms.ToolStripMenuItem();
             tbCopyTitleItem = new System.Windows.Forms.ToolStripMenuItem();
-            tbSepRename = new System.Windows.Forms.ToolStripSeparator();
+            tbSepRename = new DarkUI.Controls.DarkToolStripSeparator();
             tbRenameMenu = new System.Windows.Forms.ToolStripMenuItem();
             tbRenameItem1 = new System.Windows.Forms.ToolStripMenuItem();
             tbRenameItem2 = new System.Windows.Forms.ToolStripMenuItem();
@@ -144,11 +154,11 @@ namespace PS4PKGTool
             tbRenameItem9 = new System.Windows.Forms.ToolStripMenuItem();
             tbRenameItem10 = new System.Windows.Forms.ToolStripMenuItem();
             tbArtworkMenu = new System.Windows.Forms.ToolStripMenuItem();
-            tbSepChangeInfo = new System.Windows.Forms.ToolStripSeparator();
+            tbSepChangeInfo = new DarkUI.Controls.DarkToolStripSeparator();
             tbChangeInfoItem = new System.Windows.Forms.ToolStripMenuItem();
             tbDownloadUpdateItem = new System.Windows.Forms.ToolStripMenuItem();
             tbExtractFullPkgItem = new System.Windows.Forms.ToolStripMenuItem();
-            tbSepExit = new System.Windows.Forms.ToolStripSeparator();
+            tbSepExit = new DarkUI.Controls.DarkToolStripSeparator();
             helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             helpAboutItem = new System.Windows.Forms.ToolStripMenuItem();
             helpCoffeeItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -156,7 +166,7 @@ namespace PS4PKGTool
             ctxFileList = new DarkUI.Controls.DarkContextMenu();
             ctxExtractItem = new System.Windows.Forms.ToolStripMenuItem();
             ctxExtractFolderItem = new System.Windows.Forms.ToolStripMenuItem();
-            sepListExtract = new System.Windows.Forms.ToolStripSeparator();
+            sepListExtract = new DarkUI.Controls.DarkToolStripSeparator();
             ctxCopyPathItem = new System.Windows.Forms.ToolStripMenuItem();
             ctxCopyNameItem = new System.Windows.Forms.ToolStripMenuItem();
             darkStatusStrip1 = new DarkUI.Controls.DarkStatusStrip();
@@ -165,7 +175,7 @@ namespace PS4PKGTool
             toolStripStatusLabel5 = new DarkUI.Controls.DarkToolStripStatusLabel();
             toolStripStatusLabel2 = new DarkUI.Controls.DarkToolStripStatusLabel();
             labelDisplayTotalPKG = new DarkUI.Controls.DarkToolStripStatusLabel();
-            btnStopExtract = new System.Windows.Forms.ToolStripButton();
+            btnStopExtract = new DarkUI.Controls.DarkToolStripButton();
             toolStripStatusLabel4 = new DarkUI.Controls.DarkToolStripStatusLabel();
             darkMenuStrip1 = new DarkUI.Controls.DarkMenuStrip();
             fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -192,6 +202,9 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)dgvTrophies).BeginInit();
             tabFiles.SuspendLayout();
             fileBrowserLayout.SuspendLayout();
+            _filePreviewPanel.SuspendLayout();
+            _filePreviewBody.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)_filePreviewImage).BeginInit();
             tabArtwork.SuspendLayout();
             artworkTable.SuspendLayout();
             pic0Panel.SuspendLayout();
@@ -866,11 +879,13 @@ namespace PS4PKGTool
             // 
             // fileBrowserLayout
             // 
-            fileBrowserLayout.ColumnCount = 2;
-            fileBrowserLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 40F));
-            fileBrowserLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 60F));
+            fileBrowserLayout.ColumnCount = 3;
+            fileBrowserLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 28F));
+            fileBrowserLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 36F));
+            fileBrowserLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 36F));
             fileBrowserLayout.Controls.Add(tvFiles, 0, 0);
             fileBrowserLayout.Controls.Add(lvFiles, 1, 0);
+            fileBrowserLayout.Controls.Add(_filePreviewPanel, 2, 0);
             fileBrowserLayout.Dock = System.Windows.Forms.DockStyle.Fill;
             fileBrowserLayout.Location = new System.Drawing.Point(12, 40);
             fileBrowserLayout.Name = "fileBrowserLayout";
@@ -919,17 +934,126 @@ namespace PS4PKGTool
             lvFiles.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Clickable;
             lvFiles.LargeImageList = null;
             lvFiles.ListViewItemSorter = null;
-            lvFiles.Location = new System.Drawing.Point(396, 0);
+            lvFiles.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { colFileName, colFileType, colFilePath, colFileSize });
+            lvFiles.Location = new System.Drawing.Point(280, 0);
             lvFiles.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
             lvFiles.MultiSelect = false;
             lvFiles.Name = "lvFiles";
-            lvFiles.Size = new System.Drawing.Size(576, 356);
+            lvFiles.Size = new System.Drawing.Size(342, 356);
             lvFiles.SmallImageList = imageListFiles;
             lvFiles.TabIndex = 1;
             lvFiles.UseCompatibleStateImageBehavior = false;
             lvFiles.View = System.Windows.Forms.View.Details;
             lvFiles.ItemActivate += lvFiles_ItemActivate;
             lvFiles.MouseClick += lvFiles_MouseClick;
+            // 
+            // _filePreviewPanel
+            // 
+            _filePreviewPanel.Controls.Add(_filePreviewBody);
+            _filePreviewPanel.Controls.Add(_filePreviewInfo);
+            _filePreviewPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            _filePreviewPanel.Location = new System.Drawing.Point(630, 0);
+            _filePreviewPanel.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            _filePreviewPanel.Name = "_filePreviewPanel";
+            _filePreviewPanel.SectionHeader = "File Preview";
+            _filePreviewPanel.Size = new System.Drawing.Size(342, 356);
+            _filePreviewPanel.TabIndex = 2;
+            // 
+            // _filePreviewInfo
+            // 
+            _filePreviewInfo.AutoEllipsis = true;
+            _filePreviewInfo.Dock = System.Windows.Forms.DockStyle.Top;
+            _filePreviewInfo.Location = new System.Drawing.Point(1, 25);
+            _filePreviewInfo.Name = "_filePreviewInfo";
+            _filePreviewInfo.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            _filePreviewInfo.Size = new System.Drawing.Size(340, 34);
+            _filePreviewInfo.TabIndex = 0;
+            _filePreviewInfo.Text = "Double-click a file to preview it.";
+            _filePreviewInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // _filePreviewBody
+            // 
+            _filePreviewBody.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            _filePreviewBody.Controls.Add(_filePreviewImage);
+            _filePreviewBody.Controls.Add(_filePreviewText);
+            _filePreviewBody.Controls.Add(_filePreviewAssetList);
+            _filePreviewBody.Controls.Add(_filePreviewBackButton);
+            _filePreviewBody.Dock = System.Windows.Forms.DockStyle.Fill;
+            _filePreviewBody.Location = new System.Drawing.Point(1, 59);
+            _filePreviewBody.Name = "_filePreviewBody";
+            _filePreviewBody.Padding = new System.Windows.Forms.Padding(1);
+            _filePreviewBody.Size = new System.Drawing.Size(340, 296);
+            _filePreviewBody.TabIndex = 1;
+            // 
+            // _filePreviewImage
+            // 
+            _filePreviewImage.BackColor = System.Drawing.Color.FromArgb(20, 20, 20);
+            _filePreviewImage.Dock = System.Windows.Forms.DockStyle.Fill;
+            _filePreviewImage.Location = new System.Drawing.Point(1, 1);
+            _filePreviewImage.Name = "_filePreviewImage";
+            _filePreviewImage.Size = new System.Drawing.Size(338, 266);
+            _filePreviewImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            _filePreviewImage.TabIndex = 0;
+            _filePreviewImage.TabStop = false;
+            _filePreviewImage.Visible = false;
+            // 
+            // _filePreviewText
+            // 
+            _filePreviewText.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            _filePreviewText.Dock = System.Windows.Forms.DockStyle.Fill;
+            _filePreviewText.Font = new System.Drawing.Font("Consolas", 9F);
+            _filePreviewText.HideSelection = false;
+            _filePreviewText.Location = new System.Drawing.Point(1, 1);
+            _filePreviewText.Multiline = true;
+            _filePreviewText.Name = "_filePreviewText";
+            _filePreviewText.ReadOnly = true;
+            _filePreviewText.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            _filePreviewText.Size = new System.Drawing.Size(338, 266);
+            _filePreviewText.TabIndex = 1;
+            _filePreviewText.Visible = false;
+            _filePreviewText.WordWrap = false;
+            // 
+            // _filePreviewAssetList
+            // 
+            _filePreviewAssetList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { colAssetName, colAssetType, colAssetSize });
+            _filePreviewAssetList.Dock = System.Windows.Forms.DockStyle.Fill;
+            _filePreviewAssetList.FullRowSelect = true;
+            _filePreviewAssetList.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Clickable;
+            _filePreviewAssetList.Location = new System.Drawing.Point(1, 1);
+            _filePreviewAssetList.MultiSelect = false;
+            _filePreviewAssetList.Name = "_filePreviewAssetList";
+            _filePreviewAssetList.Size = new System.Drawing.Size(338, 266);
+            _filePreviewAssetList.TabIndex = 2;
+            _filePreviewAssetList.UseCompatibleStateImageBehavior = false;
+            _filePreviewAssetList.View = System.Windows.Forms.View.Details;
+            _filePreviewAssetList.Visible = false;
+            _filePreviewAssetList.ItemActivate += filePreviewAssetList_ItemActivate;
+            // 
+            // colAssetName
+            // 
+            colAssetName.Text = "Name";
+            colAssetName.Width = 190;
+            // 
+            // colAssetType
+            // 
+            colAssetType.Text = "Type";
+            colAssetType.Width = 90;
+            // 
+            // colAssetSize
+            // 
+            colAssetSize.Text = "Size";
+            colAssetSize.Width = 75;
+            // 
+            // _filePreviewBackButton
+            // 
+            _filePreviewBackButton.Dock = System.Windows.Forms.DockStyle.Bottom;
+            _filePreviewBackButton.Location = new System.Drawing.Point(1, 267);
+            _filePreviewBackButton.Name = "_filePreviewBackButton";
+            _filePreviewBackButton.Size = new System.Drawing.Size(338, 28);
+            _filePreviewBackButton.TabIndex = 3;
+            _filePreviewBackButton.Text = "Back to asset list";
+            _filePreviewBackButton.Visible = false;
+            _filePreviewBackButton.Click += filePreviewBackButton_Click;
             // 
             // tbFilterFiles
             // 
@@ -1483,6 +1607,7 @@ namespace PS4PKGTool
             // helpToolStripMenuItem
             // 
             helpToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { helpAboutItem, helpCoffeeItem, helpUpdateItem });
             helpToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             helpToolStripMenuItem.Name = "helpToolStripMenuItem";
             helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
@@ -1688,11 +1813,13 @@ namespace PS4PKGTool
             Controls.Add(darkMenuStrip1);
             Controls.Add(darkStatusStrip1);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimumSize = new System.Drawing.Size(800, 580);
             Name = "MiniPkgViewerForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            FormClosing += MiniPkgViewerForm_FormClosing;
+            Shown += MiniPkgViewerForm_Shown;
             headerPanel.ResumeLayout(false);
             headerPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picIcon).EndInit();
@@ -1714,6 +1841,10 @@ namespace PS4PKGTool
             ((System.ComponentModel.ISupportInitialize)dgvTrophies).EndInit();
             tabFiles.ResumeLayout(false);
             fileBrowserLayout.ResumeLayout(false);
+            _filePreviewPanel.ResumeLayout(false);
+            _filePreviewBody.ResumeLayout(false);
+            _filePreviewBody.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)_filePreviewImage).EndInit();
             tabArtwork.ResumeLayout(false);
             artworkTable.ResumeLayout(false);
             pic0Panel.ResumeLayout(false);
@@ -1792,6 +1923,16 @@ namespace PS4PKGTool
         private System.Windows.Forms.TableLayoutPanel fileBrowserLayout;
         private DarkUI.Controls.DarkTreeView tvFiles;
         private DarkUI.Controls.DarkListView lvFiles;
+        private DarkUI.Controls.DarkSectionPanel _filePreviewPanel;
+        private System.Windows.Forms.Panel _filePreviewBody;
+        private System.Windows.Forms.PictureBox _filePreviewImage;
+        private DarkUI.Controls.DarkTextBox _filePreviewText;
+        private DarkUI.Controls.DarkLabel _filePreviewInfo;
+        private DarkUI.Controls.DarkListView _filePreviewAssetList;
+        private DarkUI.Controls.DarkButton _filePreviewBackButton;
+        private System.Windows.Forms.ColumnHeader colAssetName;
+        private System.Windows.Forms.ColumnHeader colAssetType;
+        private System.Windows.Forms.ColumnHeader colAssetSize;
         private System.Windows.Forms.ColumnHeader colFileName;
         private System.Windows.Forms.ColumnHeader colFileSize;
         private System.Windows.Forms.ColumnHeader colFileType;
@@ -1813,7 +1954,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel4;
         private DarkUI.Controls.DarkToolStripStatusLabel toolStripStatusLabel5;
         private DarkUI.Controls.DarkToolStripStatusLabel labelDisplayTotalPKG;
-        private System.Windows.Forms.ToolStripButton btnStopExtract;
+        private DarkUI.Controls.DarkToolStripButton btnStopExtract;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel1;
         private DarkUI.Controls.DarkMenuStrip darkMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
@@ -1827,7 +1968,7 @@ namespace PS4PKGTool
         private System.Windows.Forms.ToolStripMenuItem copyContentIdItem;
         private System.Windows.Forms.ToolStripMenuItem copyTitleItem;
         private System.Windows.Forms.ToolStripMenuItem copyFilenameItem;
-        private System.Windows.Forms.ToolStripSeparator sepRename;
+        private DarkUI.Controls.DarkToolStripSeparator sepRename;
         private System.Windows.Forms.ToolStripMenuItem renameMenu;
         private System.Windows.Forms.ToolStripMenuItem renameItem1;
         private System.Windows.Forms.ToolStripMenuItem renameItem2;
@@ -1840,14 +1981,14 @@ namespace PS4PKGTool
         private System.Windows.Forms.ToolStripMenuItem renameItem9;
         private System.Windows.Forms.ToolStripMenuItem renameItem10;
         private System.Windows.Forms.ToolStripMenuItem renameItem11;
-        private System.Windows.Forms.ToolStripSeparator sepDelete;
+        private DarkUI.Controls.DarkToolStripSeparator sepDelete;
         private System.Windows.Forms.ToolStripMenuItem deleteItem;
         private System.Windows.Forms.ToolStripMenuItem toolsMenu;
         private System.Windows.Forms.ToolStripMenuItem artworkMenu;
         private System.Windows.Forms.ToolStripMenuItem artworkAllItem;
         private System.Windows.Forms.ToolStripMenuItem artworkImagesItem;
         private System.Windows.Forms.ToolStripMenuItem artworkIconItem;
-        private System.Windows.Forms.ToolStripSeparator sepChangeInfo;
+        private DarkUI.Controls.DarkToolStripSeparator sepChangeInfo;
         private System.Windows.Forms.ToolStripMenuItem changeInfoItem;
         private System.Windows.Forms.ToolStripMenuItem extractFullPkgItem;
         private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator13;
@@ -1856,7 +1997,7 @@ namespace PS4PKGTool
         private System.Windows.Forms.ToolStripMenuItem tbCopyTitleIdItem;
         private System.Windows.Forms.ToolStripMenuItem tbCopyContentIdItem;
         private System.Windows.Forms.ToolStripMenuItem tbCopyTitleItem;
-        private System.Windows.Forms.ToolStripSeparator tbSepRename;
+        private DarkUI.Controls.DarkToolStripSeparator tbSepRename;
         private System.Windows.Forms.ToolStripMenuItem tbRenameMenu;
         private System.Windows.Forms.ToolStripMenuItem tbRenameItem1;
         private System.Windows.Forms.ToolStripMenuItem tbRenameItem2;
@@ -1869,11 +2010,11 @@ namespace PS4PKGTool
         private System.Windows.Forms.ToolStripMenuItem tbRenameItem9;
         private System.Windows.Forms.ToolStripMenuItem tbRenameItem10;
         private System.Windows.Forms.ToolStripMenuItem tbArtworkMenu;
-        private System.Windows.Forms.ToolStripSeparator tbSepChangeInfo;
+        private DarkUI.Controls.DarkToolStripSeparator tbSepChangeInfo;
         private System.Windows.Forms.ToolStripMenuItem tbChangeInfoItem;
         private System.Windows.Forms.ToolStripMenuItem tbDownloadUpdateItem;
         private System.Windows.Forms.ToolStripMenuItem tbExtractFullPkgItem;
-        private System.Windows.Forms.ToolStripSeparator tbSepExit;
+        private DarkUI.Controls.DarkToolStripSeparator tbSepExit;
         private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem helpAboutItem;
         private System.Windows.Forms.ToolStripMenuItem helpCoffeeItem;
@@ -1881,7 +2022,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkContextMenu ctxFileList;
         private System.Windows.Forms.ToolStripMenuItem ctxExtractItem;
         private System.Windows.Forms.ToolStripMenuItem ctxExtractFolderItem;
-        private System.Windows.Forms.ToolStripSeparator sepListExtract;
+        private DarkUI.Controls.DarkToolStripSeparator sepListExtract;
         private System.Windows.Forms.ToolStripMenuItem ctxCopyPathItem;
         private System.Windows.Forms.ToolStripMenuItem ctxCopyNameItem;
     }

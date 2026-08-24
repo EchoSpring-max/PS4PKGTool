@@ -20,7 +20,6 @@ namespace PS4PKGTool
         public PasscodePromptForm()
         {
             InitializeComponent();
-            Icon = Helper.AppIcon;
             AcceptButton = btnPasscodeOk;
             CancelButton = btnPasscodeCancel;
         }

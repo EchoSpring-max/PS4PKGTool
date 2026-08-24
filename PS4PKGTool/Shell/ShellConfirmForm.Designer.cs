@@ -30,6 +30,7 @@ namespace PS4PKGTool.Shell
             ClientSize = new System.Drawing.Size(360, 64);
             Controls.Add(lblShellConfirm);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "ShellConfirmForm";

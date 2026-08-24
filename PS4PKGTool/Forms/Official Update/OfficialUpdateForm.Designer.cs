@@ -21,7 +21,7 @@ namespace PS4PKGTool
             btnDownloadAll = new DarkUI.Controls.DarkButton();
             btnClose = new DarkUI.Controls.DarkButton();
             lblStatus = new DarkUI.Controls.DarkLabel();
-            toolStripProgress = new ProgressBar();
+            toolStripProgress = new DarkUI.Controls.DarkProgressBar();
             ((System.ComponentModel.ISupportInitialize)dgvParts).BeginInit();
             ctxMenuParts.SuspendLayout();
             SuspendLayout();
@@ -145,6 +145,7 @@ namespace PS4PKGTool
             Controls.Add(lblSummary);
             Font = new Font("Segoe UI", 9F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimumSize = new Size(700, 530);
             Name = "OfficialUpdateForm";
@@ -162,7 +163,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnDownloadAll;
         private DarkUI.Controls.DarkButton btnClose;
         private DarkUI.Controls.DarkLabel lblStatus;
-        private System.Windows.Forms.ProgressBar toolStripProgress;
+        private DarkUI.Controls.DarkProgressBar toolStripProgress;
         private DarkUI.Controls.DarkContextMenu ctxMenuParts;
         private System.Windows.Forms.ToolStripMenuItem ctxCopyUrl;
         private System.Windows.Forms.ToolStripMenuItem ctxDownload;

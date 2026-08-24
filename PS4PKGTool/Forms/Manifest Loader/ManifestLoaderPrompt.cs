@@ -19,7 +19,6 @@ namespace PS4PKGTool
             bool directoriesAvailable, int directoryCount)
         {
             InitializeComponent();
-            this.Icon = Helper.AppIcon;
 
             // Build description text
             string info = "";

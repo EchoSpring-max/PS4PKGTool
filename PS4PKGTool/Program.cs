@@ -39,7 +39,10 @@ namespace PS4PKGTool
             Theme savedTheme = ThemeManager.Presets.FirstOrDefault(theme =>
                 string.Equals(theme.Name, appSettings_.ThemeName, StringComparison.Ordinal));
             int themeIdx = appSettings_.ThemeIndex;
-            savedTheme ??= themeIdx >= 0 && themeIdx < ThemeManager.Presets.Count
+            // Theme indices change as presets are retired. Only use the old
+            // index fallback for settings files created before ThemeName existed.
+            savedTheme ??= string.IsNullOrWhiteSpace(appSettings_.ThemeName)
+                && themeIdx >= 0 && themeIdx < ThemeManager.Presets.Count
                 ? ThemeManager.Presets[themeIdx]
                 : null;
             if (savedTheme != null)

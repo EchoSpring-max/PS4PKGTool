@@ -34,7 +34,6 @@ namespace PS4PKGTool
         {
             InitializeComponent();
             _context = context;
-            Icon = Helper.AppIcon;
             _defaultButtonForeColor = btnStatusNothing.ForeColor;
 
             lblFeedbackGameName.Text = string.IsNullOrEmpty(context.Title) ? "(unknown)" : context.Title;

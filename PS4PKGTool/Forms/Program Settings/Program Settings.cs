@@ -15,6 +15,7 @@ using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System.Globalization;
 using System.Threading;
+using System.Threading.Tasks;
 using PS4PKGTool.Utilities.TrophyMetadata;
 using DarkUI.Config;
 using DarkUI.Controls;
@@ -44,7 +45,6 @@ namespace PS4PKGTool
         public ProgramSetting()
         {
             InitializeComponent();
-            this.Icon = AppIcon;
             FormClosing += ProgramSetting_FormClosing;
             FormClosed += (_, _) => ThemeManager.ThemeChanged -= ThemeManager_ThemeChanged;
             RefreshShellIntegrationStatus();
@@ -55,7 +55,7 @@ namespace PS4PKGTool
         private void RefreshShellIntegrationStatus()
         {
             bool installed = PS4PKGTool.Shell.ShellRegistry.IsInstalled();
-            lblShellIntegrationStatus.Text = ".pkg context menu: " + (installed ? "Installed" : "Not installed");
+            lblShellIntegrationStatus.Text = "Status: " + (installed ? "Installed" : "Not installed");
             btnShellInstall.Visible = !installed;
             btnShellRemove.Visible = installed;
             appSettings_.ShellIntegrationInstalled = installed;
@@ -311,13 +311,23 @@ namespace PS4PKGTool
             SettingsManager.SaveSettings(appSettings_, SettingFilePath);
         }
 
-        private void btnPingPs4_Click(object sender, EventArgs e)
+        private async void btnPingPs4_Click(object sender, EventArgs e)
         {
             if (tbPS4IP.Text == string.Empty)
                 return;
 
             Logger.LogInformation("Checking PS4 connectivity..");
-            bool isPS4Connected = Tool.CheckForPS4Connection(tbPS4IP.Text);
+            btnPingPs4.Enabled = false;
+            bool isPS4Connected;
+            try
+            {
+                string address = tbPS4IP.Text;
+                isPS4Connected = await Task.Run(() => Tool.CheckForPS4Connection(address));
+            }
+            finally
+            {
+                btnPingPs4.Enabled = true;
+            }
 
             if (isPS4Connected)
             {
@@ -329,7 +339,7 @@ namespace PS4PKGTool
             }
         }
 
-        private void btnInstallServerModule_Click(object sender, EventArgs e)
+        private async void btnInstallServerModule_Click(object sender, EventArgs e)
         {
             Logger.LogInformation("Installing http-server module..");
             bool nodejsInstalled = Tool.IsAppInstalled("Node.js");
@@ -342,16 +352,24 @@ namespace PS4PKGTool
             }
 
             this.Enabled = false;
-            InstallServerModule();
-            UpdateServerModuleStatus();
-            this.Enabled = true;
+            try
+            {
+                string error = await Task.Run(InstallServerModule);
+                if (!string.IsNullOrEmpty(error))
+                    ShowError(error, true);
+                UpdateServerModuleStatus();
+            }
+            finally
+            {
+                this.Enabled = true;
+            }
         }
 
-        private void InstallServerModule()
+        private string InstallServerModule()
         {
             try
             {
-                Process server = new Process();
+                using Process server = new Process();
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
                     WindowStyle = ProcessWindowStyle.Hidden,
@@ -374,18 +392,21 @@ namespace PS4PKGTool
                     }
                     else
                     {
-                        ShowError($"An error occurred while installing http-server. Exit code: {exitCode}. Try install http-server manually in command prompt.", true);
+                        return $"An error occurred while installing http-server. Exit code: {exitCode}. Try installing http-server manually in Command Prompt.";
                     }
                 }
                 else
                 {
                     Logger.LogError("Failed to start the process.");
+                    return "Failed to start the http-server installation process.";
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError("An error occurred: " + ex.Message);
+                return "Failed to install http-server: " + ex.Message;
             }
+            return string.Empty;
         }
 
         private void UpdateServerModuleStatus()
@@ -457,7 +478,7 @@ namespace PS4PKGTool
         {
             Logger.LogInformation("Downloading PS5 Backward Compatibility json from github..");
 
-            if (!Tool.CheckForInternetConnection("github.com"))
+            if (!await Task.Run(() => Tool.CheckForInternetConnection("github.com")))
             {
                 ShowError("Problem occured when try connecting to Github", true);
                 return;
@@ -480,7 +501,7 @@ namespace PS4PKGTool
         {
             Logger.LogInformation("Downloading shadPS4 compatibility data from GitHub..");
 
-            if (!Tool.CheckForInternetConnection("github.com"))
+            if (!await Task.Run(() => Tool.CheckForInternetConnection("github.com")))
             {
                 ShowError("Problem occured when try connecting to Github", true);
                 return;
@@ -537,16 +558,8 @@ namespace PS4PKGTool
 
         private void cbPs5BcCheck_CheckedChanged(object sender, EventArgs e)
         {
-            var ps5BcFile = File.Exists(Ps5BcJsonFile);
-            if (cbPs5BcCheck.Checked && !ps5BcFile)
-            {
-                ShowWarning("Download PS5 Backward Compatibility Status json to use this feature", false);
-                cbPs5BcCheck.Checked = false;
-            }
-            else if (cbPs5BcCheck.Checked)
-            {
+            if (cbPs5BcCheck.Checked)
                 Refresh = true;
-            }
         }
 
         private void PlaceholderButton_Click(object sender, EventArgs e)

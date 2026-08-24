@@ -144,6 +144,7 @@ namespace PS4PKGTool.Shell
             Controls.Add(lblShellPackage);
             Controls.Add(lblShellTitle);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = true;
             Name = "ShellOperationForm";

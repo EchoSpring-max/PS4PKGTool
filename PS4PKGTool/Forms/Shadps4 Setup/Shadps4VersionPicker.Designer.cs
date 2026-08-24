@@ -51,6 +51,7 @@ namespace PS4PKGTool
             this.Controls.Add(btnOk);
             this.Controls.Add(btnCancel);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Shadps4VersionPicker";

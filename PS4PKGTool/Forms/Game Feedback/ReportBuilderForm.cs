@@ -24,7 +24,6 @@ namespace PS4PKGTool
         {
             InitializeComponent();
             _entry = entry;
-            Icon = Helper.AppIcon;
 
             // The game line also names the test result this report is based
             // on ("19 Aug 2026 11:42 · In Game") - a historical report never
@@ -36,7 +35,6 @@ namespace PS4PKGTool
             txtReportDescription.Text = entry.Comment;
             txtReportError.Text = entry.Error;
 
-            cboReportStatus.Items.AddRange(PkgFilter.CompatOptions);
             int known = Array.IndexOf(PkgFilter.CompatOptions, entry.Status);
             if (known >= 0) cboReportStatus.SelectedIndex = known;
 

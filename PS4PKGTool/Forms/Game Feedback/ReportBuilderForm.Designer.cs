@@ -95,6 +95,7 @@ namespace PS4PKGTool
             // cboReportStatus
             // 
             cboReportStatus.Location = new System.Drawing.Point(120, 82);
+            cboReportStatus.Items.AddRange(new object[] { "Playable", "In-Game", "Menus", "Boots", "Nothing", "Unknown" });
             cboReportStatus.Name = "cboReportStatus";
             cboReportStatus.Size = new System.Drawing.Size(200, 24);
             cboReportStatus.TabIndex = 7;
@@ -291,7 +292,7 @@ namespace PS4PKGTool
             Controls.Add(lblReportGame);
             Controls.Add(lblReportGameLabel);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "ReportBuilderForm";

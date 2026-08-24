@@ -14,7 +14,6 @@ namespace PS4PKGTool.Shell
         public ShellConfirmForm(string message)
         {
             InitializeComponent();
-            Icon = Helper.AppIcon;
             lblShellConfirm.Text = message;
 
             var timer = new System.Windows.Forms.Timer { Interval = 2200 };

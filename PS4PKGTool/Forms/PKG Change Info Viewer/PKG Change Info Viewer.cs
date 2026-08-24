@@ -12,7 +12,6 @@ namespace PS4PKGTool
         public PKGChangeInfoViewer(string txt)
         {
             InitializeComponent();
-            this.Icon = Helper.AppIcon;
             xmlContent = txt;
             parseXml();
         }

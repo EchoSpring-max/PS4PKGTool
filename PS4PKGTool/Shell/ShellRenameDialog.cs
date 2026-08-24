@@ -15,7 +15,6 @@ namespace PS4PKGTool.Shell
         public ShellRenameDialog(string initial)
         {
             InitializeComponent();
-            Icon = Helper.AppIcon;
             txtShellFormat.Text = initial ?? "";
             txtShellFormat.SelectAll();
         }

@@ -23,23 +23,82 @@ Suggestions are welcome. Report any bugs [here](https://github.com/pearlxcore/PS
 
 # Features
 
+**Library Management**
+
 - Fast startup with manifest cache. Scan once, load instantly every time after.
 - Drag and drop PKG folders onto the window to load them.
 - Grouped list view. Group your library by Title, Title ID, Category, System Version, or PKG Type.
-- Title column visible in the main grid so game names are shown without clicking.
-- Rename PKG by install priority. Files get sequence prefixes: 00 - Base, 01 - Update.
-- Rename PKG using naming presets or a custom format with placeholders.
+- Rename PKGs by install priority, naming presets, or a custom format.
 - Move and organize PKGs into folders by title, category, region, or type.
+
+**PKG Inspection and Assets**
+
 - View PKG information: param.sfo, trophy list, entries, and change info.
+- Browse a PKG's files, artwork, PARAM.SFO data, trophies, and change information without a full library scan.
 - View and extract PKG data including background images and icons.
 - Trophy metadata viewer with names, descriptions, and grades.
+- Game Asset Viewer for images, text, audio metadata, Unity assets/bundles, Unreal PAK contents, and hex fallback previews.
+
+**Updates and Compatibility**
+
 - Latest Update column shows the newest available update version per PKG.
 - Download official update PKGs from a standalone form.
 - Filter the grid by category (Game, Patch, Addon, App) or search by filename, title, or ID.
 - Set backport labels and check for duplicate PKGs.
+- Check PS5 backward compatibility.
+- shadPS4 compatibility status by Windows, Linux, or macOS, with downloadable cached data.
+
+**shadPS4**
+
+- Install, launch, and manage PS4 games with shadPS4.
+- Managed shadPS4 core and launcher builds, game library installation, save backups, and launch diagnostics.
+- Install base PKGs and merge updates into the existing shadPS4 game installation.
+
+**File Explorer Integration**
+
+- File Explorer `.pkg` integration for rename, metadata copy, validation, extraction, and shadPS4 installation.
+- Open a single `.pkg` directly in the Mini PKG Viewer through a Windows file association.
+
+**Sharing**
+
 - Export your PKG list to Excel.
 - Send PKGs to PS4 over the network using Remote Package Installer.
-- Check PS5 backward compatibility.
+- Persistent compatibility reports and game-feedback report creation.
+
+# shadPS4 Setup and Use
+
+PS4 PKG Tool can manage shadPS4 builds, install owned PS4 PKGs into a shadPS4 game library, launch games, and manage save backups. shadPS4 compatibility data is informational only; a listed status does not guarantee that a game will run.
+
+1. Open `Tools` > `shadPS4 Manager`.
+2. In the `Builds` tab, install a managed core and launcher, or adopt an existing shadPS4 installation in the `Settings` tab.
+3. Select the active core and launcher, then choose the shadPS4 game install folder if prompted.
+4. Optional: in Program Settings, enable the shadPS4 compatibility column and download compatibility data. The column can be enabled before downloading data; statuses are populated after a download and a scan or refresh.
+5. Scan your PKGs, select a base-game PKG, then choose `Install to shadPS4`. Install updates only after the matching base game is installed.
+6. Open `Tools` > `shadPS4 Manager` > `Games` to launch an installed game. The `Saves` tab can create and restore save backups while shadPS4 is closed.
+
+On a first launch after shadPS4 changes its save or trophy locations, shadPS4 may show a **Save Migration** prompt. Choose `Copy` to use the new location while retaining the old files as a backup. This prompt belongs to shadPS4, not PS4 PKG Tool.
+
+# File Explorer `.pkg` Integration
+
+Install the per-user File Explorer context menu from `Program Settings` > `File Explorer Integration` > `Install Integration`. No administrator permission is required. On Windows 11, open the classic menu with `Show more options` when needed.
+
+The PS4 PKG Tool menu provides rename formats, copy Title/Title ID/Content ID, Validate PKG, Extract PKG, and Install to shadPS4 actions. It supports one or more selected `.pkg` files where the action allows it.
+
+The integration does not change your Windows default app for `.pkg` files. To open a single PKG in the Mini PKG Viewer by double-clicking it, set the association manually:
+
+1. Right-click a `.pkg` file and choose `Open with` > `Choose another app`.
+2. Select `PS4 PKG Tool`, or use `Choose an app on your PC` to select `PS4 PKG Tool.exe`.
+3. Enable `Always use this app to open .pkg files` and confirm.
+
+Use `Remove Integration` in Program Settings to remove only the PS4 PKG Tool context menu. It leaves your Windows default `.pkg` app unchanged.
+
+# Game Asset Viewer
+
+Open a PKG in the Mini PKG Viewer, select the `Files` tab, then double-click a file to inspect it in the File Preview panel. The viewer reads entries directly from the PKG and uses temporary working files only while a preview is open.
+
+Supported previews include PNG, JPEG, BMP, GIF, DDS, and PS4 GNF textures; text-based files; WAV, OGG, and ATRAC9 metadata; and a hex preview for unrecognized files. Unity bundles and serialized `.assets` files can be browsed to inspect contained files and supported Texture2D assets, including adjacent `.resS` stream data when available. Unreal Engine 4 PAK files can be listed and their entries browsed when the archive is not encrypted.
+
+Some game formats cannot be decoded yet, including encrypted archives and unsupported compressed Unity bundles. In those cases, the viewer shows available metadata or a hex preview instead of modifying the PKG.
 
 # How to use Remote Package Installer
 

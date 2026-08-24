@@ -34,7 +34,6 @@ namespace PS4PKGTool
             InitializeComponent();
             _settings = settings;
             _store = new Shadps4ManagedBuilds(_settings.Shadps4ManagedRoot);
-            this.Icon = Helper.AppIcon;
         }
 
         protected override void OnShown(EventArgs e)

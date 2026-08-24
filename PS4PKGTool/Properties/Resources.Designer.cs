@@ -129,6 +129,16 @@ namespace PS4PKGTool.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+
+        /// <summary>
+        ///   Looks up the PS4 PKG Tool application icon.
+        /// </summary>
+        internal static System.Drawing.Icon PackageIcon {
+            get {
+                object obj = ResourceManager.GetObject("PackageIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.

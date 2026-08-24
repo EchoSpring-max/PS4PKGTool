@@ -10,7 +10,6 @@ namespace PS4PKGTool
         public AboutForm(string version)
         {
             InitializeComponent();
-            this.Icon = Helper.AppIcon;
             lblVersion.Text = "Version " + version;
         }
 

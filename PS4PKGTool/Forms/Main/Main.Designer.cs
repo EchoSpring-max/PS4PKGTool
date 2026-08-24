@@ -34,6 +34,8 @@ namespace PS4PKGTool
         {
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Main));
+            _groupedViewRefreshTimer = new System.Windows.Forms.Timer(components);
+            _logFlushTimer = new System.Windows.Forms.Timer(components);
             label1 = new DarkUI.Controls.DarkLabel();
             label2 = new DarkUI.Controls.DarkLabel();
             fileToolStripMenuItem = new ToolStripMenuItem();
@@ -82,7 +84,7 @@ namespace PS4PKGTool
             movePkgCategoryToolStripMenuItem2 = new ToolStripMenuItem();
             movePkgRegionToolStripMenuItem2 = new ToolStripMenuItem();
             movePkgSingleFolderToolStripMenuItem2 = new ToolStripMenuItem();
-            toolStripSeparator2 = new ToolStripSeparator();
+            toolStripSeparator2 = new DarkUI.Controls.DarkToolStripSeparator();
             GroupActionTitleStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem127 = new ToolStripMenuItem();
             copyTitleIdtoolStripMenuItem2 = new ToolStripMenuItem();
@@ -92,9 +94,9 @@ namespace PS4PKGTool
             backportToolStripMenuItem = new ToolStripMenuItem();
             setBackportedToolStripMenuItem2 = new ToolStripMenuItem();
             setBackportRemarksToolStripMenuItem = new ToolStripMenuItem();
-            backportRemarkTextboxtoolStripTextBox2 = new ToolStripTextBox();
+            backportRemarkTextboxtoolStripTextBox2 = new DarkUI.Controls.DarkToolStripTextBox();
             setRemarktoolStripMenuItem2 = new ToolStripMenuItem();
-            toolStripSeparator9 = new ToolStripSeparator();
+            toolStripSeparator9 = new DarkUI.Controls.DarkToolStripSeparator();
             removeBackportedToolStripMenuItem2 = new ToolStripMenuItem();
             deletePkgtoolStripMenuItem2 = new ToolStripMenuItem();
             selectedExportPKGListToExcelToolStripMenuItem2 = new ToolStripMenuItem();
@@ -119,7 +121,7 @@ namespace PS4PKGTool
             viewPkgChangeInfotoolStripMenuItem2 = new ToolStripMenuItem();
             viewPkgExplorerStripMenuItem2 = new ToolStripMenuItem();
             downloadOfficialUpdateToolStripMenuItem2 = new ToolStripMenuItem();
-            toolStripSeparator7 = new ToolStripSeparator();
+            toolStripSeparator7 = new DarkUI.Controls.DarkToolStripSeparator();
             toolStripMenuItem18 = new ToolStripMenuItem();
             RpiCheckPkgInstalledtoolStripMenuItem2 = new ToolStripMenuItem();
             RpiSendPkgtoolStripMenuItem2 = new ToolStripMenuItem();
@@ -128,7 +130,7 @@ namespace PS4PKGTool
             RpiUninstallPatchPKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallDlcPKGToolStripMenuItem2 = new ToolStripMenuItem();
             RpiUninstallThemePKGToolStripMenuItem2 = new ToolStripMenuItem();
-            toolStripSeparatorShadps4 = new ToolStripSeparator();
+            toolStripSeparatorShadps4 = new DarkUI.Controls.DarkToolStripSeparator();
             sToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItemShadps4Launch = new ToolStripMenuItem();
             toolStripMenuItemShadps4Install = new ToolStripMenuItem();
@@ -140,10 +142,10 @@ namespace PS4PKGTool
             toolStripMenuItemTools = new ToolStripMenuItem();
             openAppDataDirectoryToolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem34 = new ToolStripMenuItem();
-            toolStripSeparator1 = new ToolStripSeparator();
-            toolStripSeparator5 = new ToolStripSeparator();
-            toolStripSeparator6 = new ToolStripSeparator();
-            toolStripSeparator3 = new ToolStripSeparator();
+            toolStripSeparator1 = new DarkUI.Controls.DarkToolStripSeparator();
+            toolStripSeparator5 = new DarkUI.Controls.DarkToolStripSeparator();
+            toolStripSeparator6 = new DarkUI.Controls.DarkToolStripSeparator();
+            toolStripSeparator3 = new DarkUI.Controls.DarkToolStripSeparator();
             label8 = new DarkUI.Controls.DarkLabel();
             darkMenuStrip1 = new DarkUI.Controls.DarkMenuStrip();
             fileToolStripMenuItem2 = new ToolStripMenuItem();
@@ -153,13 +155,13 @@ namespace PS4PKGTool
             loadFromManifestToolStripMenuItem = new ToolStripMenuItem();
             saveManifestToolStripMenuItem = new ToolStripMenuItem();
             emptyListToolStripMenuItem = new ToolStripMenuItem();
-            toolStripSeparator11 = new ToolStripSeparator();
+            toolStripSeparator11 = new DarkUI.Controls.DarkToolStripSeparator();
             exitToolStripMenuItem1 = new ToolStripMenuItem();
             toolStripMenuItem144 = new ToolStripMenuItem();
             toolStripMenuItem159 = new ToolStripMenuItem();
             toolStripMenuItem160 = new ToolStripMenuItem();
             toolStripMenuItem158 = new ToolStripMenuItem();
-            toolStripSeparator12 = new ToolStripSeparator();
+            toolStripSeparator12 = new DarkUI.Controls.DarkToolStripSeparator();
             globalActionToolStripMenuItem = new ToolStripMenuItem();
             checkForDuplicatePKGToolStripMenuItem1 = new ToolStripMenuItem();
             globalExportPKGListToExcelToolStripMenuItem1 = new ToolStripMenuItem();
@@ -186,7 +188,7 @@ namespace PS4PKGTool
             movePkgTypeToolStripMenuItem1 = new ToolStripMenuItem();
             movePkgRegionToolStripMenuItem1 = new ToolStripMenuItem();
             movePkgSingleFolderToolStripMenuItem1 = new ToolStripMenuItem();
-            toolStripSeparator4 = new ToolStripSeparator();
+            toolStripSeparator4 = new DarkUI.Controls.DarkToolStripSeparator();
             toolStripMenuItem2 = new ToolStripMenuItem();
             globalCopyStripMenuItem = new ToolStripMenuItem();
             copyTitleIdtoolStripMenuItem1 = new ToolStripMenuItem();
@@ -196,9 +198,9 @@ namespace PS4PKGTool
             toolStripMenuItem1 = new ToolStripMenuItem();
             setBackportedtoolStripMenuItem1 = new ToolStripMenuItem();
             toolStripMenuItem4 = new ToolStripMenuItem();
-            backportRemarkTextboxtoolStripTextBox1 = new ToolStripTextBox();
+            backportRemarkTextboxtoolStripTextBox1 = new DarkUI.Controls.DarkToolStripTextBox();
             setRemarktoolStripMenuItem1 = new ToolStripMenuItem();
-            toolStripSeparator10 = new ToolStripSeparator();
+            toolStripSeparator10 = new DarkUI.Controls.DarkToolStripSeparator();
             removeBackportedtoolStripMenuItem1 = new ToolStripMenuItem();
             deletePKGtoolStripMenuItem1 = new ToolStripMenuItem();
             selectedExportPKGListToExcelToolStripMenuItem1 = new ToolStripMenuItem();
@@ -221,7 +223,7 @@ namespace PS4PKGTool
             renameSelectedPkg12ToolStripMenuItem1 = new ToolStripMenuItem();
             viewPkgChangeInfotoolStripMenuItem1 = new ToolStripMenuItem();
             viewPkgExplorerStripMenuItem1 = new ToolStripMenuItem();
-            toolStripSeparator8 = new ToolStripSeparator();
+            toolStripSeparator8 = new DarkUI.Controls.DarkToolStripSeparator();
             downloadOfficialUpdateToolStripMenuItem1 = new ToolStripMenuItem();
             toolStripMenuItem16 = new ToolStripMenuItem();
             RpiCheckPkgInstalledtoolStripMenuItem1 = new ToolStripMenuItem();
@@ -256,7 +258,7 @@ namespace PS4PKGTool
             contextMenuExtractNode = new DarkUI.Controls.DarkContextMenu();
             ctxExpandNode = new ToolStripMenuItem();
             ctxCollapseNode = new ToolStripMenuItem();
-            ctxTreeSeparator = new ToolStripSeparator();
+            ctxTreeSeparator = new DarkUI.Controls.DarkToolStripSeparator();
             expandAllToolStripMenuItem = new ToolStripMenuItem();
             collapseAllNodeToolStripMenuItem = new ToolStripMenuItem();
             extractNodeToolStripMenuItem = new ToolStripMenuItem();
@@ -267,7 +269,7 @@ namespace PS4PKGTool
             contextMenuExtractListView = new DarkUI.Controls.DarkContextMenu();
             toolStripMenuItem32 = new ToolStripMenuItem();
             ctxExtractFolder = new ToolStripMenuItem();
-            ctxListSeparator = new ToolStripSeparator();
+            ctxListSeparator = new DarkUI.Controls.DarkToolStripSeparator();
             ctxCopyPath = new ToolStripMenuItem();
             ctxCopyName = new ToolStripMenuItem();
             mainTabControl = new DarkUI.Controls.DarkTabControl();
@@ -291,9 +293,9 @@ namespace PS4PKGTool
             flowChips = new DarkUI.Controls.DarkChipsPanel(components);
             lblFilterCount = new DarkUI.Controls.DarkLabel();
             subTabControl = new DarkUI.Controls.DarkTabControl();
-            tabPageTable = new TabPage();
+            tabPageTable = new DarkUI.Controls.DarkTabPage();
             PKGGridView = new DarkUI.Controls.DarkDataGridView();
-            tabPageGroup = new TabPage();
+            tabPageGroup = new DarkUI.Controls.DarkTabPage();
             groupedListView = new DarkUI.Controls.DarkGroupedListView();
             btnGroupExpand = new DarkUI.Controls.DarkButton();
             cbGroupBy = new DarkUI.Controls.DarkComboBox();
@@ -311,9 +313,9 @@ namespace PS4PKGTool
             TrophyGridView = new DarkUI.Controls.DarkDataGridView();
             tabPage3 = new DarkUI.Controls.DarkTabPage();
             flatTabControlBgi = new DarkUI.Controls.DarkTabControl();
-            tabPagePic0 = new TabPage();
+            tabPagePic0 = new DarkUI.Controls.DarkTabPage();
             pbPIC0 = new PictureBox();
-            tabPagePic1 = new TabPage();
+            tabPagePic1 = new DarkUI.Controls.DarkTabPage();
             pbPIC1 = new PictureBox();
             tabPage4 = new DarkUI.Controls.DarkTabPage();
             panel7 = new Panel();
@@ -336,6 +338,9 @@ namespace PS4PKGTool
             btnAssetBack = new DarkUI.Controls.DarkButton();
             fileViewerBody = new Panel();
             assetListView = new DarkUI.Controls.DarkListView();
+            assetNameColumn = new ColumnHeader();
+            assetTypeColumn = new ColumnHeader();
+            assetSizeColumn = new ColumnHeader();
             picPreview = new PictureBox();
             txtPreview = new DarkUI.Controls.DarkTextBox();
             txtHexPreview = new DarkUI.Controls.DarkTextBox();
@@ -354,9 +359,7 @@ namespace PS4PKGTool
             columnHeader9 = new ColumnHeader();
             columnHeader10 = new ColumnHeader();
             contextMenuGLV = new DarkUI.Controls.DarkContextMenu();
-            glvTitleStripMenuItem = new ToolStripMenuItem();
-            glvRenamePriMenuItem = new ToolStripMenuItem();
-            tabPage5 = new TabPage();
+            tabPage5 = new DarkUI.Controls.DarkTabPage();
             darkSectionPanel11 = new DarkUI.Controls.DarkSectionPanel();
             dgvUpdate = new DarkUI.Controls.DarkDataGridView();
             lblUpdateInfo = new DarkUI.Controls.DarkLabel();
@@ -2624,6 +2627,7 @@ namespace PS4PKGTool
             // ccbCategory
             // 
             ccbCategory.ItemHeight = 18;
+            ccbCategory.Items.AddRange(new object[] { "Game", "Patch", "Addon", "App", "Uknown" });
             ccbCategory.Location = new System.Drawing.Point(59, 0);
             ccbCategory.Margin = new Padding(0, 0, 12, 4);
             ccbCategory.Name = "ccbCategory";
@@ -2643,6 +2647,7 @@ namespace PS4PKGTool
             // ccbRegion
             // 
             ccbRegion.ItemHeight = 18;
+            ccbRegion.Items.AddRange(new object[] { "EU", "US", "JAPAN", "HONG_KONG", "ASIA", "KOREA" });
             ccbRegion.Location = new System.Drawing.Point(269, 0);
             ccbRegion.Margin = new Padding(0, 0, 12, 4);
             ccbRegion.Name = "ccbRegion";
@@ -2682,6 +2687,7 @@ namespace PS4PKGTool
             // ccbType
             // 
             ccbType.ItemHeight = 18;
+            ccbType.Items.AddRange(new object[] { "Official", "Fake" });
             ccbType.Location = new System.Drawing.Point(645, 0);
             ccbType.Margin = new Padding(0, 0, 12, 4);
             ccbType.Name = "ccbType";
@@ -2701,6 +2707,7 @@ namespace PS4PKGTool
             // ccbShadps4
             // 
             ccbShadps4.ItemHeight = 18;
+            ccbShadps4.Items.AddRange(new object[] { "Playable", "In-Game", "Menus", "Boots", "Nothing", "Unknown" });
             ccbShadps4.Location = new System.Drawing.Point(0, 28);
             ccbShadps4.Margin = new Padding(0, 0, 12, 4);
             ccbShadps4.Name = "ccbShadps4";
@@ -2760,6 +2767,7 @@ namespace PS4PKGTool
             subTabControl.SelectedIndex = 0;
             subTabControl.Size = new System.Drawing.Size(884, 541);
             subTabControl.TabIndex = 92;
+            subTabControl.SelectedIndexChanged += SubTabControl_SelectedIndexChanged;
             // 
             // tabPageTable
             // 
@@ -2791,6 +2799,8 @@ namespace PS4PKGTool
             PKGGridView.TabIndex = 75;
             PKGGridView.CellFormatting += PKGListGridView_CellFormatting;
             PKGGridView.ColumnHeaderMouseClick += PKGListGridView_ColumnHeaderMouseClick;
+            PKGGridView.DataError += PKGGridView_DataError;
+            PKGGridView.MouseDown += PKGGridView_MouseDown;
             PKGGridView.SelectionChanged += PKGListGridView_SelectionChanged;
             PKGGridView.DragDrop += PKGGridView_DragDrop;
             PKGGridView.DragEnter += PKGGridView_DragEnter;
@@ -2820,6 +2830,8 @@ namespace PS4PKGTool
             groupedListView.Name = "groupedListView";
             groupedListView.Size = new System.Drawing.Size(882, 474);
             groupedListView.TabIndex = 0;
+            groupedListView.ContextMenuStrip = contextMenuGLV;
+            groupedListView.SelectedItemChanged += GroupedListView_SelectedItemChanged;
             // 
             // btnGroupExpand
             // 
@@ -2831,6 +2843,7 @@ namespace PS4PKGTool
             btnGroupExpand.Size = new System.Drawing.Size(89, 23);
             btnGroupExpand.TabIndex = 103;
             btnGroupExpand.Text = "Expand All";
+            btnGroupExpand.Click += BtnGroupExpand_Click;
             // 
             // cbGroupBy
             // 
@@ -2840,6 +2853,9 @@ namespace PS4PKGTool
             cbGroupBy.Name = "cbGroupBy";
             cbGroupBy.Size = new System.Drawing.Size(185, 24);
             cbGroupBy.TabIndex = 105;
+            cbGroupBy.Items.AddRange(new object[] { "Title", "Title ID", "Required Firmware", "PKG Type", "Category", "ShadPS4" });
+            cbGroupBy.SelectedIndex = 1;
+            cbGroupBy.SelectedIndexChanged += CbGroupBy_SelectedIndexChanged;
             // 
             // darkLabelGroupBy
             // 
@@ -3246,6 +3262,7 @@ namespace PS4PKGTool
             // listView1
             // 
             listView1.AllowDrop = true;
+            listView1.Columns.AddRange(new ColumnHeader[] { columnHeader7, columnHeader8, columnHeader9, columnHeader10 });
             listView1.Dock = DockStyle.Fill;
             listView1.FullRowSelect = true;
             listView1.HeaderStyle = ColumnHeaderStyle.Clickable;
@@ -3276,6 +3293,7 @@ namespace PS4PKGTool
             tbFilterTreeView.Placeholder = "Filter filename here";
             tbFilterTreeView.Size = new System.Drawing.Size(390, 28);
             tbFilterTreeView.TabIndex = 100;
+            tbFilterTreeView.SearchTextChanged += TbFilterTreeView_SearchTextChanged;
             // 
             // splitPane3
             // 
@@ -3328,6 +3346,7 @@ namespace PS4PKGTool
             // assetListView
             // 
             assetListView.Dock = DockStyle.Fill;
+            assetListView.Columns.AddRange(new ColumnHeader[] { assetNameColumn, assetTypeColumn, assetSizeColumn });
             assetListView.FullRowSelect = true;
             assetListView.HeaderStyle = ColumnHeaderStyle.Clickable;
             assetListView.LargeImageList = null;
@@ -3342,6 +3361,21 @@ namespace PS4PKGTool
             assetListView.View = View.Details;
             assetListView.Visible = false;
             assetListView.DoubleClick += assetListView_DoubleClick;
+            // 
+            // assetNameColumn
+            // 
+            assetNameColumn.Text = "Name";
+            assetNameColumn.Width = 110;
+            // 
+            // assetTypeColumn
+            // 
+            assetTypeColumn.Text = "Type";
+            assetTypeColumn.Width = 60;
+            // 
+            // assetSizeColumn
+            // 
+            assetSizeColumn.Text = "Size";
+            assetSizeColumn.Width = 55;
             // 
             // picPreview
             // 
@@ -3527,26 +3561,10 @@ namespace PS4PKGTool
             // contextMenuGLV
             // 
             contextMenuGLV.Font = new System.Drawing.Font("Segoe UI", 9F);
-            contextMenuGLV.Items.AddRange(new ToolStripItem[] { glvTitleStripMenuItem, glvRenamePriMenuItem });
             contextMenuGLV.Name = "contextMenuGLV";
-            contextMenuGLV.Size = new System.Drawing.Size(209, 48);
-            // 
-            // glvTitleStripMenuItem
-            // 
-            glvTitleStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            glvTitleStripMenuItem.Enabled = false;
-            glvTitleStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            glvTitleStripMenuItem.Name = "glvTitleStripMenuItem";
-            glvTitleStripMenuItem.Size = new System.Drawing.Size(208, 22);
-            glvTitleStripMenuItem.Text = "PKG";
-            // 
-            // glvRenamePriMenuItem
-            // 
-            glvRenamePriMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            glvRenamePriMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            glvRenamePriMenuItem.Name = "glvRenamePriMenuItem";
-            glvRenamePriMenuItem.Size = new System.Drawing.Size(208, 22);
-            glvRenamePriMenuItem.Text = "Rename by Install Priority";
+            contextMenuGLV.Size = new System.Drawing.Size(248, 509);
+            contextMenuGLV.Opening += ContextMenuGLV_Opening;
+            ConfigureGlvContextMenu();
             // 
             // tabPage5
             // 
@@ -3898,7 +3916,7 @@ namespace PS4PKGTool
             Controls.Add(label8);
             Controls.Add(label2);
             Font = new System.Drawing.Font("Segoe UI", 9F);
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             Margin = new Padding(3, 2, 3, 2);
             MinimumSize = new System.Drawing.Size(1235, 856);
             Name = "Main";
@@ -3906,9 +3924,22 @@ namespace PS4PKGTool
             StartPosition = FormStartPosition.CenterScreen;
             Text = "PS4 PKG Tool";
             TransparencyKey = System.Drawing.Color.Fuchsia;
+            DragDrop += PKGGridView_DragDrop;
+            DragEnter += PKGGridView_DragEnter;
+            DragOver += Main_DragOver;
             FormClosed += Form1_FormClosed;
             Load += Form1_Load;
             Resize += Main_Resize;
+            // 
+            // _groupedViewRefreshTimer
+            // 
+            _groupedViewRefreshTimer.Interval = 140;
+            _groupedViewRefreshTimer.Tick += GroupedViewRefreshTimer_Tick;
+            // 
+            // _logFlushTimer
+            // 
+            _logFlushTimer.Interval = 100;
+            _logFlushTimer.Tick += LogFlushTimer_Tick;
             contextMenuPKGGridView.ResumeLayout(false);
             darkMenuStrip1.ResumeLayout(false);
             darkMenuStrip1.PerformLayout();
@@ -3974,6 +4005,79 @@ namespace PS4PKGTool
             PerformLayout();
         }
 
+        private void ConfigureGlvContextMenu()
+        {
+            contextMenuGLV.Items.Add(CreateGlvHeader("Global Operations"));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(checkForDuplicatePKGToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(checkForPatchesMissingBasePKGToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(globalExportPKGListToExcelToolStripMenuItem2));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem3));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem111));
+            contextMenuGLV.Items.Add(CreateForwardingMenu(toolStripMenuItem38));
+            contextMenuGLV.Items.Add(new DarkUI.Controls.DarkToolStripSeparator());
+
+            _glvGroupTitleMenu = CreateGlvHeader("Group Operations");
+            contextMenuGLV.Items.Add(_glvGroupTitleMenu);
+            contextMenuGLV.Items.Add(CreateGlvForwardingMenu(GroupActionExtacrtImageToolStripMenuItem));
+            contextMenuGLV.Items.Add(CreateGlvForwardingMenu(toolStripMenuItem133));
+            contextMenuGLV.Items.Add(CreateGlvAction("Export this group as excel file", () => RunWithGlvGroupSelection(() => selectedExportPKGListToExcelToolStripMenuItem2.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Delete group PKGs", GlvDeletePkg));
+            contextMenuGLV.Items.Add(CreateGlvAction("Merge base + latest update", GlvMergeBaseAndLatestUpdate));
+            contextMenuGLV.Items.Add(new DarkUI.Controls.DarkToolStripSeparator());
+
+            contextMenuGLV.Items.Add(CreateGlvHeader("shadPS4"));
+            contextMenuGLV.Items.Add(CreateGlvAction("Install base game", () => RunWithGlvCategorySelection(Util.Constants.PKGCategory.GAME, () => toolStripMenuItemShadps4Install.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Install latest update", () => RunWithGlvCategorySelection(Util.Constants.PKGCategory.PATCH, () => toolStripMenuItemShadps4Install.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Launch installed game", () => RunWithGlvCategorySelection(Util.Constants.PKGCategory.GAME, () => toolStripMenuItemShadps4Launch.PerformClick())));
+            contextMenuGLV.Items.Add(CreateGlvAction("Open shadPS4 Manager", () => toolStripMenuItemShadps4OpenManager.PerformClick()));
+        }
+
+        private static ToolStripMenuItem CreateGlvHeader(string text)
+            => new ToolStripMenuItem(text) { Enabled = false };
+
+        private static ToolStripMenuItem CreateGlvAction(string text, System.Action action)
+        {
+            var item = new ToolStripMenuItem(text);
+            item.Click += (_, _) => action();
+            return item;
+        }
+
+        private static ToolStripMenuItem CreateForwardingMenu(ToolStripMenuItem source)
+        {
+            var item = new ToolStripMenuItem(source.Text);
+            foreach (ToolStripItem child in source.DropDownItems)
+            {
+                if (child is ToolStripSeparator)
+                {
+                    item.DropDownItems.Add(new DarkUI.Controls.DarkToolStripSeparator());
+                    continue;
+                }
+                if (child is ToolStripMenuItem childMenu)
+                    item.DropDownItems.Add(CreateForwardingMenu(childMenu));
+            }
+            if (item.DropDownItems.Count == 0)
+                item.Click += (_, _) => source.PerformClick();
+            return item;
+        }
+
+        private ToolStripMenuItem CreateGlvForwardingMenu(ToolStripMenuItem source)
+        {
+            var item = new ToolStripMenuItem(source.Text);
+            foreach (ToolStripItem child in source.DropDownItems)
+            {
+                if (child is ToolStripSeparator)
+                {
+                    item.DropDownItems.Add(new DarkUI.Controls.DarkToolStripSeparator());
+                    continue;
+                }
+                if (child is ToolStripMenuItem childMenu)
+                    item.DropDownItems.Add(CreateGlvForwardingMenu(childMenu));
+            }
+            if (item.DropDownItems.Count == 0)
+                item.Click += (_, _) => RunWithGlvGroupSelection(() => source.PerformClick());
+            return item;
+        }
+
         #endregion
 
         private DarkUI.Controls.DarkLabel label1;
@@ -4003,7 +4107,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkMenuStrip darkMenuStrip1;
         private DarkUI.Controls.DarkContextMenu PkgGridViewDarkContextMenu;
         private ToolStripMenuItem toolStripMenuItem94;
-        private ToolStripSeparator toolStripSeparator5;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator5;
         private ToolStripMenuItem toolStripMenuItem111;
         private ToolStripMenuItem renameAllPkg1ToolStripMenuItem2;
         private ToolStripMenuItem renameAllPkg2ToolStripMenuItem2;
@@ -4013,7 +4117,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem renameAllPkg6ToolStripMenuItem2;
         private ToolStripMenuItem renameAllPkg9ToolStripMenuItem2;
         private ToolStripMenuItem globalExportPKGListToExcelToolStripMenuItem2;
-        private ToolStripSeparator toolStripSeparator6;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator6;
         private ToolStripMenuItem toolStripMenuItem127;
         private ToolStripMenuItem copyTitleIdtoolStripMenuItem2;
         private ToolStripMenuItem copyContentIdtoolStripMenuItem2;
@@ -4044,7 +4148,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem renameAllPkg7ToolStripMenuItem1;
         private ToolStripMenuItem extractImageAndBackgroundToolStripMenuItem;
         private ToolStripMenuItem globalExportPKGListToExcelToolStripMenuItem1;
-        private ToolStripSeparator toolStripSeparator4;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator4;
         private ToolStripMenuItem toolStripMenuItem2;
         private ToolStripMenuItem globalCopyStripMenuItem;
         private ToolStripMenuItem copyTitleIdtoolStripMenuItem1;
@@ -4115,7 +4219,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem RpiCheckPkgInstalledtoolStripMenuItem1;
         private ToolStripMenuItem uninstallPKGFromPS4ToolStripMenuItem;
         private ToolStripMenuItem toolStripMenuItem21;
-        private ToolStripSeparator toolStripSeparatorShadps4;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparatorShadps4;
         private ToolStripMenuItem toolStripMenuItemShadps4Launch;
         private ToolStripMenuItem toolStripMenuItemShadps4Install;
         private ToolStripMenuItem toolStripMenuItemShadps4InstallSetup;
@@ -4199,6 +4303,9 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkTextBox txtHexPreview;
         private PictureBox picPreview;
         private DarkUI.Controls.DarkListView assetListView;
+        private ColumnHeader assetNameColumn;
+        private ColumnHeader assetTypeColumn;
+        private ColumnHeader assetSizeColumn;
         private DarkUI.Controls.DarkButton btnAssetBack;
         private DarkUI.Controls.DarkTreeView PKGTreeView;
         private DarkUI.Controls.DarkListView listView1;
@@ -4206,7 +4313,7 @@ namespace PS4PKGTool
         private ColumnHeader columnHeader8;
         private ColumnHeader columnHeader9;
         private ColumnHeader columnHeader10;
-        private TabPage tabPage5;
+        private DarkUI.Controls.DarkTabPage tabPage5;
         private DarkUI.Controls.DarkTabPage _tabLog;
         private DarkUI.Controls.DarkTextBox _tbLogBox;
         private Panel panel8;
@@ -4216,26 +4323,26 @@ namespace PS4PKGTool
         private Panel panel6;
         private DarkUI.Controls.DarkDataGridView PKGGridView;
         private DarkUI.Controls.DarkTabControl subTabControl;
-        private System.Windows.Forms.TabPage tabPageTable;
-        private System.Windows.Forms.TabPage tabPageGroup;
+        private DarkUI.Controls.DarkTabPage tabPageTable;
+        private DarkUI.Controls.DarkTabPage tabPageGroup;
         private DarkUI.Controls.DarkGroupedListView groupedListView;
-        // (removed: tbGroupFilter, darkLabel7 — GLV filter merged into the Table tab's tbSearchGame)
+        // Removed tbGroupFilter and darkLabel7. The GLV filter uses the Table tab's tbSearchGame.
 
         private DarkUI.Controls.DarkButton btnGroupExpand;
         private DarkUI.Controls.DarkComboBox cbGroupBy;
         private DarkUI.Controls.DarkLabel darkLabelGroupBy;
         private DarkUI.Controls.DarkLabel darkLabelGroupCount;
         private DarkUI.Controls.DarkContextMenu contextMenuGLV;
-        private ToolStripMenuItem glvTitleStripMenuItem;
-        private ToolStripMenuItem glvRenamePriMenuItem;
-        private TabPage tabPagePic0;
-        private TabPage tabPagePic1;
+        private System.Windows.Forms.Timer _groupedViewRefreshTimer;
+        private System.Windows.Forms.Timer _logFlushTimer;
+        private DarkUI.Controls.DarkTabPage tabPagePic0;
+        private DarkUI.Controls.DarkTabPage tabPagePic1;
         private PictureBox pbPIC0;
         private PictureBox pbPIC1;
         private DarkUI.Controls.DarkContextMenu contextMenuExtractListView;
         private ToolStripMenuItem toolStripMenuItem32;
         private ToolStripMenuItem ctxExtractFolder;
-        private ToolStripSeparator ctxListSeparator;
+        private DarkUI.Controls.DarkToolStripSeparator ctxListSeparator;
         private ToolStripMenuItem ctxCopyPath;
         private ToolStripMenuItem ctxCopyName;
         private ToolStripMenuItem viewPkgChangeInfotoolStripMenuItem2;
@@ -4249,7 +4356,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem collapseAllNodeToolStripMenuItem;
         private ToolStripMenuItem ctxExpandNode;
         private ToolStripMenuItem ctxCollapseNode;
-        private ToolStripSeparator ctxTreeSeparator;
+        private DarkUI.Controls.DarkToolStripSeparator ctxTreeSeparator;
         private ToolStripMenuItem seperateAndMovePKGByTypeIntoFolderToolStripMenuItem;
         private ToolStripMenuItem renameAllPkg11ToolStripMenuItem1;
         private ToolStripMenuItem renameSelectedPkg11ToolStripMenuItem1;
@@ -4283,7 +4390,7 @@ namespace PS4PKGTool
         private ToolStripMenuItem selectedExtractImagesAndIconToolStripMenuItem2;
         private ToolStripMenuItem selectedExtractImageOnlyToolStripMenuItem2;
         private ToolStripMenuItem selectedExtractIconOnlyToolStripMenuItem2;
-        private ToolStripSeparator toolStripSeparator3;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator3;
         private DarkUI.Controls.DarkContextMenu contextMenuPKGGridView;
         private DarkUI.Controls.DarkContextMenu contextMenuTrophy;
         private DarkUI.Controls.DarkContextMenu contextMenuEntry;
@@ -4293,36 +4400,36 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel7;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel12;
         private DarkUI.Controls.DarkSectionPanel darkSectionPanel11;
-        private ToolStripSeparator toolStripSeparator1;
-        private ToolStripSeparator toolStripSeparator2;
-        private ToolStripSeparator toolStripSeparator7;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator1;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator2;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator7;
         private ToolStripMenuItem selectedExportPKGListToExcelToolStripMenuItem1;
         private ToolStripMenuItem toolStripMenuItem28;
         private ToolStripMenuItem selectedExtractImagesAndIconToolStripMenuItem1;
         private ToolStripMenuItem selectedExtractImageOnlyToolStripMenuItem1;
         private ToolStripMenuItem selectedExtractIconOnlyToolStripMenuItem1;
-        private ToolStripSeparator toolStripSeparator8;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator8;
         private ToolStripMenuItem backportToolStripMenuItem;
         private ToolStripMenuItem setBackportedToolStripMenuItem2;
         private ToolStripMenuItem removeBackportedToolStripMenuItem2;
         private ToolStripMenuItem toolStripMenuItem1;
         private ToolStripMenuItem setBackportedtoolStripMenuItem1;
         private ToolStripMenuItem removeBackportedtoolStripMenuItem1;
-        private ToolStripTextBox backportRemarkTextboxtoolStripTextBox1;
-        private ToolStripSeparator toolStripSeparator9;
+        private DarkUI.Controls.DarkToolStripTextBox backportRemarkTextboxtoolStripTextBox1;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator9;
         private ToolStripMenuItem setBackportRemarksToolStripMenuItem;
         private ToolStripMenuItem setRemarktoolStripMenuItem2;
         private ToolStripMenuItem toolStripMenuItem4;
         private ToolStripMenuItem setRemarktoolStripMenuItem1;
-        private ToolStripSeparator toolStripSeparator10;
-        private ToolStripTextBox backportRemarkTextboxtoolStripTextBox2;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator10;
+        private DarkUI.Controls.DarkToolStripTextBox backportRemarkTextboxtoolStripTextBox2;
         private ToolStripMenuItem movePkgTitleToolStripMenuItem2;
         private ToolStripMenuItem movePkgTitleToolStripMenuItem1;
         private ToolStripMenuItem checkForDuplicatePKGToolStripMenuItem2;
         private ToolStripMenuItem checkForDuplicatePKGToolStripMenuItem1;
         private ToolStripMenuItem checkForPatchesMissingBasePKGToolStripMenuItem2;
-        private ToolStripSeparator toolStripSeparator11;
-        private ToolStripSeparator toolStripSeparator12;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator11;
+        private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator12;
         private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator13;
         private DarkUI.Controls.DarkToolStripSeparator toolStripSeparator14;
         private ToolStripMenuItem openAppDataDirectoryToolStripMenuItem2;

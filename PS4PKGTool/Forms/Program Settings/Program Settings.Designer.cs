@@ -8,7 +8,6 @@ namespace PS4PKGTool
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ProgramSetting));
             lbPkgDirectoryList = new DarkUI.Controls.DarkListBox(components);
             darkCheckBoxRecursive = new DarkUI.Controls.DarkCheckBox();
             btnAddPkgDirectory = new DarkUI.Controls.DarkButton();
@@ -22,10 +21,10 @@ namespace PS4PKGTool
             cmbTheme = new DarkUI.Controls.DarkComboBox();
             btnOpenAppData = new DarkUI.Controls.DarkButton();
             grpPkgExtraction = new DarkUI.Controls.DarkSectionPanel();
-            lblOrbisTempDirectory = new DarkUI.Controls.DarkLabel();
-            tbOrbisTempDirectory = new DarkUI.Controls.DarkTextBox();
-            btnBrowseOrbisTempDirectory = new DarkUI.Controls.DarkButton();
             btnUseDefaultOrbisTempDirectory = new DarkUI.Controls.DarkButton();
+            btnBrowseOrbisTempDirectory = new DarkUI.Controls.DarkButton();
+            tbOrbisTempDirectory = new DarkUI.Controls.DarkTextBox();
+            lblOrbisTempDirectory = new DarkUI.Controls.DarkLabel();
             grpColors = new DarkUI.Controls.DarkSectionPanel();
             darkLabel13 = new DarkUI.Controls.DarkLabel();
             darkLabel7 = new DarkUI.Controls.DarkLabel();
@@ -105,11 +104,11 @@ namespace PS4PKGTool
             btnSaveClose = new DarkUI.Controls.DarkButton();
             darkSidebarTabControl1 = new DarkUI.Controls.DarkSidebarTabControl();
             sidebarPage1 = new DarkUI.Controls.SidebarPage();
-            grpShellIntegration = new DarkUI.Controls.DarkGroupBox();
-            lblShellIntegrationTitle = new DarkUI.Controls.DarkLabel();
-            lblShellIntegrationStatus = new DarkUI.Controls.DarkLabel();
-            btnShellInstall = new DarkUI.Controls.DarkButton();
+            grpShellIntegration = new DarkUI.Controls.DarkSectionPanel();
             btnShellRemove = new DarkUI.Controls.DarkButton();
+            btnShellInstall = new DarkUI.Controls.DarkButton();
+            lblShellIntegrationStatus = new DarkUI.Controls.DarkLabel();
+            lblShellIntegrationTitle = new DarkUI.Controls.DarkLabel();
             darkSectionPanel2 = new DarkUI.Controls.DarkSectionPanel();
             darkLabel5 = new DarkUI.Controls.DarkLabel();
             darkSectionPanel1 = new DarkUI.Controls.DarkSectionPanel();
@@ -125,6 +124,7 @@ namespace PS4PKGTool
             darkFooterBar1 = new DarkUI.Controls.DarkFooterBar();
             grpStartup.SuspendLayout();
             grpDirList.SuspendLayout();
+            grpPkgExtraction.SuspendLayout();
             grpColors.SuspendLayout();
             grpColumns.SuspendLayout();
             grpPS5BC.SuspendLayout();
@@ -135,9 +135,9 @@ namespace PS4PKGTool
             grpTrophyCache.SuspendLayout();
             darkSidebarTabControl1.SuspendLayout();
             sidebarPage1.SuspendLayout();
+            grpShellIntegration.SuspendLayout();
             darkSectionPanel2.SuspendLayout();
             darkSectionPanel1.SuspendLayout();
-            grpPkgExtraction.SuspendLayout();
             sidebarPage2.SuspendLayout();
             darkSectionPanel3.SuspendLayout();
             sidebarPage3.SuspendLayout();
@@ -149,14 +149,14 @@ namespace PS4PKGTool
             // 
             // lbPkgDirectoryList
             // 
-            lbPkgDirectoryList.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            lbPkgDirectoryList.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             lbPkgDirectoryList.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             lbPkgDirectoryList.Font = new System.Drawing.Font("Segoe UI", 9F);
             lbPkgDirectoryList.FormattingEnabled = true;
             lbPkgDirectoryList.ItemHeight = 15;
             lbPkgDirectoryList.Location = new System.Drawing.Point(13, 37);
             lbPkgDirectoryList.Name = "lbPkgDirectoryList";
-            lbPkgDirectoryList.Size = new System.Drawing.Size(570, 120);
+            lbPkgDirectoryList.Size = new System.Drawing.Size(570, 107);
             lbPkgDirectoryList.TabIndex = 0;
             lbPkgDirectoryList.TabStop = false;
             lbPkgDirectoryList.UseTabStops = false;
@@ -165,7 +165,7 @@ namespace PS4PKGTool
             // 
             darkCheckBoxRecursive.AutoSize = true;
             darkCheckBoxRecursive.Font = new System.Drawing.Font("Segoe UI", 9F);
-            darkCheckBoxRecursive.Location = new System.Drawing.Point(14, 214);
+            darkCheckBoxRecursive.Location = new System.Drawing.Point(14, 198);
             darkCheckBoxRecursive.Name = "darkCheckBoxRecursive";
             darkCheckBoxRecursive.Size = new System.Drawing.Size(110, 19);
             darkCheckBoxRecursive.TabIndex = 1;
@@ -174,7 +174,7 @@ namespace PS4PKGTool
             // btnAddPkgDirectory
             // 
             btnAddPkgDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnAddPkgDirectory.Location = new System.Drawing.Point(13, 175);
+            btnAddPkgDirectory.Location = new System.Drawing.Point(13, 157);
             btnAddPkgDirectory.Name = "btnAddPkgDirectory";
             btnAddPkgDirectory.Size = new System.Drawing.Size(132, 28);
             btnAddPkgDirectory.TabIndex = 2;
@@ -184,7 +184,7 @@ namespace PS4PKGTool
             // btnDeletePkgDirectory
             // 
             btnDeletePkgDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnDeletePkgDirectory.Location = new System.Drawing.Point(158, 175);
+            btnDeletePkgDirectory.Location = new System.Drawing.Point(158, 157);
             btnDeletePkgDirectory.Name = "btnDeletePkgDirectory";
             btnDeletePkgDirectory.Size = new System.Drawing.Size(132, 28);
             btnDeletePkgDirectory.TabIndex = 3;
@@ -194,7 +194,7 @@ namespace PS4PKGTool
             // btnClearAllPkgDirectory
             // 
             btnClearAllPkgDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnClearAllPkgDirectory.Location = new System.Drawing.Point(303, 175);
+            btnClearAllPkgDirectory.Location = new System.Drawing.Point(303, 157);
             btnClearAllPkgDirectory.Name = "btnClearAllPkgDirectory";
             btnClearAllPkgDirectory.Size = new System.Drawing.Size(132, 28);
             btnClearAllPkgDirectory.TabIndex = 4;
@@ -205,7 +205,7 @@ namespace PS4PKGTool
             // 
             grpStartup.Controls.Add(AutoSortRow);
             grpStartup.Controls.Add(cbAutoFetchUpdate);
-            grpStartup.Location = new System.Drawing.Point(12, 270);
+            grpStartup.Location = new System.Drawing.Point(12, 254);
             grpStartup.Margin = new System.Windows.Forms.Padding(6);
             grpStartup.Name = "grpStartup";
             grpStartup.Padding = new System.Windows.Forms.Padding(12);
@@ -247,7 +247,7 @@ namespace PS4PKGTool
             grpDirList.Name = "grpDirList";
             grpDirList.Padding = new System.Windows.Forms.Padding(12);
             grpDirList.SectionHeader = "PKG Directory List";
-            grpDirList.Size = new System.Drawing.Size(601, 246);
+            grpDirList.Size = new System.Drawing.Size(596, 230);
             grpDirList.TabIndex = 1;
             // 
             // BGM
@@ -279,9 +279,9 @@ namespace PS4PKGTool
             btnOpenAppData.TabIndex = 4;
             btnOpenAppData.Text = "Open App Data";
             btnOpenAppData.Click += btnOpenAppData_Click;
-            //
+            // 
             // grpPkgExtraction
-            //
+            // 
             grpPkgExtraction.Controls.Add(btnUseDefaultOrbisTempDirectory);
             grpPkgExtraction.Controls.Add(btnBrowseOrbisTempDirectory);
             grpPkgExtraction.Controls.Add(tbOrbisTempDirectory);
@@ -291,96 +291,47 @@ namespace PS4PKGTool
             grpPkgExtraction.Name = "grpPkgExtraction";
             grpPkgExtraction.Padding = new System.Windows.Forms.Padding(12);
             grpPkgExtraction.SectionHeader = "PKG Extraction";
-            grpPkgExtraction.Size = new System.Drawing.Size(601, 150);
+            grpPkgExtraction.Size = new System.Drawing.Size(597, 98);
             grpPkgExtraction.TabIndex = 2;
-            //
-            // lblOrbisTempDirectory
-            //
-            lblOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            lblOrbisTempDirectory.Location = new System.Drawing.Point(13, 36);
-            lblOrbisTempDirectory.Name = "lblOrbisTempDirectory";
-            lblOrbisTempDirectory.Size = new System.Drawing.Size(570, 28);
-            lblOrbisTempDirectory.TabIndex = 0;
-            lblOrbisTempDirectory.Text = "Temporary directory for PKG preview and extraction staging. Leave blank to use the Windows temporary directory.";
-            //
-            // tbOrbisTempDirectory
-            //
-            tbOrbisTempDirectory.Location = new System.Drawing.Point(13, 76);
-            tbOrbisTempDirectory.Name = "tbOrbisTempDirectory";
-            tbOrbisTempDirectory.Size = new System.Drawing.Size(405, 23);
-            tbOrbisTempDirectory.TabIndex = 1;
-            //
-            // btnBrowseOrbisTempDirectory
-            //
-            btnBrowseOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBrowseOrbisTempDirectory.Location = new System.Drawing.Point(426, 74);
-            btnBrowseOrbisTempDirectory.Name = "btnBrowseOrbisTempDirectory";
-            btnBrowseOrbisTempDirectory.Size = new System.Drawing.Size(75, 26);
-            btnBrowseOrbisTempDirectory.TabIndex = 2;
-            btnBrowseOrbisTempDirectory.Text = "Browse...";
-            btnBrowseOrbisTempDirectory.Click += btnBrowseOrbisTempDirectory_Click;
-            //
+            // 
             // btnUseDefaultOrbisTempDirectory
-            //
+            // 
             btnUseDefaultOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnUseDefaultOrbisTempDirectory.Location = new System.Drawing.Point(509, 74);
+            btnUseDefaultOrbisTempDirectory.Location = new System.Drawing.Point(509, 59);
             btnUseDefaultOrbisTempDirectory.Name = "btnUseDefaultOrbisTempDirectory";
             btnUseDefaultOrbisTempDirectory.Size = new System.Drawing.Size(75, 26);
             btnUseDefaultOrbisTempDirectory.TabIndex = 3;
             btnUseDefaultOrbisTempDirectory.Text = "Default";
             btnUseDefaultOrbisTempDirectory.Click += btnUseDefaultOrbisTempDirectory_Click;
-            //
-            // grpShellIntegration
-            //
-            grpShellIntegration.Controls.Add(btnShellRemove);
-            grpShellIntegration.Controls.Add(btnShellInstall);
-            grpShellIntegration.Controls.Add(lblShellIntegrationStatus);
-            grpShellIntegration.Controls.Add(lblShellIntegrationTitle);
-            grpShellIntegration.Location = new System.Drawing.Point(12, 356);
-            grpShellIntegration.Margin = new System.Windows.Forms.Padding(6);
-            grpShellIntegration.Name = "grpShellIntegration";
-            grpShellIntegration.Size = new System.Drawing.Size(601, 120);
-            grpShellIntegration.TabIndex = 3;
-            grpShellIntegration.Text = "File Explorer Integration";
-            //
-            // lblShellIntegrationTitle
-            //
-            lblShellIntegrationTitle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            lblShellIntegrationTitle.Location = new System.Drawing.Point(14, 30);
-            lblShellIntegrationTitle.Name = "lblShellIntegrationTitle";
-            lblShellIntegrationTitle.Size = new System.Drawing.Size(280, 18);
-            lblShellIntegrationTitle.TabIndex = 0;
-            lblShellIntegrationTitle.Text = ".pkg context menu";
-            //
-            // lblShellIntegrationStatus
-            //
-            lblShellIntegrationStatus.Location = new System.Drawing.Point(14, 52);
-            lblShellIntegrationStatus.Name = "lblShellIntegrationStatus";
-            lblShellIntegrationStatus.Size = new System.Drawing.Size(280, 18);
-            lblShellIntegrationStatus.TabIndex = 1;
-            lblShellIntegrationStatus.Text = ".pkg context menu: Not installed";
-            //
-            // btnShellInstall
-            //
-            btnShellInstall.Location = new System.Drawing.Point(320, 36);
-            btnShellInstall.Name = "btnShellInstall";
-            btnShellInstall.Size = new System.Drawing.Size(140, 30);
-            btnShellInstall.TabIndex = 2;
-            btnShellInstall.Text = "Install Integration";
-            btnShellInstall.Click += btnShellInstall_Click;
-            //
-            // btnShellRemove
-            //
-            btnShellRemove.Location = new System.Drawing.Point(320, 36);
-            btnShellRemove.Name = "btnShellRemove";
-            btnShellRemove.Size = new System.Drawing.Size(140, 30);
-            btnShellRemove.TabIndex = 3;
-            btnShellRemove.Text = "Remove Integration";
-            btnShellRemove.Visible = false;
-            btnShellRemove.Click += btnShellRemove_Click;
-            //
+            // 
+            // btnBrowseOrbisTempDirectory
+            // 
+            btnBrowseOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnBrowseOrbisTempDirectory.Location = new System.Drawing.Point(426, 59);
+            btnBrowseOrbisTempDirectory.Name = "btnBrowseOrbisTempDirectory";
+            btnBrowseOrbisTempDirectory.Size = new System.Drawing.Size(75, 26);
+            btnBrowseOrbisTempDirectory.TabIndex = 2;
+            btnBrowseOrbisTempDirectory.Text = "Browse...";
+            btnBrowseOrbisTempDirectory.Click += btnBrowseOrbisTempDirectory_Click;
+            // 
+            // tbOrbisTempDirectory
+            // 
+            tbOrbisTempDirectory.Location = new System.Drawing.Point(13, 61);
+            tbOrbisTempDirectory.Name = "tbOrbisTempDirectory";
+            tbOrbisTempDirectory.Size = new System.Drawing.Size(405, 23);
+            tbOrbisTempDirectory.TabIndex = 1;
+            // 
+            // lblOrbisTempDirectory
+            // 
+            lblOrbisTempDirectory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblOrbisTempDirectory.Location = new System.Drawing.Point(13, 37);
+            lblOrbisTempDirectory.Name = "lblOrbisTempDirectory";
+            lblOrbisTempDirectory.Size = new System.Drawing.Size(570, 20);
+            lblOrbisTempDirectory.TabIndex = 0;
+            lblOrbisTempDirectory.Text = "Temporary directory for PKG preview and extraction staging. Leave blank to use the Windows temporary directory.";
+            // 
             // grpColors
-            //
+            // 
             grpColors.Controls.Add(darkLabel13);
             grpColors.Controls.Add(darkLabel7);
             grpColors.Controls.Add(PKGColorLabeling);
@@ -640,7 +591,7 @@ namespace PS4PKGTool
             SystemFirmware.Font = new System.Drawing.Font("Segoe UI", 9F);
             SystemFirmware.Location = new System.Drawing.Point(13, 61);
             SystemFirmware.Name = "SystemFirmware";
-            SystemFirmware.Size = new System.Drawing.Size(105, 19);
+            SystemFirmware.Size = new System.Drawing.Size(125, 19);
             SystemFirmware.TabIndex = 4;
             SystemFirmware.Text = "Required Firmware";
             // 
@@ -737,9 +688,9 @@ namespace PS4PKGTool
             cbPs5BcCheck.ForeColor = System.Drawing.Color.Gainsboro;
             cbPs5BcCheck.Location = new System.Drawing.Point(13, 37);
             cbPs5BcCheck.Name = "cbPs5BcCheck";
-            cbPs5BcCheck.Size = new System.Drawing.Size(224, 19);
+            cbPs5BcCheck.Size = new System.Drawing.Size(275, 19);
             cbPs5BcCheck.TabIndex = 0;
-            cbPs5BcCheck.Text = "Enable PS5 BC / PSVR / PS4 Pro check";
+            cbPs5BcCheck.Text = "Show PS5 BC, PSVR, and PS4 Pro status column";
             // 
             // btnDownloadPS5BCJson
             // 
@@ -792,24 +743,24 @@ namespace PS4PKGTool
             cbShadps4Check.ForeColor = System.Drawing.Color.Gainsboro;
             cbShadps4Check.Location = new System.Drawing.Point(13, 37);
             cbShadps4Check.Name = "cbShadps4Check";
-            cbShadps4Check.Size = new System.Drawing.Size(215, 19);
+            cbShadps4Check.Size = new System.Drawing.Size(253, 19);
             cbShadps4Check.TabIndex = 0;
-            cbShadps4Check.Text = "Enable shadPS4 compatibility check";
+            cbShadps4Check.Text = "Show shadPS4 compatibility status column";
             // 
             // darkLabelShadps4Os
             // 
             darkLabelShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabelShadps4Os.Location = new System.Drawing.Point(13, 72);
             darkLabelShadps4Os.Name = "darkLabelShadps4Os";
-            darkLabelShadps4Os.Size = new System.Drawing.Size(57, 15);
+            darkLabelShadps4Os.Size = new System.Drawing.Size(132, 15);
             darkLabelShadps4Os.TabIndex = 4;
-            darkLabelShadps4Os.Text = "Platform:";
+            darkLabelShadps4Os.Text = "Compatibility platform:";
             // 
             // cmbShadps4Os
             // 
             cmbShadps4Os.Font = new System.Drawing.Font("Segoe UI", 9F);
             cmbShadps4Os.Items.AddRange(new object[] { "Windows", "Linux", "macOS" });
-            cmbShadps4Os.Location = new System.Drawing.Point(108, 67);
+            cmbShadps4Os.Location = new System.Drawing.Point(151, 67);
             cmbShadps4Os.Name = "cmbShadps4Os";
             cmbShadps4Os.Size = new System.Drawing.Size(146, 24);
             cmbShadps4Os.TabIndex = 5;
@@ -994,7 +945,7 @@ namespace PS4PKGTool
             grpRename.Controls.Add(btnPlaceSysVer);
             grpRename.Controls.Add(darkButton1);
             grpRename.Controls.Add(darkLabelNamingPatternExample);
-            grpRename.Location = new System.Drawing.Point(12, 373);
+            grpRename.Location = new System.Drawing.Point(12, 357);
             grpRename.Margin = new System.Windows.Forms.Padding(6);
             grpRename.Name = "grpRename";
             grpRename.Padding = new System.Windows.Forms.Padding(12);
@@ -1148,7 +1099,7 @@ namespace PS4PKGTool
             grpTrophyCache.Name = "grpTrophyCache";
             grpTrophyCache.Padding = new System.Windows.Forms.Padding(12);
             grpTrophyCache.SectionHeader = "Trophy Metadata Cache";
-            grpTrophyCache.Size = new System.Drawing.Size(601, 210);
+            grpTrophyCache.Size = new System.Drawing.Size(601, 190);
             grpTrophyCache.TabIndex = 0;
             // 
             // pbTrophyCacheProgress
@@ -1203,7 +1154,7 @@ namespace PS4PKGTool
             lblTrophyCacheStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
             lblTrophyCacheStatus.Location = new System.Drawing.Point(13, 155);
             lblTrophyCacheStatus.Name = "lblTrophyCacheStatus";
-            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 42);
+            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 22);
             lblTrophyCacheStatus.TabIndex = 5;
             lblTrophyCacheStatus.Text = "Cache not checked.";
             // 
@@ -1250,6 +1201,58 @@ namespace PS4PKGTool
             sidebarPage1.Size = new System.Drawing.Size(627, 656);
             sidebarPage1.TabIndex = 2;
             sidebarPage1.Text = "General";
+            // 
+            // grpShellIntegration
+            // 
+            grpShellIntegration.Controls.Add(btnShellRemove);
+            grpShellIntegration.Controls.Add(btnShellInstall);
+            grpShellIntegration.Controls.Add(lblShellIntegrationStatus);
+            grpShellIntegration.Controls.Add(lblShellIntegrationTitle);
+            grpShellIntegration.Location = new System.Drawing.Point(12, 306);
+            grpShellIntegration.Margin = new System.Windows.Forms.Padding(6);
+            grpShellIntegration.Name = "grpShellIntegration";
+            grpShellIntegration.Padding = new System.Windows.Forms.Padding(12);
+            grpShellIntegration.SectionHeader = "File Explorer Integration";
+            grpShellIntegration.Size = new System.Drawing.Size(598, 100);
+            grpShellIntegration.TabIndex = 3;
+            // 
+            // btnShellRemove
+            // 
+            btnShellRemove.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnShellRemove.Location = new System.Drawing.Point(430, 37);
+            btnShellRemove.Name = "btnShellRemove";
+            btnShellRemove.Size = new System.Drawing.Size(155, 30);
+            btnShellRemove.TabIndex = 3;
+            btnShellRemove.Text = "Remove Integration";
+            btnShellRemove.Visible = false;
+            btnShellRemove.Click += btnShellRemove_Click;
+            // 
+            // btnShellInstall
+            // 
+            btnShellInstall.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnShellInstall.Location = new System.Drawing.Point(430, 37);
+            btnShellInstall.Name = "btnShellInstall";
+            btnShellInstall.Size = new System.Drawing.Size(155, 30);
+            btnShellInstall.TabIndex = 2;
+            btnShellInstall.Text = "Install Integration";
+            btnShellInstall.Click += btnShellInstall_Click;
+            // 
+            // lblShellIntegrationStatus
+            // 
+            lblShellIntegrationStatus.Location = new System.Drawing.Point(13, 69);
+            lblShellIntegrationStatus.Name = "lblShellIntegrationStatus";
+            lblShellIntegrationStatus.Size = new System.Drawing.Size(280, 18);
+            lblShellIntegrationStatus.TabIndex = 1;
+            lblShellIntegrationStatus.Text = "Status: Not installed";
+            // 
+            // lblShellIntegrationTitle
+            // 
+            lblShellIntegrationTitle.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblShellIntegrationTitle.Location = new System.Drawing.Point(13, 43);
+            lblShellIntegrationTitle.Name = "lblShellIntegrationTitle";
+            lblShellIntegrationTitle.Size = new System.Drawing.Size(280, 18);
+            lblShellIntegrationTitle.TabIndex = 0;
+            lblShellIntegrationTitle.Text = "Adds PS4 PKG Tool actions to the right-click menu for .pkg files.";
             // 
             // darkSectionPanel2
             // 
@@ -1404,7 +1407,7 @@ namespace PS4PKGTool
             Controls.Add(darkHeaderBar1);
             Font = new System.Drawing.Font("Segoe UI", 9F);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Icon = Properties.Resources.PackageIcon;
             MaximizeBox = false;
             Name = "ProgramSetting";
             SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
@@ -1415,6 +1418,8 @@ namespace PS4PKGTool
             grpStartup.PerformLayout();
             grpDirList.ResumeLayout(false);
             grpDirList.PerformLayout();
+            grpPkgExtraction.ResumeLayout(false);
+            grpPkgExtraction.PerformLayout();
             grpColors.ResumeLayout(false);
             grpColors.PerformLayout();
             grpColumns.ResumeLayout(false);
@@ -1431,11 +1436,10 @@ namespace PS4PKGTool
             grpTrophyCache.ResumeLayout(false);
             darkSidebarTabControl1.ResumeLayout(false);
             sidebarPage1.ResumeLayout(false);
+            grpShellIntegration.ResumeLayout(false);
             darkSectionPanel2.ResumeLayout(false);
             darkSectionPanel1.ResumeLayout(false);
             darkSectionPanel1.PerformLayout();
-            grpPkgExtraction.ResumeLayout(false);
-            grpPkgExtraction.PerformLayout();
             sidebarPage2.ResumeLayout(false);
             darkSectionPanel3.ResumeLayout(false);
             sidebarPage3.ResumeLayout(false);
@@ -1452,7 +1456,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkComboBox cmbTheme;
         private DarkUI.Controls.DarkButton btnOpenAppData;
         private DarkUI.Controls.DarkSectionPanel grpPkgExtraction;
-        private DarkUI.Controls.DarkGroupBox grpShellIntegration;
+        private DarkUI.Controls.DarkSectionPanel grpShellIntegration;
         private DarkUI.Controls.DarkLabel lblShellIntegrationTitle;
         private DarkUI.Controls.DarkLabel lblShellIntegrationStatus;
         private DarkUI.Controls.DarkButton btnShellInstall;

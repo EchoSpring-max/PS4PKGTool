@@ -28,7 +28,7 @@ public enum PkgBuildState
 }
 
 /// <summary>
-/// Read-only package metadata — the shape of
+/// Read-only package metadata matching the shape of
 /// PS4_Tools.PKG.SceneRelated.Unprotected_PKG that PS4PKGTool actually
 /// consumes. Fully materialized (no open file handles), exactly like the
 /// legacy eager Read_PKG loader.
@@ -54,7 +54,7 @@ public sealed class PkgMetadata
     public string Content_ID => ContentId;
 
     /// <summary>
-    /// Legacy PKG_Type = GetPkgType(Param.Category) — the local Category
+    /// Legacy PKG_Type = GetPkgType(Param.Category); the local Category
     /// string, not OrbisPkgTool.PkgInfo.Type (whose addon classification
     /// differs: Dlc/Wallpaper/Theme).
     /// </summary>

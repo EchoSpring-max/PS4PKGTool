@@ -108,6 +108,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             this.Controls.Add(this.darkLabelMessage);
             this.Controls.Add(this.darkLabelTitle);
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "AppMessageBox";

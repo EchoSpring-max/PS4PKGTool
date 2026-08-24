@@ -13,6 +13,9 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>PackageIcon.ico</ApplicationIcon>
@@ -47,22 +50,23 @@
     <Copyright>Copyright © pearlxcore</Copyright>
     <!-- Note: GenerateAssemblyInfo=false, so these are not used at build time.
          The real version attributes live in Properties/AssemblyInfo.cs — keep them in sync. -->
-    <AssemblyVersion>1.7.0.0</AssemblyVersion>
+    <AssemblyVersion>1.8.0.0</AssemblyVersion>
     <StartupObject>PS4PKGTool.Program</StartupObject>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <FileVersion>1.7.0.0</FileVersion>
+    <FileVersion>1.8.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Update="Forms\Main\PkgMergeProgressForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Main\PkgMergeProgressForm.Designer.cs">
+      <DependentUpon>PkgMergeProgressForm.cs</DependentUpon>
+    </Compile>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="PackageIcon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ByteSize" Version="2.1.1" />
@@ -97,7 +101,13 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PS4PKGTool.Assets\PS4PKGTool.Assets.csproj" />
-    <ProjectReference Include="..\..\PS4 Fake Pkg Tools\OrbisPkgTool\OrbisPkgTool\OrbisPkgTool.csproj" />
+    <ProjectReference Include="..\..\OrbisPkgTool\OrbisPkgTool\OrbisPkgTool.csproj"
+                      Condition="'$(PublishSingleFile)' != 'true'" />
+    <!-- An executable ProjectReference cannot participate in a framework-dependent
+         single-file publish. Build its library first and embed that output instead. -->
+    <Reference Include="OrbisPkgTool" Condition="'$(PublishSingleFile)' == 'true'">
+      <HintPath>..\..\OrbisPkgTool\OrbisPkgTool\bin\$(Configuration)\net10.0-windows\OrbisPkgTool.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <!-- OrbisPkgTool is referenced in-process as a DLL. Its own CLI artifacts
        are copied by the project reference but are not used by this app. -->
@@ -106,5 +116,21 @@
                    $(TargetDir)OrbisPkgTool.deps.json;
                    $(TargetDir)OrbisPkgTool.runtimeconfig.json;
                    $(TargetDir)OrbisPkgTool.pdb" />
+  </Target>
+  <Target Name="BuildOrbisPkgToolLibraryForSingleFilePublish"
+          BeforeTargets="ResolveReferences"
+          Condition="'$(PublishSingleFile)' == 'true'">
+    <MSBuild Projects="..\..\OrbisPkgTool\OrbisPkgTool\OrbisPkgTool.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);DebugType=portable;PublishSingleFile=false;SelfContained=false;RuntimeIdentifier=" />
+  </Target>
+  <Target Name="RemoveLegacyAppConfigFromSingleFilePublish"
+          AfterTargets="Publish"
+          Condition="'$(PublishSingleFile)' == 'true'">
+    <!-- App.config is retained solely for build compatibility; .NET 10 does not use it. -->
+    <ItemGroup>
+      <SingleFilePublishSymbols Include="$(PublishDir)*.pdb" />
+    </ItemGroup>
+    <Delete Files="$(PublishDir)$(TargetName).dll.config;@(SingleFilePublishSymbols)" />
   </Target>
 </Project>

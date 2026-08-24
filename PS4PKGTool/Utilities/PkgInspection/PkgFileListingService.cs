@@ -53,7 +53,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
         public string ErrorMessage { get; init; } = string.Empty;
 
         /// <summary>Vestigial: kept for callers written against the old
-        /// orbis-pub-cmd pipeline. Always false — the in-process reader
+        /// orbis-pub-cmd pipeline. Always false because the in-process reader
         /// never stages or moves the package.</summary>
         public bool RestoreFailed { get; init; }
 
@@ -125,7 +125,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
     /// In-process replacement for the orbis-pub-cmd img_file_list spawn:
     /// OrbisPkgTool.PkgReader reads the PKG entry table (Sc0) and the inner
     /// PFS (Image0) directly. No external process, no output parsing, no
-    /// ASCII-safe temp staging — the package file is opened read-only at
+    /// ASCII-safe temp staging. The package file is opened read-only at
     /// its original path, so Unicode paths just work.
     /// </summary>
     internal sealed class PkgFileListingService : IPkgFileListingLoader
@@ -137,7 +137,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
         /// Callers pass this in when the user selects the no-passcode
         /// option in the prompt. PkgReader maps this to the default
         /// passcode and falls back to RSA dk3 recovery when the digest
-        /// check fails — the same behavior orbis-pub-cmd's --no_passcode
+        /// check fails, matching orbis-pub-cmd's --no_passcode behavior
         /// produced.</summary>
         public const string NoPasscode = "\x1";
 
@@ -193,7 +193,7 @@ namespace PS4PKGTool.Utilities.PkgInspection
             catch (Exception ex)
             {
                 // Passcode failures surface here as
-                // InvalidDataException("Passcode mismatch.") — callers
+                // InvalidDataException("Passcode mismatch."); callers
                 // (ShellCommands, Mini Viewer) match "passcode" in the
                 // message to offer the retry prompt.
                 return Failure("Package files could not be listed. " + ex.Message);

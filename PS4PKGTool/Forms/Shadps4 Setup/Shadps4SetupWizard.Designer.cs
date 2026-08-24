@@ -31,7 +31,7 @@ namespace PS4PKGTool
             btnNext2 = new DarkUI.Controls.DarkButton();
             panelStep3 = new System.Windows.Forms.Panel();
             lblProgress = new DarkUI.Controls.DarkLabel();
-            pbInstall = new System.Windows.Forms.ProgressBar();
+            pbInstall = new DarkUI.Controls.DarkProgressBar();
             btnCancelInstall = new DarkUI.Controls.DarkButton();
             panelStep4 = new System.Windows.Forms.Panel();
             lblComplete = new DarkUI.Controls.DarkLabel();
@@ -304,6 +304,7 @@ namespace PS4PKGTool
             this.Controls.Add(panelStep3);
             this.Controls.Add(panelStep4);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Shadps4SetupWizard";
@@ -336,7 +337,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnNext2;
         private System.Windows.Forms.Panel panelStep3;
         private DarkUI.Controls.DarkLabel lblProgress;
-        private System.Windows.Forms.ProgressBar pbInstall;
+        private DarkUI.Controls.DarkProgressBar pbInstall;
         private DarkUI.Controls.DarkButton btnCancelInstall;
         private System.Windows.Forms.Panel panelStep4;
         private DarkUI.Controls.DarkLabel lblComplete;

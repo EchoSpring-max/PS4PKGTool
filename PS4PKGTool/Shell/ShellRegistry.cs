@@ -27,7 +27,8 @@ namespace PS4PKGTool.Shell
 
     /// <summary>
     /// Optional per-user File Explorer integration for .pkg files (HKCU only,
-    /// no admin). The default .pkg application association is never touched.
+    /// no admin). Context-menu registration and the optional default-program
+    /// association are kept separate so either can be removed independently.
     ///
     /// Registration lives ONLY under SystemFileAssociations (verified: this is
     /// the single tree Explorer renders on Windows 11; the Classes\.pkg
@@ -101,9 +102,9 @@ namespace PS4PKGTool.Shell
         public static string ExecutablePath { get; } =
             Path.Combine(AppContext.BaseDirectory, "PS4 PKG Tool.exe");
 
-        /// <summary>Menu icon, copied next to the executable at build time.</summary>
+        /// <summary>Use the application icon already embedded in the executable.</summary>
         public static string IconPath { get; } =
-            Path.Combine(AppContext.BaseDirectory, "PackageIcon.ico");
+            ExecutablePath + ",0";
 
         /// <summary>
         /// Test hook: redirects the verb root to a throwaway HKCU path so
@@ -313,5 +314,6 @@ namespace PS4PKGTool.Shell
                 Logger.LogWarning("ShellRegistry: could not write " + entry.KeyPath + " (" + entry.ValueName + "): " + ex.Message);
             }
         }
+
     }
 }

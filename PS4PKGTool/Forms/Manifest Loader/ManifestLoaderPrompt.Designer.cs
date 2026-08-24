@@ -98,6 +98,7 @@ namespace PS4PKGTool
             Controls.Add(darkLabelInfo);
             Controls.Add(darkLabelTitle);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "ManifestLoaderPrompt";

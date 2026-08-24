@@ -63,15 +63,7 @@ namespace PS4PKGTool
             _pendingInstallRequest = installRequest;
             shadps4Tabs.SelectedIndex = Math.Clamp(
                 installRequest != null ? GamesTabIndex : initialTabIndex, 0, SettingsTabIndex);
-            this.Icon = Helper.AppIcon;
 
-            // The Games list's column collection keeps getting dropped when
-            // the visual designer re-serializes this form (it stores ListView
-            // columns out of band, and the column headers come back orphaned -
-            // a Details view with zero columns renders nothing). Wiring them
-            // here instead of the Designer makes the list immune to that.
-            lvManagerGames.Columns.AddRange(new ColumnHeader[]
-                { colGameTitle, colGameTitleId, colGameVersion, colGameLastTest });
         }
 
         protected override void OnShown(EventArgs e)
@@ -1370,7 +1362,7 @@ namespace PS4PKGTool
             // Progress<T> is created here (UI thread) so stage callbacks land
             // on the UI thread; completion marshals explicitly.
             var progress = new Progress<string>(OnInstallStage);
-            var fileProgress = new Progress<(int Current, int Total, string CurrentFile)>(OnInstallFileProgress);
+            var fileProgress = new UiProgress<(int Current, int Total, string CurrentFile)>(OnInstallFileProgress);
             _ = Task.Run(() =>
             {
                 // The worker must ALWAYS reach OnInstallCompleted: an
@@ -1385,7 +1377,11 @@ namespace PS4PKGTool
                         fileProgress: fileProgress);
                     Logger.LogInformation($"Shadps4Manager install: finished {result.Status} - {result.Message}");
                     if (IsDisposed) return;
-                    try { BeginInvoke((MethodInvoker)(() => OnInstallCompleted(result, installRequest))); }
+                    try { BeginInvoke((MethodInvoker)(() =>
+                    {
+                        fileProgress.Dispose();
+                        OnInstallCompleted(result, installRequest);
+                    })); }
                     catch (InvalidOperationException) { /* form closing raced the completion */ }
                 }
                 catch (Exception ex)
@@ -1394,9 +1390,13 @@ namespace PS4PKGTool
                     if (IsDisposed) return;
                     try
                     {
-                        BeginInvoke((MethodInvoker)(() => OnInstallCompleted(
-                            new Shadps4InstallResult(Shadps4InstallStatus.Failed,
-                                "Installation failed unexpectedly: " + ex.Message), installRequest)));
+                        BeginInvoke((MethodInvoker)(() =>
+                        {
+                            fileProgress.Dispose();
+                            OnInstallCompleted(
+                                new Shadps4InstallResult(Shadps4InstallStatus.Failed,
+                                    "Installation failed unexpectedly: " + ex.Message), installRequest);
+                        }));
                     }
                     catch (InvalidOperationException) { /* form closing raced the completion */ }
                 }

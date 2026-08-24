@@ -20,7 +20,6 @@ namespace PS4PKGTool
         {
             InitializeComponent();
             _releases = new List<Shadps4ReleaseInfo>(releases);
-            this.Icon = Helper.AppIcon;
             foreach (var r in _releases)
             {
                 string channel = r.Feed == Shadps4FeedKind.CoreStable ? "Stable" : "Nightly";

@@ -25,7 +25,6 @@ namespace PS4PKGTool
             // Newest first for chronological regression reading.
             _entries = new List<GameFeedbackEntry>(entries);
             _entries.Sort((a, b) => ParseTime(b.TimestampUtc).CompareTo(ParseTime(a.TimestampUtc)));
-            Icon = Helper.AppIcon;
             this.Text = "Test History  ·  " + titleId;
             RefreshList();
         }

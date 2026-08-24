@@ -45,7 +45,7 @@ namespace PS4PKGTool
             Controls.Add(btnPreviewClose);
             Controls.Add(txtPreviewMarkdown);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
+            Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "ReportPreviewForm";

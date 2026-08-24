@@ -139,6 +139,7 @@ namespace PS4PKGTool
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.picAppIcon);
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.Icon = global::PS4PKGTool.Properties.Resources.PackageIcon;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "AboutForm";

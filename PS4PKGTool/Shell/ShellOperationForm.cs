@@ -44,7 +44,6 @@ namespace PS4PKGTool.Shell
             Func<IProgress<ShellOperationProgress>, CancellationToken, Task<ShellOperationResult>> operation)
         {
             InitializeComponent();
-            Icon = Helper.AppIcon;
             Text = title;
             lblShellTitle.Text = title;
             lblShellPackage.Text = packageLine ?? "";
@@ -89,7 +88,7 @@ namespace PS4PKGTool.Shell
 
         private async Task RunOperationAsync()
         {
-            var progress = new Progress<ShellOperationProgress>(p =>
+            using var progress = new UiProgress<ShellOperationProgress>(p =>
             {
                 lblShellStage.Text = p.Stage;
                 prgShellProgress.Marquee = p.Percent == null;

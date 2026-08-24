@@ -18,7 +18,6 @@ namespace PS4PKGTool
         public DropFolderPrompt(List<string> folderPaths)
         {
             InitializeComponent();
-            this.Icon = Helper.AppIcon;
             FolderPaths = folderPaths;
 
             darkLabelTitle.Text = folderPaths.Count == 1 ? "Folder Dropped" : $"{folderPaths.Count} Folders Dropped";

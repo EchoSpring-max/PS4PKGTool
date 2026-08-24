@@ -14,7 +14,6 @@ namespace PS4PKGTool
         public ReportPreviewForm(string markdown)
         {
             InitializeComponent();
-            Icon = Helper.AppIcon;
             txtPreviewMarkdown.Text = markdown;
         }
 

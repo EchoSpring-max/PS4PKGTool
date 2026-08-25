@@ -3,7 +3,6 @@
 [![Github All Releases](https://img.shields.io/github/downloads/pearlxcore/PS4-PKG-Tool/total.svg)](https://github.com/pearlxcore/PS4-PKG-Tool/releases/latest)
 [![License](https://img.shields.io/github/license/pearlxcore/PS4-PKG-Tool.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/pearlxcore/PS4-PKG-Tool.svg)](https://github.com/pearlxcore/PS4-PKG-Tool)
-[![Views](https://hits.sh/github.com/pearlxcore/PS4-PKG-Tool.svg)]()
 [![.NET](https://img.shields.io/badge/.NET-10-blue)]()
 
 A windows application for managing and viewing your PS4 PKG collection.

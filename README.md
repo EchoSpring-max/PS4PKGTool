@@ -1,7 +1,10 @@
 # PS4 PKG Tool
 
-[![Github All Releases](https://img.shields.io/github/downloads/pearlxcore/PS4-PKG-Tool/total.svg)]()
+[![Github All Releases](https://img.shields.io/github/downloads/pearlxcore/PS4-PKG-Tool/total.svg)](https://github.com/pearlxcore/PS4-PKG-Tool/releases/latest)
 [![License](https://img.shields.io/github/license/pearlxcore/PS4-PKG-Tool.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/pearlxcore/PS4-PKG-Tool.svg)](https://github.com/pearlxcore/PS4-PKG-Tool)
+[![Views](https://hits.sh/github.com/pearlxcore/PS4-PKG-Tool.svg)]()
+[![.NET](https://img.shields.io/badge/.NET-10-blue)]()
 
 A windows application for managing and viewing your PS4 PKG collection.
 
@@ -46,7 +49,7 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 - Open the program settings.
 - Set the IP addresses for your PC and PS4.
 - Install Node.js and the http-server module (ensure that Node.js is allowed through the firewall).
-- If you are unable to install the http-server module via the PS4 PKG Tool, try restarting the tool and reinstalling the module. Alternatively, run `npm install http-server -g` manually in the command prompt.
+- If you are unable to install the http-server module via the PS4 PKG Tool, try restarting the tool and reinstalling the module. Alternatively, run `npm install http-server -g` manually in the command[...]
 - Save the changes and exit the program settings.
 - Launch the Remote Package Installer app on your PS4.
 - Select the PKG file you wish to install, right-click on it, and choose 'Send PKG to PS4'.
@@ -67,7 +70,7 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 
 # Download
 
-https://github.com/pearlxcore/PS4-PKG-Tool/releases
+[**Download Latest Release**](https://github.com/pearlxcore/PS4-PKG-Tool/releases/latest)
 
 # License
 

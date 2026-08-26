@@ -55,17 +55,13 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 
 # Screenshot
 
-![Image 1](https://github.com/user-attachments/assets/e0d71e99-b892-4762-a656-e16ae62cf70d)
+<img width="2560" height="1392" alt="630766390-130edeef-47ee-4346-892f-7113bc0a8de6" src="https://github.com/user-attachments/assets/e784deba-e715-48a6-9e0c-0bd5741894a9" />
+<img width="2560" height="1392" alt="630766302-0524111a-6140-4d74-b467-170e8772703b" src="https://github.com/user-attachments/assets/ca414770-05de-43f1-bc36-d27907d61217" />
+<img width="2560" height="1392" alt="630766241-767a1b8c-c3f6-42d8-8314-04fcfb298918" src="https://github.com/user-attachments/assets/443693ba-c7f7-498b-b62d-d71dfca4ba2b" />
+<img width="2560" height="1392" alt="630766103-1ebf5e56-50de-4457-90ff-4e4f9c49f623" src="https://github.com/user-attachments/assets/b2dce858-4f0e-40de-baec-56e1fa356bfa" />
+<img width="2560" height="1392" alt="630765872-e0d71e99-b892-4762-a656-e16ae62cf70d" src="https://github.com/user-attachments/assets/ac669e67-4336-45f5-8fff-3c303ca401f9" />
+<img width="2560" height="1392" alt="630777583-bf14767a-e341-4c98-9308-78b4cf2529ee" src="https://github.com/user-attachments/assets/741e0fec-a829-4d49-b1bc-3973d9896c73" />
 
-![Image 2](https://github.com/user-attachments/assets/1ebf5e56-50de-4457-90ff-4e4f9c49f623)
-
-![Image 3](https://github.com/user-attachments/assets/bf14767a-e341-4c98-9308-78b4cf2529ee)
-
-![Image 4](https://github.com/user-attachments/assets/767a1b8c-c3f6-42d8-8314-04fcfb298918)
-
-![Image 5](https://github.com/user-attachments/assets/0524111a-6140-4d74-b467-170e8772703b)
-
-![Image 6](https://github.com/user-attachments/assets/130edeef-47ee-4346-892f-7113bc0a8de6)
 
 # Download
 

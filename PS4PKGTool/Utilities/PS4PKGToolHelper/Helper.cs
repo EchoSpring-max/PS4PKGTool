@@ -904,10 +904,8 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "cmd",
-                    Arguments = $"/c start {url}",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
+                    FileName = url,
+                    UseShellExecute = true
                 });
             }
             public static bool IsAppInstalled(string softwareName)

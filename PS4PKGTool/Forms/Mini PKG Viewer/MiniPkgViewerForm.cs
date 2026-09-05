@@ -1400,7 +1400,7 @@ namespace PS4PKGTool
                 {
                     var result = new UpdateNotifyDialog(checker).ShowDialog();
                     if (result == DialogResult.Yes)
-                        Process.Start("https://github.com/pearlxcore/PS4-PKG-Tool/releases");
+                        Helper.Tool.OpenWebLink("https://github.com/pearlxcore/PS4-PKG-Tool/releases");
                 }
             }
             catch (Exception ex)

@@ -128,12 +128,19 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 
 # Screenshot
 
-<img width="2560" height="1392" alt="630766390-130edeef-47ee-4346-892f-7113bc0a8de6" src="https://github.com/user-attachments/assets/e784deba-e715-48a6-9e0c-0bd5741894a9" />
-<img width="2560" height="1392" alt="630766302-0524111a-6140-4d74-b467-170e8772703b" src="https://github.com/user-attachments/assets/ca414770-05de-43f1-bc36-d27907d61217" />
-<img width="2560" height="1392" alt="630766241-767a1b8c-c3f6-42d8-8314-04fcfb298918" src="https://github.com/user-attachments/assets/443693ba-c7f7-498b-b62d-d71dfca4ba2b" />
-<img width="2560" height="1392" alt="630766103-1ebf5e56-50de-4457-90ff-4e4f9c49f623" src="https://github.com/user-attachments/assets/b2dce858-4f0e-40de-baec-56e1fa356bfa" />
-<img width="2560" height="1392" alt="630765872-e0d71e99-b892-4762-a656-e16ae62cf70d" src="https://github.com/user-attachments/assets/ac669e67-4336-45f5-8fff-3c303ca401f9" />
-<img width="2560" height="1392" alt="630777583-bf14767a-e341-4c98-9308-78b4cf2529ee" src="https://github.com/user-attachments/assets/741e0fec-a829-4d49-b1bc-3973d9896c73" />
+<img width="2560" height="1392" alt="1" src="https://github.com/user-attachments/assets/cf77769b-cba4-4a20-b0e2-61d55c4827b0" />
+<img width="2560" height="1392" alt="2jpg" src="https://github.com/user-attachments/assets/e4e3edc7-cabf-4a5d-b925-98e5b5c9efd9" />
+<img width="2560" height="1392" alt="3" src="https://github.com/user-attachments/assets/812b191a-3416-4480-908c-b6d0b1363f07" />
+<img width="2560" height="1392" alt="4" src="https://github.com/user-attachments/assets/454b9c85-be15-4e7e-8df6-0a57e554b95e" />
+<img width="2560" height="1392" alt="5" src="https://github.com/user-attachments/assets/6c8a9745-9bcf-473c-b056-0a1e47493726" />
+<img width="2560" height="1392" alt="6" src="https://github.com/user-attachments/assets/83b23e6c-4ebf-4f99-ad8f-1f88327a595c" />
+<img width="2560" height="1392" alt="7" src="https://github.com/user-attachments/assets/9ec58860-4fba-4e65-b80b-d9dfb5d144a8" />
+<img width="2560" height="1391" alt="8" src="https://github.com/user-attachments/assets/7b01250f-0a27-4cbf-8adc-081005fdc358" />
+<img width="2557" height="1390" alt="9" src="https://github.com/user-attachments/assets/ae0b7956-6d56-422f-b39c-f8a41d24db81" />
+<img width="1006" height="632" alt="10" src="https://github.com/user-attachments/assets/5af7f7b9-1c0e-4b8b-89a4-97b46aaa3427" />
+<img width="1006" height="632" alt="11" src="https://github.com/user-attachments/assets/4dd60694-cb59-4560-a4be-ba5bbf1c3520" />
+<img width="700" height="597" alt="12" src="https://github.com/user-attachments/assets/49728d64-d0d2-4374-b502-1941ad17c855" />
+
 
 
 # Download

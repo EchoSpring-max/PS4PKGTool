@@ -1,9 +1,5 @@
 # PS4 PKG Tool v1.8.0 Changelog
 
-Released: 23 August 2026
-
-Version 1.8.0 is a major release focused on modern PKG handling, game-asset browsing and shadPS4 game management.
-
 ## Added features
 
 ### shadPS4 Manager
@@ -37,7 +33,10 @@ Compatibility status is informative only. It does not guarantee that every game,
 - Saved results appear in the game's local test history and recent-results views.
 - Use **Create Report** to prepare a shadPS4 compatibility report from a saved result.
 - The report builder pre-fills game and test information, supports Markdown preview and copies the finished report for submission.
-- Local test results do not modify upstream compatibility data.
+
+### Theme
+
+Choose a DarkUI theme in **Program Settings** to customize the application's appearance. The selected theme is saved and applied across the app.
 
 ### OrbisPkgTool integration
 
@@ -54,7 +53,7 @@ PS4 PKG Tool uses OrbisPkgTool in-process for:
 - Validating, building, repacking and merging supported fake PKGs.
 - Combining a base PKG with its latest update into one merged Game PKG.
 
-Users do not need to install or manually run Sony's command-line tools. Unicode package and destination paths work directly for normal reads and extraction. Program Settings includes an optional OrbisPkgTool temporary-work directory.
+Unicode package and destination paths work directly for normal reads and extraction. Program Settings includes an optional OrbisPkgTool temporary-work directory.
 
 Successful repacks clean their work directory when safe. Failed repacks, or repacks whose output remains inside the work directory, keep the work data so the output or diagnostic files are not deleted.
 
@@ -68,7 +67,7 @@ Long-running package work can now be queued and processed sequentially from the 
 
 ### Experimental PKG to FFPFSC conversion
 
-PS4 PKG Tool can convert one or more supported PS4 PKGs into separate FFPFSC images for installation testing on jailbroken PS5 systems with ShadowMountPlus.
+PS4 PKG Tool can convert PS4 PKGs into FFPFSC images for installation testing on jailbroken PS5 systems with ShadowMountPlus.
 
 - Conversion supports one or more selected PKGs and runs through the Task Queue.
 - This feature is experimental and has not been broadly tested on real PS5 hardware. Keep the original PKG and verify converted output before relying on it.
@@ -82,8 +81,6 @@ The File Browser now supports game-asset browsing and previewing directly from a
 - Browse supported Unity bundles and serialized `.assets` files.
 - Unity assets show their individual objects first, allowing a specific asset to be selected for preview or texture export.
 - Browse supported Unreal PAK and package layouts.
-- Improved handling for streamed Unity textures and missing companion data.
-- Clear messages for unsupported, truncated or externally streamed assets instead of browser crashes.
 
 ### PKG Viewer
 
@@ -94,7 +91,6 @@ The File Browser now supports game-asset browsing and previewing directly from a
 - Full extraction, artwork export and change-info viewing.
 - The same three-pane File Browser and asset-preview workflow as the main app.
 - Passcode prompt support for protected packages.
-- Visible, cancellable extraction progress.
 
 ### File Explorer integration
 
@@ -124,10 +120,6 @@ Enable **File Explorer Integration** in Program Settings to add a **PS4 PKG Tool
 - Faster selection of larger installed shadPS4 games.
 - Trophy archive entries are streamed during archive extraction instead of being buffered all at once.
 - Replaced preview images are disposed correctly.
-- Full extraction and shadPS4 installation show determinate `current/total` progress.
-- PKG Viewer loads its file list once at launch instead of each time the Files tab is opened.
-- Resizable grid and DarkListView columns with improved fit-to-width behavior.
-- DarkUI controls are used consistently throughout the app where an equivalent control is available.
 
 ## Added settings and interface options
 
@@ -139,18 +131,8 @@ Enable **File Explorer Integration** in Program Settings to add a **PS4 PKG Tool
 
 - Required Firmware now reads `PARAM.SFO > PUBTOOLINFO > SDK_VER` correctly.
 - Base-game and update metadata is consistent across directory scans, manifests and dropped PKGs.
-- Installing an update over a base game now updates the installed version shown in shadPS4 Manager.
 - A saved directory with no PKGs no longer prevents other saved directories from loading.
-- Fixed Unity asset-object listing and preview in the File Browser and PKG Viewer.
-- Fixed a Unity texture-export indexing error and improved messages for unsupported layouts.
-- Fixed streamed Unity texture preview when companion data is available.
 - Fixed File Browser preview state and Back-to-list navigation.
 - Fixed errors while typing in the File Browser filter box.
-- Fixed DarkSidebarTabControl menu highlighting and initial-tab selection issues.
-- Fixed extraction and install progress bars that could disappear or remain indeterminate.
 - Fixed inconsistent disabled actions when launching with an empty library.
 - Fixed stale package information, artwork and title text remaining after the library becomes empty.
-
-## Planned for a future update
-
-- Patches & Cheats management in PS4 PKG Tool.

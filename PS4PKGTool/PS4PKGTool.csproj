@@ -89,12 +89,6 @@
     <Reference Include="DarkUI">
       <HintPath>..\..\DarkUI\DarkUI\bin\Release\net10.0-windows\DarkUI.dll</HintPath>
     </Reference>
-    <Reference Include="DiscUtils.Core">
-      <HintPath>Library.Core\DiscUtils.dll</HintPath>
-    </Reference>
-    <Reference Include="VisualStudioTabControl.Core">
-      <HintPath>Library.Core\VisualStudioTabControl.Core.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <None Update="Properties\Settings.settings">

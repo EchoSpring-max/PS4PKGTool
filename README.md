@@ -95,17 +95,23 @@ PS4 PKG Tool can manage shadPS4 builds, install owned PS4 PKGs into a shadPS4 ga
 
 On a first launch after shadPS4 changes its save or trophy locations, shadPS4 may show a **Save Migration** prompt. Choose `Copy` to use the new location while retaining the old files as a backup. This prompt belongs to shadPS4, not PS4 PKG Tool.
 
+# PKG Viewer
+
+Double-click a single `.pkg` file to open it directly in PS4 PKG Tool's standalone PKG Viewer.
+
+The viewer shows package details, PARAM.SFO data, trophy and artwork information, file entries, extraction tools, and the File Browser with asset preview support.
+
+To make PS4 PKG Tool the default app for `.pkg` files:
+
+1. Right-click a `.pkg` file and choose `Open with` > `Choose another app`.
+2. Select `PS4 PKG Tool`, or use `Choose an app on your PC` to select `PS4 PKG Tool.exe`.
+3. Enable `Always use this app to open .pkg files` and confirm.
+
 # File Explorer `.pkg` Integration
 
 Install the per-user File Explorer context menu from `Program Settings` > `File Explorer Integration` > `Install Integration`. No administrator permission is required. On Windows 11, open the classic menu with `Show more options` when needed.
 
 The PS4 PKG Tool menu provides rename formats, copy Title/Title ID/Content ID, Validate PKG, Extract PKG, and Install to shadPS4 actions. It supports one or more selected `.pkg` files where the action allows it.
-
-The integration does not change your Windows default app for `.pkg` files. To open a single PKG in the Mini PKG Viewer by double-clicking it, set the association manually:
-
-1. Right-click a `.pkg` file and choose `Open with` > `Choose another app`.
-2. Select `PS4 PKG Tool`, or use `Choose an app on your PC` to select `PS4 PKG Tool.exe`.
-3. Enable `Always use this app to open .pkg files` and confirm.
 
 Use `Remove Integration` in Program Settings to remove only the PS4 PKG Tool context menu. It leaves your Windows default `.pkg` app unchanged.
 

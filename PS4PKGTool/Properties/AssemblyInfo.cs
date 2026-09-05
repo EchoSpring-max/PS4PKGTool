@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -26,9 +25,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.8.0.0")]
 [assembly: AssemblyFileVersion("1.8.0.0")]
 [assembly: AssemblyInformationalVersion("1.8.0")]
-
-// The test project verifies internal parsers (e.g. the compat release asset).
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("PS4PKGTool.Tests")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components.  If you need to access a type in this assembly from

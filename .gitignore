@@ -35,3 +35,11 @@ Thumbs.db
 ## Manual backup snapshots (not source)
 PS4PKGTool-source.zip
 PS4PKGTool/Utilities.zip
+
+## Local release and validation output
+dist/
+PS4PKGTool.Assets/obj-task-ui-validation/
+
+## Test projects are kept outside the release source tree
+PS4PKGTool.Tests/
+PS4PKGTool.Assets.Tests/

@@ -670,7 +670,7 @@ namespace PS4PKGTool
             btnClearTrophyCache.Enabled = false;
             btnCancelTrophyCache.Enabled = true;
             btnSaveClose.Enabled = false;
-            lblTrophyCacheStatus.Text = "Scanning configured PKG directories...";
+            lblTrophyCacheStatus.Text = "Scanning all configured PKG directories...";
             pbTrophyCacheProgress.Value = 0;
 
             var progress = new Progress<TrophyCacheProgress>(value =>
@@ -686,12 +686,14 @@ namespace PS4PKGTool
             {
                 Logger.LogInformation("Building trophy metadata cache from configured PKG directories...");
                 var builder = new TrophyMetadataCacheBuilder();
+                // The cache must include packages stored below the configured roots,
+                // independently of the normal library scan setting.
                 TrophyCacheBuildResult result = await builder.BuildAsync(
-                    directories,
-                    darkCheckBoxRecursive.Checked,
-                    TrophyCachePath,
-                    progress,
-                    trophyCacheCancellation.Token);
+                    directories: directories,
+                    recursive: true,
+                    cachePath: TrophyCachePath,
+                    progress: progress,
+                    cancellationToken: trophyCacheCancellation.Token);
 
                 string summary = $"PKGs: {result.TotalPackages} | Added: {result.Added} | Cached: {result.AlreadyCached} | " +
                     $"No trophies: {result.WithoutTrophies} | Duplicates: {result.DuplicateContentIds} | Failed: {result.Failed}";

@@ -75,12 +75,12 @@ namespace PS4PKGTool.Shell
             //
             lblShellResult.Location = new System.Drawing.Point(12, 140);
             lblShellResult.Name = "lblShellResult";
-            lblShellResult.Size = new System.Drawing.Size(396, 40);
+            lblShellResult.Size = new System.Drawing.Size(396, 64);
             lblShellResult.TabIndex = 6;
             //
             // btnShellCancel
             //
-            btnShellCancel.Location = new System.Drawing.Point(316, 190);
+            btnShellCancel.Location = new System.Drawing.Point(316, 214);
             btnShellCancel.Name = "btnShellCancel";
             btnShellCancel.Size = new System.Drawing.Size(92, 30);
             btnShellCancel.TabIndex = 7;
@@ -89,7 +89,7 @@ namespace PS4PKGTool.Shell
             //
             // btnShellDetails
             //
-            btnShellDetails.Location = new System.Drawing.Point(12, 190);
+            btnShellDetails.Location = new System.Drawing.Point(12, 214);
             btnShellDetails.Name = "btnShellDetails";
             btnShellDetails.Size = new System.Drawing.Size(90, 30);
             btnShellDetails.TabIndex = 8;
@@ -99,7 +99,7 @@ namespace PS4PKGTool.Shell
             //
             // btnShellCopyResult
             //
-            btnShellCopyResult.Location = new System.Drawing.Point(108, 190);
+            btnShellCopyResult.Location = new System.Drawing.Point(108, 214);
             btnShellCopyResult.Name = "btnShellCopyResult";
             btnShellCopyResult.Size = new System.Drawing.Size(90, 30);
             btnShellCopyResult.TabIndex = 9;
@@ -109,7 +109,7 @@ namespace PS4PKGTool.Shell
             //
             // btnShellOpenFolder
             //
-            btnShellOpenFolder.Location = new System.Drawing.Point(204, 190);
+            btnShellOpenFolder.Location = new System.Drawing.Point(204, 214);
             btnShellOpenFolder.Name = "btnShellOpenFolder";
             btnShellOpenFolder.Size = new System.Drawing.Size(104, 30);
             btnShellOpenFolder.TabIndex = 10;
@@ -119,7 +119,7 @@ namespace PS4PKGTool.Shell
             //
             // btnShellClose
             //
-            btnShellClose.Location = new System.Drawing.Point(316, 190);
+            btnShellClose.Location = new System.Drawing.Point(316, 214);
             btnShellClose.Name = "btnShellClose";
             btnShellClose.Size = new System.Drawing.Size(92, 30);
             btnShellClose.TabIndex = 11;
@@ -130,7 +130,7 @@ namespace PS4PKGTool.Shell
             // ShellOperationForm
             //
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            ClientSize = new System.Drawing.Size(420, 232);
+            ClientSize = new System.Drawing.Size(420, 256);
             Controls.Add(btnShellClose);
             Controls.Add(btnShellOpenFolder);
             Controls.Add(btnShellCopyResult);

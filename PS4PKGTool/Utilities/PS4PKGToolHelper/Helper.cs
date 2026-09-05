@@ -155,10 +155,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
         public class Bitmap
         {
-            private static PictureBox pic0_ = new PictureBox();
-            private static PictureBox pic1_ = new PictureBox();
+            private static Image pic0_;
+            private static Image pic1_;
 
-            public static PictureBox pic0
+            public static Image Pic0
             {
                 get
                 {
@@ -170,7 +170,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 }
             }
 
-            public static PictureBox pic1
+            public static Image Pic1
             {
                 get
                 {

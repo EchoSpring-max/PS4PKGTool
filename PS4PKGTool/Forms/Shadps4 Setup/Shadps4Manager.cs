@@ -1322,6 +1322,12 @@ namespace PS4PKGTool
             StartInstall(request);
         }
 
+        /// <summary>Refreshes the Games tab after a successful central queue install.</summary>
+        public void RefreshGamesFromQueuedInstall()
+        {
+            if (!IsDisposed) RefreshGames();
+        }
+
         private void StartInstall(InstallRequest request)
         {
             if (IsInstallationActive) return; // re-entry guard (RequestInstall checks, but be explicit)

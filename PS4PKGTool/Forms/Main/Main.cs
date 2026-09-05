@@ -16,6 +16,8 @@ using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using PS4PKGTool.Utilities.Shadps4;
 using PS4PKGTool.Utilities.TrophyMetadata;
+using PS4PKGTool.Utilities.Ffpfsc;
+using PS4PKGTool.Utilities.TaskQueue;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -122,6 +124,7 @@ namespace PS4PKGTool
         private readonly int _pkgListTabBottomGap;
         private bool _pkgListLayoutInitialized;
         private bool _packageOperationsEnabled;
+        private readonly TaskQueueService _taskQueue = new();
 
         [DllImport("winmm.dll")]
         private static extern int waveOutSetVolume(IntPtr hwo, uint dwVolume);
@@ -148,6 +151,15 @@ namespace PS4PKGTool
         public Main()
         {
             InitializeComponent();
+
+            // The WinForms designer must only construct the controls from
+            // Main.Designer.cs. Runtime services access files, timers, shell
+            // integration, and queue workers, which are not available in the
+            // designer host process.
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeTaskQueue();
             ThemeManager.ThemeChanged += Main_ThemeChanged;
             // Start with package-dependent actions disabled. A successful PKG
             // load enables them, while Launch Empty keeps this state intact.
@@ -311,7 +323,26 @@ namespace PS4PKGTool
 
         private void ContextMenuGLV_Opening(object sender, CancelEventArgs e)
         {
+            bool titleIdGrouping = string.Equals(GroupByColumn, "Title ID", StringComparison.Ordinal);
+            foreach (ToolStripItem item in _glvTitleIdOnlyMenuItems)
+                item.Visible = titleIdGrouping;
+
+            if (!titleIdGrouping)
+            {
+                _glvContextGroupPaths.Clear();
+                return;
+            }
+
             _glvContextGroupPaths = ResolveGlvContextGroupPaths();
+            if (_glvShadps4UninstallMenu != null)
+            {
+                _glvShadps4UninstallMenu.Visible = _glvContextGroupPaths
+                    .Select(GetGridRowForPath)
+                    .Where(row => row != null)
+                    .Any(row => row!.DataBoundItem is DataRowView dataRowView
+                        && IsBaseGameRow(dataRowView.Row)
+                        && IsShadps4Installed(dataRowView.Row));
+            }
             if (_glvGroupTitleMenu == null)
                 return;
 
@@ -320,6 +351,21 @@ namespace PS4PKGTool
                 .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "Group";
             _glvGroupTitleMenu.Text = $"{titleId} ({_glvContextGroupPaths.Count} PKG)";
         }
+
+        private void contextMenuPKGGridView_Opening(object sender, CancelEventArgs e)
+        {
+            DataRow? row = GetSelectedGridRow();
+            toolStripMenuItemShadps4Uninstall.Visible = row != null
+                && IsBaseGameRow(row)
+                && IsShadps4Installed(row);
+        }
+
+        private static bool IsBaseGameRow(DataRow row)
+            => (row[PkgColumns.Category]?.ToString() ?? "").Contains(PKGCategory.GAME);
+
+        private static bool IsShadps4Installed(DataRow row)
+            => row.Table.Columns.Contains(PkgColumns.Shadps4Installed)
+                && row[PkgColumns.Shadps4Installed] is true;
 
         private void FlushPendingLogLines()
         {
@@ -1050,7 +1096,7 @@ namespace PS4PKGTool
                         pbPIC0.Visible = true;
                         pbPIC0.SizeMode = PictureBoxSizeMode.StretchImage;
                         ReplacePictureBoxImage(pbPIC0, Helper.Bitmap.BytesToBitmap(pkg.Pic0));
-                        Helper.Bitmap.pic0.Image = pbPIC0.Image;
+                        Helper.Bitmap.Pic0 = pbPIC0.Image;
                     }
                     else
                     {
@@ -1074,7 +1120,7 @@ namespace PS4PKGTool
                             pbPIC1.Visible = true;
                             pbPIC1.SizeMode = PictureBoxSizeMode.StretchImage;
                             ReplacePictureBoxImage(pbPIC1, Helper.Bitmap.BytesToBitmap(pkg.Pic1));
-                            Helper.Bitmap.pic1.Image = pbPIC1.Image;
+                            Helper.Bitmap.Pic1 = pbPIC1.Image;
                         }
                     }
                     else
@@ -1871,8 +1917,8 @@ namespace PS4PKGTool
             Image image = pictureBox.Image;
             pictureBox.Image = null;
             if (hide) pictureBox.Visible = false;
-            if (ReferenceEquals(Helper.Bitmap.pic0.Image, image)) Helper.Bitmap.pic0.Image = null;
-            if (ReferenceEquals(Helper.Bitmap.pic1.Image, image)) Helper.Bitmap.pic1.Image = null;
+            if (ReferenceEquals(Helper.Bitmap.Pic0, image)) Helper.Bitmap.Pic0 = null;
+            if (ReferenceEquals(Helper.Bitmap.Pic1, image)) Helper.Bitmap.Pic1 = null;
             image?.Dispose();
         }
 
@@ -3057,12 +3103,18 @@ namespace PS4PKGTool
             if (columnName.StartsWith(PkgColumns.Shadps4, StringComparison.Ordinal))
             {
                 string status = item.Row[PkgColumns.Shadps4]?.ToString() ?? "";
-                if (!string.IsNullOrWhiteSpace(status))
+                bool installed = item.Row.Table.Columns.Contains(PkgColumns.Shadps4Installed)
+                    && item.Row[PkgColumns.Shadps4Installed] is true;
+                if (!string.IsNullOrWhiteSpace(status) || installed)
                 {
-                    Color statusColor = Shadps4Compat.StatusColor(status);
+                    Color statusColor = string.IsNullOrWhiteSpace(status)
+                        ? Color.FromArgb(113, 190, 84)
+                        : Shadps4Compat.StatusColor(status);
                     return new DarkGroupedListViewCellPresentation
                     {
-                        Text = "● " + status,
+                        Text = string.IsNullOrWhiteSpace(status)
+                            ? "[Installed]"
+                            : "● " + status + (installed ? " [Installed]" : ""),
                         ForeColor = statusColor,
                         SelectionForeColor = statusColor,
                         BackColor = backColor
@@ -3321,12 +3373,6 @@ namespace PS4PKGTool
             var bg = new BackgroundWorker();
             bg.DoWork += (s, e) =>
             {
-                if (!Tool.CheckForInternetConnection())
-                {
-                    Logger.LogInformation("No internet connection. Skipping update version check.");
-                    return;
-                }
-
                 var latestByTitleId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (string titleId in titleIds)
                 {
@@ -3370,8 +3416,9 @@ namespace PS4PKGTool
         {
             try
             {
-                if (!appSettings_.Shadps4Check) return;
-                if (dt == null || !dt.Columns.Contains(PkgColumns.Shadps4) || !dt.Columns.Contains(PkgColumns.TitleId)) return;
+                if (dt == null || !dt.Columns.Contains(PkgColumns.TitleId)) return;
+                ApplyShadps4InstalledStatus(dt);
+                if (!appSettings_.Shadps4Check || !dt.Columns.Contains(PkgColumns.Shadps4)) return;
                 foreach (DataRow row in dt.Rows)
                 {
                     string tid = row[PkgColumns.TitleId]?.ToString() ?? "";
@@ -3382,6 +3429,106 @@ namespace PS4PKGTool
                 }
             }
             catch (Exception ex) { Logger.LogWarning("Failed to apply shadPS4 status: " + ex.Message); }
+        }
+
+        /// <summary>Marks Title IDs with a validated game folder in the configured local shadPS4 library.</summary>
+        private static void ApplyShadps4InstalledStatus(DataTable dt)
+        {
+            if (!dt.Columns.Contains(PkgColumns.Shadps4Installed)) return;
+
+            var installedTitleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string library = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(library) && Directory.Exists(library))
+            {
+                try
+                {
+                    foreach (string directory in Directory.EnumerateDirectories(library))
+                    {
+                        if (Path.GetFileName(directory).StartsWith(".ps4pkgtool-", StringComparison.OrdinalIgnoreCase) ||
+                            !File.Exists(Path.Combine(directory, "eboot.bin")))
+                            continue;
+
+                        string sfoPath = Path.Combine(directory, "sce_sys", "param.sfo");
+                        if (!File.Exists(sfoPath)) continue;
+
+                        // The shadPS4 library folder is normally named after the Title ID,
+                        // but it is not a contractual identifier. Read the installed game's
+                        // actual Title ID from param.sfo, just as the manager does.
+                        var sfo = OrbisPkgTool.Sfo.ParamSfo.Parse(File.ReadAllBytes(sfoPath));
+                        string titleId = sfo.GetString("TITLE_ID")?.Trim() ?? "";
+                        if (!string.IsNullOrWhiteSpace(titleId)) installedTitleIds.Add(titleId);
+                    }
+                }
+                catch (Exception ex) { Logger.LogWarning("Failed to read shadPS4 install library: " + ex.Message); }
+            }
+
+            foreach (DataRow row in dt.Rows)
+            {
+                string titleId = row[PkgColumns.TitleId]?.ToString()?.Trim() ?? "";
+                row[PkgColumns.Shadps4Installed] = installedTitleIds.Contains(titleId);
+            }
+        }
+
+        /// <summary>
+        /// Fills PSVR, PS4 Pro Enhanced, and PS5 BC from the downloaded local
+        /// compatibility data without requiring a complete PKG re-read.
+        /// </summary>
+        private static void ApplyPs5BcStatus(DataTable dt)
+        {
+            try
+            {
+                if (dt == null || !File.Exists(Ps5BcJsonFile) ||
+                    !dt.Columns.Contains(PkgColumns.TitleId) ||
+                    !dt.Columns.Contains(PkgColumns.Category) ||
+                    !dt.Columns.Contains(PkgColumns.Psvr) ||
+                    !dt.Columns.Contains(PkgColumns.Ps4ProEnhanced) ||
+                    !dt.Columns.Contains(PkgColumns.Ps5Bc))
+                    return;
+
+                var entries = JsonConvert.DeserializeObject<List<Ps5BcStatusEntry>>(
+                    File.ReadAllText(Ps5BcJsonFile)) ?? new List<Ps5BcStatusEntry>();
+                var statuses = entries
+                    .Where(entry => !string.IsNullOrWhiteSpace(entry.NpTitleIdShort))
+                    .GroupBy(entry => entry.NpTitleIdShort, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+                foreach (DataRow row in dt.Rows)
+                {
+                    if (!string.Equals(row[PkgColumns.Category]?.ToString(), PKGCategory.GAME, StringComparison.OrdinalIgnoreCase))
+                    {
+                        row[PkgColumns.Psvr] = "-";
+                        row[PkgColumns.Ps4ProEnhanced] = "-";
+                        row[PkgColumns.Ps5Bc] = "-";
+                        continue;
+                    }
+
+                    string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+                    if (!statuses.TryGetValue(titleId, out Ps5BcStatusEntry entry))
+                        continue;
+
+                    row[PkgColumns.Psvr] = entry.PsVr is "1" or "2" ? "Yes" : entry.PsVr == "0" ? "No" : entry.PsVr != "null" ? "NA" : "";
+                    row[PkgColumns.Ps4ProEnhanced] = entry.NeoEnable == "1" ? "Yes" : entry.NeoEnable == "0" ? "No" : entry.NeoEnable != "null" ? "NA" : "";
+                    row[PkgColumns.Ps5Bc] = string.IsNullOrWhiteSpace(entry.Ps5Bc)
+                        ? ""
+                        : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(entry.Ps5Bc.Replace("_", " ").ToLower());
+                }
+            }
+            catch (Exception ex) { Logger.LogWarning("Failed to apply PS5 BC status: " + ex.Message); }
+        }
+
+        private sealed class Ps5BcStatusEntry
+        {
+            [JsonProperty("npTitleIdshort")]
+            public string NpTitleIdShort { get; set; } = "";
+
+            [JsonProperty("psVr")]
+            public string PsVr { get; set; } = "";
+
+            [JsonProperty("neoEnable")]
+            public string NeoEnable { get; set; } = "";
+
+            [JsonProperty("ps5bc")]
+            public string Ps5Bc { get; set; } = "";
         }
 
         private void PostPkgLoad()
@@ -3494,13 +3641,23 @@ namespace PS4PKGTool
 
             if (btnExtractFullPKG != null)
                 btnExtractFullPKG.Enabled = hasSelectedPackage;
+            if (extractSelectedFullPkgToolStripMenuItem != null)
+                extractSelectedFullPkgToolStripMenuItem.Enabled = hasSelectedPackage;
             if (btnViewPKGData != null)
                 btnViewPKGData.Enabled = hasSelectedPackage;
             if (btnExportTreeView != null)
                 btnExportTreeView.Enabled = hasSelectedPackage && PKGTreeView.Nodes.Count > 0;
             if (btnExportTextures != null)
+            {
+                bool hasActiveContainer = _containerSource != null && _containerDetection != null;
+                bool browsingContainer = hasActiveContainer &&
+                    assetListView != null && assetListView.Visible;
+                bool exportingPreviewedUnityFile = !hasActiveContainer && _previewIsUnityFile &&
+                    !string.IsNullOrWhiteSpace(_previewEntryPath);
+                btnExportTextures.Visible = browsingContainer || exportingPreviewedUnityFile;
                 btnExportTextures.Enabled = hasSelectedPackage &&
-                    _previewIsUnityFile && !string.IsNullOrWhiteSpace(_previewEntryPath);
+                    (browsingContainer ? CanExportContainerTextures() : exportingPreviewedUnityFile);
+            }
             if (btnFilterClear != null)
                 btnFilterClear.Enabled = hasPackages && !_filterState.IsEmpty;
             if (btnGroupExpand != null)
@@ -3600,6 +3757,8 @@ namespace PS4PKGTool
                     PKGGridView.Columns[PkgColumns.RegionName].Visible = false;
                 if (PKGGridView.Columns.Contains(PkgColumns.SystemVersionNum))
                     PKGGridView.Columns[PkgColumns.SystemVersionNum].Visible = false;
+                if (PKGGridView.Columns.Contains(PkgColumns.Shadps4Installed))
+                    PKGGridView.Columns[PkgColumns.Shadps4Installed].Visible = false;
             }
             catch { }
         }
@@ -3759,6 +3918,12 @@ namespace PS4PKGTool
             WireCheckedCombo(ccbShadps4, _filterState.CompatStatuses);
         }
 
+        private void chkShadps4Installed_CheckedChanged(object sender, EventArgs e)
+        {
+            _filterState.Shadps4InstalledOnly = chkShadps4Installed.Checked;
+            ApplyFilters();
+        }
+
         /// <summary>Live filter wiring for one aspect combo.</summary>
         private void WireCheckedCombo(DarkUI.Controls.DarkCheckedComboBox combo, List<string> state)
         {
@@ -3824,6 +3989,8 @@ namespace PS4PKGTool
                 SyncCombo(ccbRegion, _filterState.Regions);
                 SyncCombo(ccbType, _filterState.PkgTypes);
                 SyncCombo(ccbShadps4, _filterState.CompatStatuses);
+                if (chkShadps4Installed.Checked != _filterState.Shadps4InstalledOnly)
+                    chkShadps4Installed.Checked = _filterState.Shadps4InstalledOnly;
 
                 // DarkChipsPanel (DarkUI): chips reconcile diff-style (DarkUI
                 // TestApp pattern); only chips that actually changed are
@@ -3841,6 +4008,8 @@ namespace PS4PKGTool
                     desired.Add((t, () => { _filterState.PkgTypes.Remove(t); ApplyFilters(); }));
                 foreach (string s in _filterState.CompatStatuses)
                     desired.Add((s, () => { _filterState.CompatStatuses.Remove(s); ApplyFilters(); }));
+                if (_filterState.Shadps4InstalledOnly)
+                    desired.Add(("ShadPS4 Installed", () => { _filterState.Shadps4InstalledOnly = false; ApplyFilters(); }));
                 if (!string.IsNullOrWhiteSpace(_filterState.SearchText))
                     desired.Add(($"\"{_filterState.SearchText.Trim()}\"", () => { tbSearchGame.Text = ""; tbSearchGame.SearchText = ""; ApplyFilters(); }));
 
@@ -3935,6 +4104,7 @@ namespace PS4PKGTool
             _filterState.MinSystemVersion = null;
             _filterState.PkgTypes.Clear();
             _filterState.CompatStatuses.Clear();
+            _filterState.Shadps4InstalledOnly = false;
             _filterState.SearchText = "";
             tbFilterSysVer.Text = "";
             tbSearchGame.Text = "";
@@ -4091,9 +4261,13 @@ namespace PS4PKGTool
                     // game is running.
                     break;
                 case Shadps4LaunchStatus.GameNotFound:
-                    // No extract-and-boot fallback: installing into the
-                    // library is the supported path.
-                    ShowWarning(message + "\n\nUse shadPS4 > Install to shadPS4 Library first.", false);
+                    // Installing into the library is the supported path.
+                    // Offer that path directly for the PKG the user tried to launch.
+                    var installChoice = AppMessageBox.Show("shadPS4",
+                        message + "\n\nInstall this PKG to the configured shadPS4 library now?",
+                        AppMessageType.Warning, AppMessageButtons.YesNo);
+                    if (installChoice == DialogResult.Yes)
+                        BeginShadps4Install(row);
                     break;
                 default:
                     ShowWarning(message, false);
@@ -4154,31 +4328,161 @@ namespace PS4PKGTool
         }
 
         private void toolStripMenuItemShadps4Install_Click(object sender, EventArgs e)
+            => BeginShadps4Install();
+
+        private void toolStripMenuItemShadps4Uninstall_Click(object sender, EventArgs e)
         {
-            var row = GetSelectedGridRow();
-            if (row == null) { ShowWarning("Select a PKG in the grid first.", false); return; }
-
-            string category = row[PkgColumns.Category]?.ToString() ?? "";
-            bool isGame = category.Contains(PKGCategory.GAME);
-            bool isPatch = category.Contains(PKGCategory.PATCH);
-            string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
-            Logger.LogInformation($"Shadps4InstallUI: install requested for {titleId} (category '{category}', isPatch={isPatch})");
-            if (!isGame && !isPatch)
+            DataRow? row = GetSelectedGridRow();
+            if (row == null || !IsBaseGameRow(row) || !IsShadps4Installed(row))
             {
-                Logger.LogWarning("Shadps4InstallUI: rejected - not a base game or patch");
-                ShowWarning("Select a base game or update (patch) PKG. DLC/addon installation is not supported yet.", false);
+                ShowWarning("Select an installed base game first.", false);
                 return;
             }
 
-            string pkgPath = GetRowPkgPath(row);
-            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
+            if (_taskQueue.Tasks.Any(task => task.Type == "ShadPS4 Install"
+                && task.Status is QueueTaskStatus.Running or QueueTaskStatus.Cancelling)
+                || Shadps4Manager.IsInstallationActive)
             {
-                Logger.LogWarning($"Shadps4InstallUI: PKG missing on disk: {pkgPath}");
-                ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
+                ShowWarning("A shadPS4 installation is in progress. Wait for it to finish before uninstalling a game.", false);
                 return;
             }
 
-            InstallToShadps4Library(row, pkgPath, isPatch);
+            string titleId = row[PkgColumns.TitleId]?.ToString()?.Trim() ?? "";
+            string title = row[PkgColumns.Title]?.ToString()?.Trim() ?? titleId;
+            if (!TryFindInstalledShadps4Game(titleId, out string gamePath))
+            {
+                RefreshShadps4InstalledFilterState();
+                ShowWarning($"{titleId} is no longer installed in the configured shadPS4 library.", false);
+                return;
+            }
+
+            if (Shadps4Launcher.IsEmulatorRunning())
+            {
+                var runningWarning = AppMessageBox.Show("shadPS4",
+                    "shadPS4 is currently running.\n\nDeleting a game while the emulator is using it may fail or leave inconsistent files.\n\nContinue?",
+                    AppMessageType.Warning, AppMessageButtons.YesNo);
+                if (runningWarning != DialogResult.Yes) return;
+            }
+
+            var confirmation = AppMessageBox.Show("Uninstall game",
+                $"Uninstall '{title}' ({titleId})?\n\n" +
+                $"This permanently deletes the installed game folder:\n{gamePath}\n\n" +
+                "This cannot be undone.",
+                AppMessageType.Warning, AppMessageButtons.YesNo);
+            if (confirmation != DialogResult.Yes) return;
+
+            try
+            {
+                Directory.Delete(gamePath, true);
+                Logger.LogInformation($"Shadps4: uninstalled {titleId} from {gamePath}");
+                NotifyShadps4ManagerOfQueuedInstall();
+                RefreshShadps4InstalledFilterState();
+                ShowInformation($"'{title}' has been uninstalled from shadPS4.", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Shadps4: failed to uninstall {titleId}: {ex.Message}");
+                ShowError("Uninstall failed:\n" + ex.Message, false);
+            }
+        }
+
+        private bool TryFindInstalledShadps4Game(string titleId, out string gamePath)
+        {
+            gamePath = "";
+            string library = appSettings_.Shadps4InstallDirectory?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(titleId) || string.IsNullOrWhiteSpace(library) || !Directory.Exists(library))
+                return false;
+
+            string libraryPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(library));
+            try
+            {
+                foreach (string candidate in Directory.EnumerateDirectories(libraryPath))
+                {
+                    if (Path.GetFileName(candidate).StartsWith(".ps4pkgtool-", StringComparison.OrdinalIgnoreCase)
+                        || !File.Exists(Path.Combine(candidate, "eboot.bin")))
+                        continue;
+
+                    string sfoPath = Path.Combine(candidate, "sce_sys", "param.sfo");
+                    if (!File.Exists(sfoPath)) continue;
+                    string installedTitleId = OrbisPkgTool.Sfo.ParamSfo.Parse(File.ReadAllBytes(sfoPath)).GetString("TITLE_ID")?.Trim() ?? "";
+                    if (!string.Equals(titleId, installedTitleId, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    string resolvedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
+                    if (string.Equals(Path.GetDirectoryName(resolvedPath), libraryPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        gamePath = resolvedPath;
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex) { Logger.LogWarning("Failed to inspect shadPS4 library before uninstall: " + ex.Message); }
+            return false;
+        }
+
+        private void BeginShadps4Install(DataRow onlyRow = null)
+        {
+            var rows = onlyRow != null
+                ? new List<DataRow> { onlyRow }
+                : PKGGridView.SelectedRows.Cast<DataGridViewRow>()
+                    .Select(selectedRow => new
+                    {
+                        Row = (selectedRow.DataBoundItem as DataRowView)?.Row,
+                        selectedRow.Index
+                    })
+                    .Where(item => item.Row != null)
+                    .OrderBy(item => (item.Row![PkgColumns.Category]?.ToString() ?? "").Contains(PKGCategory.GAME) ? 0 : 1)
+                    .ThenBy(item => item.Index)
+                    .Select(item => item.Row!)
+                    .ToList();
+            if (rows.Count == 0) { ShowWarning("Select one or more PKGs in the grid first.", false); return; }
+
+            if (Shadps4Manager.IsInstallationActive)
+            {
+                ShowWarning("A direct shadPS4 installation is in progress. Wait for it to finish before adding installs to the queue.", false);
+                return;
+            }
+
+            var selectedBaseTitleIds = rows
+                .Where(row => (row[PkgColumns.Category]?.ToString() ?? "").Contains(PKGCategory.GAME))
+                .Select(row => row[PkgColumns.TitleId]?.ToString() ?? "")
+                .Where(titleId => !string.IsNullOrWhiteSpace(titleId))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var requests = new List<Shadps4Manager.InstallRequest>();
+            foreach (DataRow row in rows)
+            {
+                string category = row[PkgColumns.Category]?.ToString() ?? "";
+                bool isGame = category.Contains(PKGCategory.GAME);
+                bool isPatch = category.Contains(PKGCategory.PATCH);
+                string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
+                Logger.LogInformation($"Shadps4InstallUI: install requested for {titleId} (category '{category}', isPatch={isPatch})");
+                if (!isGame && !isPatch)
+                {
+                    Logger.LogWarning("Shadps4InstallUI: rejected - not a base game or patch");
+                    ShowWarning($"{titleId} is not a base game or update PKG. DLC/addon installation is not supported yet.", false);
+                    continue;
+                }
+
+                string pkgPath = GetRowPkgPath(row);
+                if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
+                {
+                    Logger.LogWarning($"Shadps4InstallUI: PKG missing on disk: {pkgPath}");
+                    ShowWarning($"PKG file not found on disk:\n{pkgPath}", false);
+                    continue;
+                }
+
+                Shadps4Manager.InstallRequest? request = PrepareShadps4Install(
+                    row, pkgPath, isPatch, selectedBaseTitleIds.Contains(titleId));
+                if (request is not null)
+                    requests.Add(request);
+            }
+
+            // Do not enqueue while confirmation dialogs are still being shown.
+            // With Auto Start on, tasks must only begin after this batch is fully approved.
+            foreach (Shadps4Manager.InstallRequest request in requests)
+            {
+                EnqueueShadps4Install(request);
+                Logger.LogInformation($"Shadps4InstallUI: queued {request.TitleId} into {request.Library}");
+            }
         }
 
         /// <summary>
@@ -4218,7 +4522,7 @@ namespace PS4PKGTool
         /// setting (auto-filled from shadPS4's own config in Program Settings)
         /// and can be changed per install - nothing is hardcoded.
         /// </summary>
-        private void InstallToShadps4Library(DataRow row, string pkgPath, bool isPatch)
+        private Shadps4Manager.InstallRequest? PrepareShadps4Install(DataRow row, string pkgPath, bool isPatch, bool baseSelectedInBatch)
         {
             string titleId = row[PkgColumns.TitleId]?.ToString() ?? "";
             string title = row[PkgColumns.Title]?.ToString() ?? "";
@@ -4235,7 +4539,7 @@ namespace PS4PKGTool
                     $"No shadPS4 compatibility status is known for {title} ({titleId}).\n\n" +
                     "The game may not run in the emulator. Continue with the installation?",
                     AppMessageType.Warning, AppMessageButtons.YesNo);
-                if (compatChoice != DialogResult.Yes) return;
+                if (compatChoice != DialogResult.Yes) return null;
                 confirmed = true;
             }
 
@@ -4250,7 +4554,7 @@ namespace PS4PKGTool
                     Description = "Choose the shadPS4 game install folder.",
                     ShowNewFolderButton = true,
                 };
-                if (fbd.ShowDialog() != DialogResult.OK) return;
+                if (fbd.ShowDialog() != DialogResult.OK) return null;
                 library = fbd.SelectedPath;
             }
 
@@ -4262,7 +4566,7 @@ namespace PS4PKGTool
             // say where so the user can install the patch there instead.
             bool hasBase = Directory.Exists(finalDir)
                 && File.Exists(Path.Combine(finalDir, "eboot.bin"));
-            if (isPatch && !hasBase)
+            if (isPatch && !hasBase && !baseSelectedInBatch)
             {
                 string? baseLocation = FindBaseGameLocation(titleId, library);
                 string message = baseLocation != null
@@ -4275,7 +4579,7 @@ namespace PS4PKGTool
 
                 var warnBase = AppMessageBox.Show("shadPS4", message,
                     AppMessageType.Warning, AppMessageButtons.YesNo);
-                if (warnBase != DialogResult.Yes) return;
+                if (warnBase != DialogResult.Yes) return null;
                 confirmed = true;
             }
 
@@ -4290,7 +4594,7 @@ namespace PS4PKGTool
                     var warn = AppMessageBox.Show("shadPS4",
                         "shadPS4 is currently running.\n\nModifying an installed game while the emulator is using it may fail or leave inconsistent files.\n\nContinue?",
                         AppMessageType.Warning, AppMessageButtons.YesNo);
-                    if (warn != DialogResult.Yes) return;
+                    if (warn != DialogResult.Yes) return null;
                 }
 
                 if (isPatch)
@@ -4300,7 +4604,7 @@ namespace PS4PKGTool
                     var mergeChoice = AppMessageBox.Show("shadPS4",
                         $"Game already installed\n\nInstalled version: {installedVer}\nThis patch: {selectedVer}\n\nThe patch will be merged into the existing installation. Continue?",
                         AppMessageType.Info, AppMessageButtons.YesNo);
-                    if (mergeChoice != DialogResult.Yes) return;
+                    if (mergeChoice != DialogResult.Yes) return null;
                     confirmed = true;
                 }
                 else
@@ -4308,7 +4612,7 @@ namespace PS4PKGTool
                     var replaceChoice = AppMessageBox.Show("shadPS4",
                         $"Game already installed\n\nInstalled version: {installedVer}\nSelected PKG: {selectedVer}\n\nReplace the existing installation?",
                         AppMessageType.Info, AppMessageButtons.YesNo);
-                    if (replaceChoice != DialogResult.Yes) return;
+                    if (replaceChoice != DialogResult.Yes) return null;
                     replace = true;
                     confirmed = true;
                 }
@@ -4322,21 +4626,19 @@ namespace PS4PKGTool
                 var go = AppMessageBox.Show("shadPS4",
                     $"Install {title} ({titleId}) into\n{library}?",
                     AppMessageType.Info, AppMessageButtons.YesNo);
-                if (go != DialogResult.Yes) return;
+                if (go != DialogResult.Yes) return null;
             }
 
-            // All safety decisions are done - hand the operation to the
-            // shadPS4 Manager (Games tab), which runs it in the background
-            // with progress and cancel. This window stays usable.
+            // All safety decisions are complete. The caller queues the completed
+            // batch only after every selected PKG has passed its dialogs.
             string requestVersion = row[PkgColumns.AppVersion]?.ToString() ?? "";
             string requestInstalledVersion = Directory.Exists(finalDir)
                 ? (ParamSfoReader.ReadAppVersion(Path.Combine(finalDir, "sce_sys", "param.sfo")) ?? "")
                 : "";
 
-            OpenShadps4Manager(Shadps4Manager.GamesTabIndex,
-                new Shadps4Manager.InstallRequest(
-                    pkgPath, titleId, title, isPatch, library, replace,
-                    requestVersion, requestInstalledVersion));
+            return new Shadps4Manager.InstallRequest(
+                pkgPath, titleId, title, isPatch, library, replace,
+                requestVersion, requestInstalledVersion);
         }
 
         #endregion Shadps4Integration
@@ -5376,6 +5678,8 @@ namespace PS4PKGTool
                 // Fill shadPS4 statuses immediately after a download/toggle/OS
                 // change - BEFORE PopulateGroupedView so the grouped view sees
                 // the refreshed statuses.
+                if (appSettings_.psvr_neo_ps5bc_check && PKGGridView.DataSource is DataTable ps5BcDt)
+                    ApplyPs5BcStatus(ps5BcDt);
                 if (appSettings_.Shadps4Check && PKGGridView.DataSource is DataTable shadDt)
                     ApplyShadps4Status(shadDt);
                 PopulateGroupedView(); // reflect column-visibility changes in the grouped view
@@ -6535,6 +6839,12 @@ namespace PS4PKGTool
         /// </summary>
         private void btnExportTextures_Click(object sender, EventArgs e)
         {
+            if (_containerSource != null && _containerDetection != null && assetListView.Visible)
+            {
+                ExportContainerTextures();
+                return;
+            }
+
             string entryPath = _previewEntryPath ?? "";
             if (string.IsNullOrEmpty(entryPath) || string.IsNullOrEmpty(PKG.SelectedPKGFilename))
             {
@@ -6599,6 +6909,152 @@ namespace PS4PKGTool
             toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             toolStripProgressBar1.Visible = true;
             bg.RunWorkerAsync();
+        }
+
+        /// <summary>
+        /// Exports every decodable texture in the currently visible container list.
+        /// Unity Texture2D objects and directly previewable image entries are
+        /// converted to PNG. Other container entries are skipped.
+        /// </summary>
+        private void ExportContainerTextures()
+        {
+            var children = _containerChildren.ToList();
+            if (children.Count == 0 || !CanExportContainerTextures())
+            {
+                string reason = _containerDetection?.Format == Assets.Handlers.UnrealPakHandler.FormatId
+                    ? "This Unreal PAK has no directly decodable image entries. Its .uasset/.uexp texture payloads cannot be exported as PNG yet."
+                    : "This container has no decodable texture entries to export.";
+                ShowWarning(reason, false);
+                return;
+            }
+
+            using var fbd = new FolderBrowserDialog { Description = "Choose the folder for the exported texture PNGs" };
+            if (fbd.ShowDialog() != DialogResult.OK) return;
+            string outDir = fbd.SelectedPath;
+
+            var bg = new BackgroundWorker();
+            bg.DoWork += (_, _) =>
+            {
+                int exported = 0;
+                int skipped = 0;
+                try
+                {
+                    Directory.CreateDirectory(outDir);
+                    var unityExporter = new Assets.Unity.UnityTextureExporter();
+                    for (int index = 0; index < children.Count; index++)
+                    {
+                        var child = children[index];
+                        try
+                        {
+                            string outputPath = Path.Combine(outDir, BuildContainerTextureFileName(child.Name, index));
+                            if (child is Assets.Containers.UnityObjectAssetSource unityChild)
+                            {
+                                if (unityChild.Object.ClassId != 28)
+                                {
+                                    skipped++;
+                                    continue;
+                                }
+
+                                var descriptor = new Assets.Models.AssetDescriptor
+                                {
+                                    Name = child.Name,
+                                    Format = Assets.Handlers.UnitySerializedFileHandler.FormatId,
+                                    Size = child.Length,
+                                    Capabilities = Assets.Abstractions.AssetCapabilities.ExportConverted,
+                                };
+                                unityExporter.ExportConvertedAsync(child, descriptor, outputPath, CancellationToken.None)
+                                    .GetAwaiter().GetResult();
+                                exported++;
+                                continue;
+                            }
+
+                            var detection = _assetService.Detect(child);
+                            if (detection == null)
+                            {
+                                skipped++;
+                                continue;
+                            }
+                            var preview = _assetService.TryPreviewAsync(child, detection).GetAwaiter().GetResult();
+                            if (preview?.Texture == null)
+                            {
+                                skipped++;
+                                continue;
+                            }
+
+                            Assets.Export.PngExport.Write(preview.Texture, outputPath);
+                            exported++;
+                        }
+                        catch (Assets.Errors.AssetException)
+                        {
+                            skipped++;
+                        }
+                        catch (InvalidDataException)
+                        {
+                            skipped++;
+                        }
+                    }
+
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        if (exported == 0)
+                        {
+                            ShowWarning("No decodable textures were exported. This container may use an unsupported texture format or external payloads.", false);
+                            return;
+                        }
+
+                        string skippedText = skipped > 0 ? $" Skipped {skipped} non-decodable entry(s)." : "";
+                        ShowInformation($"Exported {exported} texture PNG(s) to {outDir}.{skippedText}", true);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        ShowError("Texture export failed: " + ex.Message, false);
+                    });
+                }
+            };
+            bg.RunWorkerCompleted += (_, _) =>
+            {
+                ResetMainProgressBar();
+                toolStripStatusLabel2.Text = "...";
+                this.Enabled = true;
+                UpdatePackageActionButtonStates();
+            };
+            this.Enabled = false;
+            toolStripStatusLabel2.Text = "Exporting container textures...";
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.Visible = true;
+            bg.RunWorkerAsync();
+        }
+
+        private bool CanExportContainerTextures()
+        {
+            foreach (Assets.Abstractions.IAssetSource child in _containerChildren)
+            {
+                if (child is Assets.Containers.UnityObjectAssetSource unityChild && unityChild.Object.ClassId == 28)
+                    return true;
+
+                string extension = Path.GetExtension(child.Name);
+                if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".gif", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".dds", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".gnf", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        private static string BuildContainerTextureFileName(string name, int index)
+        {
+            string stem = Path.GetFileNameWithoutExtension(name);
+            if (string.IsNullOrWhiteSpace(stem)) stem = "texture";
+            char[] invalid = Path.GetInvalidFileNameChars();
+            stem = new string(stem.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
+            return $"{index + 1:D4}_{stem}.png";
         }
 
         private void btnExportTreeView_Click(object sender, EventArgs e)
@@ -6780,24 +7236,109 @@ namespace PS4PKGTool
                 CleanupWorkDirectoryOnFailure = true
             };
 
-            using var progressForm = new PkgMergeProgressForm(request);
-            DialogResult outcome = progressForm.ShowDialog(this);
-            if (outcome == DialogResult.OK && progressForm.Result != null)
+            EnqueueMerge(request, $"{basePkg.TitleId} base + {patchPkg.Version}");
+            Logger.LogInformation($"PKG merge queued: {basePkg.Path} + {patchPkg.Path}");
+        }
+
+        /// <summary>
+        /// Context-menu handler: converts one or more selected PS4 PKGs into
+        /// independent .ffpfsc images for ShadowMountPlus.
+        /// </summary>
+        private void ConvertSelectedToFfpfsc_Click(object sender, EventArgs e)
+        {
+            var selected = PKGGridView.SelectedRows.Cast<DataGridViewRow>()
+                .Where(row => !row.IsNewRow)
+                .ToList();
+            if (selected.Count == 0)
             {
-                var result = progressForm.Result;
-                Logger.LogInformation($"PKG merge complete: {result.OutputPkgPath}");
-                ShowInformation($"Merged PKG created:\n{result.OutputPkgPath}\n\nSize: {ByteSize.FromBytes(result.OutputSize)}", true);
+                ShowWarning("Select one or more PKGs to convert to FFPFSC.", true);
+                return;
             }
-            else if (progressForm.WasCancelled)
+
+            var sources = selected.Select(row => new
             {
-                ShowInformation("PKG merge cancelled. Its temporary work folder was removed.", true);
+                Path = Path.Combine(row.Cells[PkgColumns.Directory].Value?.ToString() ?? "",
+                    row.Cells[PkgColumns.Filename].Value?.ToString() ?? ""),
+                Title = row.Cells[PkgColumns.Title].Value?.ToString() ?? "",
+                TitleId = row.Cells[PkgColumns.TitleId].Value?.ToString() ?? "",
+                Version = row.Cells[PkgColumns.AppVersion].Value?.ToString() ?? ""
+            }).ToList();
+            if (sources.Any(source => !File.Exists(source.Path)))
+            {
+                ShowWarning("One or more selected PKG files no longer exist.", true);
+                return;
             }
-            else if (progressForm.Error != null)
+
+            using var optionsForm = sources.Count == 1
+                ? new Forms.Main.FfpfscOptionsForm(sources[0].Path, sources[0].Title, sources[0].TitleId, sources[0].Version)
+                : new Forms.Main.FfpfscOptionsForm(sources.Select(source => source.Path).ToList());
+            if (optionsForm.ShowDialog(this) != DialogResult.OK || optionsForm.Options == null) return;
+
+            if (sources.Count == 1)
             {
-                Logger.LogError($"PKG merge failed: {progressForm.Error}");
-                ShowError("PKG merge failed:\n" + progressForm.Error.Message + "\n\nIts temporary work folder was removed.", true);
+                EnqueueFfpfsc(optionsForm.Options, $"Convert: {Path.GetFileName(sources[0].Path)}");
+                Logger.LogInformation($"FFPFSC conversion queued: {sources[0].Path}");
+                return;
+            }
+
+            var outputPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var source in sources)
+            {
+                string outputStem = Path.GetFileNameWithoutExtension(source.Path);
+                string outputPath = Path.Combine(optionsForm.Options.OutputPath, outputStem + ".ffpfsc");
+                int collisionIndex = 2;
+                while (!outputPaths.Add(outputPath))
+                {
+                    string suffix = string.IsNullOrWhiteSpace(source.TitleId)
+                        ? collisionIndex.ToString()
+                        : source.TitleId + " " + collisionIndex;
+                    outputPath = Path.Combine(optionsForm.Options.OutputPath, outputStem + " (" + suffix + ").ffpfsc");
+                    collisionIndex++;
+                }
+
+                EnqueueFfpfsc(optionsForm.Options with { PkgPath = source.Path, OutputPath = outputPath },
+                    $"Convert: {Path.GetFileName(source.Path)}");
+                Logger.LogInformation($"FFPFSC conversion queued: {source.Path}");
             }
         }
+
+        private void ExtractSelectedFullPkg_Click(object sender, EventArgs e)
+        {
+            var sources = PKGGridView.SelectedRows.Cast<DataGridViewRow>()
+                .Where(row => !row.IsNewRow)
+                .Select(row => Path.Combine(row.Cells[PkgColumns.Directory].Value?.ToString() ?? "",
+                    row.Cells[PkgColumns.Filename].Value?.ToString() ?? ""))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (sources.Count == 0)
+            {
+                ShowWarning("Select one or more PKGs to extract.", true);
+                return;
+            }
+            if (sources.Any(path => !File.Exists(path)))
+            {
+                ShowWarning("One or more selected PKG files no longer exist.", true);
+                return;
+            }
+            if (!ShowFolderBrowserDialog(out FolderBrowserDialog folder)) return;
+
+            var outputDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string pkgPath in sources)
+            {
+                string outputStem = PkgExtractionService.SanitizeFolderName(Path.GetFileNameWithoutExtension(pkgPath));
+                string outputDirectory = Path.Combine(folder.SelectedPath, outputStem);
+                int collisionIndex = 2;
+                while (!outputDirectories.Add(outputDirectory))
+                {
+                    outputDirectory = Path.Combine(folder.SelectedPath, outputStem + " (" + collisionIndex + ")");
+                    collisionIndex++;
+                }
+
+                EnqueueFullExtraction(pkgPath, outputDirectory);
+                Logger.LogInformation($"Full extraction queued: {pkgPath} -> {outputDirectory}");
+            }
+        }
+
 
         private void toolStripMenuItem32_Click(object sender, EventArgs e)
         {
@@ -7493,14 +8034,18 @@ namespace PS4PKGTool
             if (e.ColumnIndex != 0)
                 e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            // shadPS4 column: colored dot + status text (column-name based, index-safe)
+            // shadPS4 column: colored compatibility status plus the local library marker.
             if (e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count
-                && PKGGridView.Columns[e.ColumnIndex].Name == PkgColumns.Shadps4
-                && e.Value != null && e.Value.ToString() != "")
+                && PKGGridView.Columns[e.ColumnIndex].Name == PkgColumns.Shadps4)
             {
-                string status = e.Value.ToString();
-                e.Value = "● " + status;
-                e.CellStyle.ForeColor = Shadps4Compat.StatusColor(status);
+                string status = e.Value?.ToString() ?? "";
+                bool installed = PKGGridView.Rows[e.RowIndex].Cells[PkgColumns.Shadps4Installed].Value is true;
+                e.Value = string.IsNullOrWhiteSpace(status)
+                    ? (installed ? "[Installed]" : "")
+                    : "● " + status + (installed ? " [Installed]" : "");
+                e.CellStyle.ForeColor = string.IsNullOrWhiteSpace(status)
+                    ? Color.FromArgb(113, 190, 84)
+                    : Shadps4Compat.StatusColor(status);
                 e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
                 return;
             }
@@ -7776,33 +8321,16 @@ namespace PS4PKGTool
 
         private void btnExtractFullPKG_Click(object sender, EventArgs e)
         {
-            // If ANY extraction is running, kill it immediately
-            bool anyRunning = false;
-            if (_extractWorker != null && _extractWorker.IsBusy)
+            string pkgPath = PKG.SelectedPKGFilename;
+            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
             {
-                Helper.IsOperationRunning = false;
-                _extractionStopRequested = true; // volatile - reliable across the worker thread
-                try { _extractionCts?.Cancel(); } catch { }
-                _extractWorker.CancelAsync();
-                anyRunning = true;
-            }
-            if (_selectedExtractWorker != null && _selectedExtractWorker.IsBusy)
-            {
-                _extractionStopRequested = true; // volatile - reliable across the worker thread
-                try { _extractionCts?.Cancel(); } catch { }
-                _selectedExtractWorker.CancelAsync();
-                anyRunning = true;
-            }
-            if (anyRunning)
-            {
-                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
-                toolStripProgressBar1.Value = 0;
-                toolStripStatusLabel2.Text = "Extraction cancelled.";
-                btnExtractFullPKG.Text = "Extract full PKG";
+                ShowWarning("Select a PKG before adding a full extraction task.", false);
                 return;
             }
-
-            ExtractFullPKG();
+            if (!ShowFolderBrowserDialog(out FolderBrowserDialog folder)) return;
+            string outputDirectory = Path.Combine(folder.SelectedPath, Path.GetFileNameWithoutExtension(pkgPath));
+            EnqueueFullExtraction(pkgPath, outputDirectory);
+            Logger.LogInformation($"Full extraction queued: {pkgPath} -> {outputDirectory}");
         }
 
         /// <summary>
@@ -8292,12 +8820,12 @@ namespace PS4PKGTool
         private void btnAssetBack_Click(object sender, EventArgs e)
         {
             btnAssetBack.Visible = false;
-            UpdatePackageActionButtonStates();
             assetListView.Visible = true;
             picPreview.Visible = false;
             txtPreview.Visible = false;
             txtHexPreview.Visible = false;
             lblFileViewerInfo.Text = $"{_containerSource?.Name}: {_containerChildren.Count} entries (double-click to preview)";
+            UpdatePackageActionButtonStates();
         }
 
         /// <summary>Populates the asset workspace list with the container's children.</summary>
@@ -8338,6 +8866,7 @@ namespace PS4PKGTool
             txtPreview.Visible = false;
             txtHexPreview.Visible = false;
             lblFileViewerInfo.Text = $"{_containerSource.Name}: {_containerChildren.Count} entries (double-click to preview)";
+            UpdatePackageActionButtonStates();
         }
 
         /// <summary>Releases the extracted container and clears the asset list.</summary>
@@ -8352,6 +8881,7 @@ namespace PS4PKGTool
                 assetListView.Visible = false;
             }
             if (btnAssetBack != null) btnAssetBack.Visible = false;
+            if (btnExportTextures != null) btnExportTextures.Visible = false;
             if (_containerTempDir != null)
             {
                 try { Directory.Delete(_containerTempDir, true); } catch { }

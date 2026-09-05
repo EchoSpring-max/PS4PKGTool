@@ -26,12 +26,15 @@ namespace PS4PKGTool.Utilities
         /// <summary>Selected shadPS4 statuses (incl. CompatUnknown); empty = no compat filter.</summary>
         public List<string> CompatStatuses { get; } = new();
 
+        /// <summary>When true, show only Title IDs installed in the local shadPS4 library.</summary>
+        public bool Shadps4InstalledOnly { get; set; }
+
         /// <summary>Free-text search over filename/title/title id/content id.</summary>
         public string SearchText { get; set; } = "";
 
         public bool IsEmpty =>
             Categories.Count == 0 && Regions.Count == 0 && MinSystemVersion == null
-            && PkgTypes.Count == 0 && CompatStatuses.Count == 0
+            && PkgTypes.Count == 0 && CompatStatuses.Count == 0 && !Shadps4InstalledOnly
             && string.IsNullOrWhiteSpace(SearchText);
     }
 
@@ -111,6 +114,9 @@ namespace PS4PKGTool.Utilities
                     .ToList();
                 parts.Add(JoinOr(ors));
             }
+
+            if (state.Shadps4InstalledOnly)
+                parts.Add($"[{PkgColumns.Shadps4Installed}] = true");
 
             if (!string.IsNullOrWhiteSpace(state.SearchText))
             {

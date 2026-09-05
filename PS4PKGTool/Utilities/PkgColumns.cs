@@ -28,12 +28,14 @@ namespace PS4PKGTool.Utilities
         public const string Backported = "Backported";
         public const string LatestUpdate = "Latest Update";
         public const string Shadps4 = "ShadPS4";
+        /// <summary>Hidden local-library flag used by the shadPS4 Installed filter.</summary>
+        public const string Shadps4Installed = "ShadPS4 Installed";
         /// <summary>Hidden string column (region NAME) used by the row filter - Region itself is a byte[] icon.</summary>
         public const string RegionName = "Region Name";
         /// <summary>Hidden numeric column (parsed required firmware) used by the "&gt;= firmware" filter.</summary>
         public const string SystemVersionNum = "Required Firmware (Num)";
 
-        /// <summary>Creates the main PKG grid schema (19 columns, Region is byte[]; Region Name and Required Firmware (Num) are hidden filter columns).</summary>
+        /// <summary>Creates the main PKG grid schema. Region is byte[]; Region Name, Required Firmware (Num), and ShadPS4 Installed are hidden filter columns.</summary>
         public static DataTable CreateSchema()
         {
             var dt = new DataTable();
@@ -54,6 +56,7 @@ namespace PS4PKGTool.Utilities
             dt.Columns.Add(Backported);
             dt.Columns.Add(LatestUpdate);
             dt.Columns.Add(Shadps4);
+            dt.Columns.Add(Shadps4Installed, typeof(bool));
             dt.Columns.Add(RegionName);
             dt.Columns.Add(SystemVersionNum, typeof(double));
             return dt;

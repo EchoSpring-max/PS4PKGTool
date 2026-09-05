@@ -42,7 +42,8 @@ namespace PS4PKGTool.Utilities.PkgInspection
         public async Task<(bool Succeeded, string Message)> ExtractFullAsync(
             string sourcePath, string destination,
             IProgress<string>? progress = null, CancellationToken ct = default,
-            IProgress<(int Current, int Total, string CurrentFile)>? fileProgress = null)
+            IProgress<(int Current, int Total, string CurrentFile)>? fileProgress = null,
+            bool logCompletion = true)
         {
             try
             {
@@ -74,7 +75,11 @@ namespace PS4PKGTool.Utilities.PkgInspection
                     return (false, FormatFailures(failures));
                 }
 
-                Logger.LogInformation($"PkgExtractionService: {sourcePath} -> {destination}");
+                // Internal pipeline callers (e.g. the FFPFSC converter) extract
+                // into a temporary GUID work folder that is deleted afterwards;
+                // they log their own clean completion line instead.
+                if (logCompletion)
+                    Logger.LogInformation($"PkgExtractionService: {sourcePath} -> {destination}");
                 return (true, "");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

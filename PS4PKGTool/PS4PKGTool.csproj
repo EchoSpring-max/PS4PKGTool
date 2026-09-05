@@ -56,6 +56,9 @@
     <FileVersion>1.8.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Keep one-off local validation intermediates out of the SDK compile glob. -->
+    <Compile Remove="obj-task-ui-validation/**/*.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
     <Compile Update="Forms\Main\PkgMergeProgressForm.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -261,7 +261,7 @@ namespace PS4PKGTool.Shell
                     PS4PKGTool.Utilities.Constants.PkgRenameFormats.DisplayLabel(format), "rename", id.ToString());
             }
             Command(verbs + @"\01bRename" + PS4PKGTool.Utilities.Constants.PkgRenameFormats.CustomFormatId.ToString("00"),
-                "Custom Format...", "rename",
+                "Custom Format", "rename",
                 PS4PKGTool.Utilities.Constants.PkgRenameFormats.CustomFormatId.ToString());
 
             // â”€â”€ 02: COPY â”€â”€ 02a header, 02b fields (curated subset)
@@ -281,8 +281,8 @@ namespace PS4PKGTool.Shell
             // â”€â”€ 03: PACKAGE â”€â”€ 03a header, 03b operations
             Header(verbs + @"\03aHdrOps", "PACKAGE");
             Command(verbs + @"\03bOps01", "Validate PKG", "validate");
-            Command(verbs + @"\03bOps02", "Extract PKG...", "extract");
-            Command(verbs + @"\03bOps03", "Install to shadPS4...", "install-shadps4");
+            Command(verbs + @"\03bOps02", "Extract PKG", "extract");
+            Command(verbs + @"\03bOps03", "Install to shadPS4", "install-shadps4");
 
             return entries;
         }

@@ -25,7 +25,16 @@
     <Compile Update="Forms\Game Feedback\ReportPreviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\Main\FfpfscConvertForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Main\FfpfscOptionsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\Main\Main.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\Main\Main.Tasks.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\Main\MissingBasePkgResultsForm.cs">

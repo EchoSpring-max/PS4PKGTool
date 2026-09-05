@@ -1,3 +1,4 @@
+using DarkUI.Controls;
 using DarkUI.Forms;
 using OrbisPkgTool;
 using System;
@@ -68,14 +69,49 @@ namespace PS4PKGTool
         {
             _stage.Text = progress.Stage;
             _detail.Text = progress.CurrentFile ?? "";
-            if (progress.Percentage is not double percent)
+
+            // Overall bar: pipeline steps 1..TotalSteps (Step/TotalSteps come
+            // from PkgMergeService). XOfN renders Value+1 / Maximum+1
+            // (0-based semantics), so feed step-1 of steps-1.
+            if (progress.TotalSteps > 0 && progress.Step > 0)
             {
-                _progress.Marquee = true;
-                return;
+                _overallProgress.Marquee = false;
+                _overallProgress.TextMode = DarkProgressBarMode.XOfN;
+                _overallProgress.Maximum = Math.Max(1, progress.TotalSteps - 1);
+                _overallProgress.Value = Math.Clamp(progress.Step - 1, 0, _overallProgress.Maximum);
+            }
+            else
+            {
+                _overallProgress.Marquee = true;
+                _overallProgress.TextMode = DarkProgressBarMode.NoText;
             }
 
-            _progress.Marquee = false;
-            _progress.Value = Math.Clamp((int)Math.Round(percent), 0, 100);
+            // Current bar: extraction/validation item counts (XOfN) or build
+            // byte counts (Percentage). Marquee when a step has no sub-progress.
+            if (progress.TotalItems > 0)
+            {
+                _currentProgress.Marquee = false;
+                _currentProgress.TextMode = DarkProgressBarMode.XOfN;
+                _currentProgress.Maximum = Math.Max(1, progress.TotalItems - 1);
+                _currentProgress.Value = Math.Clamp(progress.CurrentItem, 0, _currentProgress.Maximum);
+                _bytesLabel.Text = progress.Stage.StartsWith("Validating", StringComparison.Ordinal)
+                    ? ""
+                    : $"Extracting {progress.CurrentItem + 1} of {progress.TotalItems} files";
+            }
+            else if (progress.TotalBytes > 0)
+            {
+                _currentProgress.Marquee = false;
+                _currentProgress.TextMode = DarkProgressBarMode.Percentage;
+                _currentProgress.Maximum = 100;
+                _currentProgress.Value = (int)Math.Clamp(progress.CurrentBytes * 100 / progress.TotalBytes, 0, 100);
+                _bytesLabel.Text = $"{progress.CurrentBytes / 1048576.0:F1} MB / {progress.TotalBytes / 1048576.0:F1} MB";
+            }
+            else
+            {
+                _currentProgress.Marquee = true;
+                _currentProgress.TextMode = DarkProgressBarMode.NoText;
+                _bytesLabel.Text = "";
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

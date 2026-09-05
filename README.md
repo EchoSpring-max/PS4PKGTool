@@ -41,7 +41,7 @@ Suggestions are welcome. Report any bugs [here](https://github.com/pearlxcore/PS
 
 **Package Operations and Task Queue**
 
-- Full Extract, Merge PKG, PKG to FFPFSC, and **Install to shadPS4** run through the Tasks queue.
+- Full Extract, merging a selected base PKG with its matching update into one Game PKG, PKG to FFPFSC, and **Install to shadPS4** run through the Tasks queue.
 - The queue supports automatic or manual processing and retains tasks between launches.
 - Full Extract, PKG to FFPFSC, and shadPS4 installation support multiple selected PKGs. shadPS4 installs base packages before updates.
 

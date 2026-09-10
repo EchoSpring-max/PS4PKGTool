@@ -90,9 +90,12 @@ public sealed class AssetStudioBackend : IUnityAssetBackend
         };
     }
 
+    private const long MaxPixels = 64_000_000;
+
     public TextureData? DecodeTexture(UnityTextureInfo info)
     {
         if (info.Width <= 0 || info.Height <= 0) return null;
+        if ((long)info.Width * info.Height > MaxPixels) return null;
         if (info.InlineBytes is not { Length: > 0 } bytes) return null;
 
         byte[]? rgba = info.Format switch

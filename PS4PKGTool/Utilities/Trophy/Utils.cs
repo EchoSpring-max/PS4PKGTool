@@ -495,7 +495,7 @@ namespace PS4_Trophy_xdpx
 
         public static long byteArrayToLittleEndianInteger(byte[] bits)
         {
-            return (long)((ulong)(bits[0] | (byte)(bits[1] << 0) | (byte)(bits[2] << 0) | (byte)(bits[3] << 0)));
+            return (long)((uint)(bits[0] | (bits[1] << 8) | (bits[2] << 16) | (bits[3] << 24)));
         }
 
         public static bool ByteArraysEqual(byte[] first, byte[] second)

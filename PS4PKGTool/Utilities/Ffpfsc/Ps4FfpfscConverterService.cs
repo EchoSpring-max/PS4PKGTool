@@ -4,10 +4,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using OrbisPkgTool.Sfo;
+using PS4PKGTool.Core.Diagnostics;
 using PS4PKGTool.Utilities.Ffpfsc.Engine;
 using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PkgMeta;
-using PS4PKGTool.Utilities;
 
 namespace PS4PKGTool.Utilities.Ffpfsc;
 
@@ -54,7 +54,7 @@ public sealed class Ps4FfpfscConverterService
         {
             // ── Step 1: extract ─────────────────────────────────────────
             string pkgFileName = Path.GetFileName(options.PkgPath);
-            Logger.LogInformation($"FFPFSC: Extracting {pkgFileName}");
+            CoreLog.Info($"FFPFSC: Extracting {pkgFileName}");
             progress?.Report(new FfpfscConvertProgress(FfpfscConvertStages.Extracting, 1, TotalSteps,
                 CurrentFile: pkgFileName));
             var extractor = new PkgExtractionService(options.Passcode);
@@ -104,7 +104,7 @@ public sealed class Ps4FfpfscConverterService
 
             // ── Step 5: build the FFPFSC container ──────────────────────
             progress?.Report(new FfpfscConvertProgress(FfpfscConvertStages.Building, 5, TotalSteps));
-            Logger.LogInformation($"FFPFSC: Building image for {titleId}");
+            CoreLog.Info($"FFPFSC: Building image for {titleId}");
             var buildOptions = new FfpfscBuildOptions
             {
                 InnerFileName = titleId + ".exfat",
@@ -147,7 +147,7 @@ public sealed class Ps4FfpfscConverterService
             string savings = build.PayloadSavingsPercent > 0
                 ? $" ({build.PayloadSavingsPercent:F1}% PFSC savings)"
                 : "";
-            Logger.LogInformation($"FFPFSC: {pkgFileName} -> {build.OutputPath}{savings}");
+            CoreLog.Info($"FFPFSC: {pkgFileName} -> {build.OutputPath}{savings}");
             progress?.Report(new FfpfscConvertProgress(FfpfscConvertStages.Done, TotalSteps, TotalSteps));
             return (true, "", result);
         }
@@ -206,11 +206,11 @@ public sealed class Ps4FfpfscConverterService
             // A failed cleanup (e.g. over a full or flaky SMB share) leaves an
             // orphaned multi-GB temp tree. Log it instead of swallowing it so
             // the operator can reclaim the space manually.
-            Logger.LogWarning($"FFPFSC: failed to delete work directory {path}: {ex.Message}");
+            CoreLog.Warn($"FFPFSC: failed to delete work directory {path}: {ex.Message}");
         }
         catch (UnauthorizedAccessException ex)
         {
-            Logger.LogWarning($"FFPFSC: failed to delete work directory {path}: {ex.Message}");
+            CoreLog.Warn($"FFPFSC: failed to delete work directory {path}: {ex.Message}");
         }
     }
 }

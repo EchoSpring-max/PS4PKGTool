@@ -95,16 +95,23 @@ public sealed class TaskQueueService : IDisposable
 
     public void Cancel(QueuedPackageTask task)
     {
+        // Decide under the queue lock, but mutate (which raises Changed and
+        // can persist) outside it.
+        bool wasQueued;
         lock (_gate)
         {
             if (task.Status == QueueTaskStatus.Queued)
-                task.MarkCancelled("Cancelled before starting.");
+                wasQueued = true;
             else if (task.Status is QueueTaskStatus.Running or QueueTaskStatus.Cancelling)
-            {
-                task.BeginCancellation();
-                task.Cancel();
-            }
+                wasQueued = false;
             else return;
+        }
+        if (wasQueued)
+            task.MarkCancelled("Cancelled before starting.");
+        else
+        {
+            task.BeginCancellation();
+            task.Cancel();
         }
         RaiseChanged(forcePersistence: true);
     }
@@ -114,8 +121,8 @@ public sealed class TaskQueueService : IDisposable
         lock (_gate)
         {
             if (task.Status is not (QueueTaskStatus.Failed or QueueTaskStatus.Cancelled or QueueTaskStatus.Interrupted)) return;
-            task.ResetForRetry();
         }
+        task.ResetForRetry();
         RaiseChanged(forcePersistence: true);
         EnsureWorker();
         if (AutoStart) _signal.Release();
@@ -162,43 +169,43 @@ public sealed class TaskQueueService : IDisposable
                 await _signal.WaitAsync(_shutdown.Token).ConfigureAwait(false);
                 while (true)
                 {
-                    QueuedPackageTask? task;
-                    lock (_gate)
-                    {
-                        bool mayStart = _autoStart || _startOneRequested;
-                        task = mayStart && _requestedTaskId is Guid requested
-                            ? _tasks.FirstOrDefault(candidate => candidate.Id == requested && candidate.Status == QueueTaskStatus.Queued)
-                            : mayStart ? _tasks.FirstOrDefault(candidate => candidate.Status == QueueTaskStatus.Queued) : null;
-                        if (task is null) break;
-                        if (_requestedTaskId == task.Id) _requestedTaskId = null;
-                        if (!_autoStart) _startOneRequested = false;
-                        task.SetStatus(QueueTaskStatus.Running);
-                    }
-                    RaiseChanged(forcePersistence: true);
-                    try
-                    {
-                        QueueTaskExecutionResult result = await task.ExecuteAsync(_shutdown.Token).ConfigureAwait(false);
-                        lock (_gate)
-                        {
-                            if (_shutdown.IsCancellationRequested)
-                                task.MarkInterrupted();
-                            else if (task.CancellationRequested)
-                                task.MarkCancelled("Cancelled.");
-                            else
-                                task.SetStatus(result.Succeeded ? QueueTaskStatus.Completed : QueueTaskStatus.Failed,
-                                    result.Message, result.OutputPath);
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        if (!_shutdown.IsCancellationRequested)
-                            lock (_gate) task.MarkCancelled("Cancelled.");
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (_gate) task.SetStatus(QueueTaskStatus.Failed, ex.Message);
-                    }
-                    RaiseChanged(forcePersistence: true);
+                QueuedPackageTask? task;
+                lock (_gate)
+                {
+                    bool mayStart = _autoStart || _startOneRequested;
+                    task = mayStart && _requestedTaskId is Guid requested
+                        ? _tasks.FirstOrDefault(candidate => candidate.Id == requested && candidate.Status == QueueTaskStatus.Queued)
+                        : mayStart ? _tasks.FirstOrDefault(candidate => candidate.Status == QueueTaskStatus.Queued) : null;
+                    if (task is null) break;
+                    if (_requestedTaskId == task.Id) _requestedTaskId = null;
+                    if (!_autoStart) _startOneRequested = false;
+                }
+                // State mutators raise Changed, whose subscriber persists the
+                // queue and invokes user handlers. Run them outside _gate so we
+                // never perform file I/O or call foreign code while holding it.
+                task.SetStatus(QueueTaskStatus.Running);
+                RaiseChanged(forcePersistence: true);
+                try
+                {
+                    QueueTaskExecutionResult result = await task.ExecuteAsync(_shutdown.Token).ConfigureAwait(false);
+                    if (_shutdown.IsCancellationRequested)
+                        task.MarkInterrupted();
+                    else if (task.CancellationRequested)
+                        task.MarkCancelled("Cancelled.");
+                    else
+                        task.SetStatus(result.Succeeded ? QueueTaskStatus.Completed : QueueTaskStatus.Failed,
+                            result.Message, result.OutputPath);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (!_shutdown.IsCancellationRequested)
+                        task.MarkCancelled("Cancelled.");
+                }
+                catch (Exception ex)
+                {
+                    task.SetStatus(QueueTaskStatus.Failed, ex.Message);
+                }
+                RaiseChanged(forcePersistence: true);
                     if (!AutoStart) break;
                 }
             }
@@ -298,6 +305,10 @@ public sealed class QueuedPackageTask
     public string? OutputPath { get; private set; }
     public QueueTaskStatus Status { get; private set; } = QueueTaskStatus.Queued;
     public QueueTaskProgress Progress { get; private set; } = new("Waiting");
+    /// <summary>Read-only UI projection; the queue remains the source of truth for progress.</summary>
+    public int ProgressPercent => Progress.TotalBytes > 0
+        ? (int)Math.Clamp(Progress.CurrentBytes * 100 / Progress.TotalBytes, 0, 100)
+        : Progress.TotalSteps > 0 ? (int)Math.Clamp(Progress.Step * 100 / Progress.TotalSteps, 0, 100) : 0;
     public string Message { get; private set; } = "Waiting";
     public string? PersistencePayload { get; }
     public DateTime? StartedAtUtc { get; private set; }
@@ -394,7 +405,7 @@ public sealed class QueuedPackageTask
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    internal void RestoreState(PersistedQueueTask saved)
+    public void RestoreState(PersistedQueueTask saved)
     {
         Status = saved.Status is QueueTaskStatus.Running or QueueTaskStatus.Cancelling ? QueueTaskStatus.Interrupted : saved.Status;
         Progress = saved.Progress ?? new QueueTaskProgress("Waiting");

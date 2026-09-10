@@ -6,6 +6,7 @@ using PS4PKGTool.Utilities.PkgInspection;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Shadps4;
 using PS4PKGTool.Utilities.TaskQueue;
+using PS4PKGTool.Core.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -35,6 +36,7 @@ public partial class Main
     private bool _taskQueueRunObserved;
     private bool _taskQueueCompletionDialogPending;
     private int _taskQueueSummaryGeneration;
+    private readonly IPackageTaskFactory _packageTaskFactory = new PackageTaskFactory();
 
     private void InitializeTaskQueue()
     {
@@ -360,21 +362,7 @@ public partial class Main
     }
 
     private QueuedPackageTask CreateMergeTask(PkgMergeRequest request, string displayName, Guid? id = null, PersistedQueueTask? saved = null)
-    {
-        var payload = new MergeQueuePayload(request.BasePkgPath, request.UpdatePkgPath, request.OutputPkgPath,
-            null, null, request.ValidateAfterBuild, request.PfscMode,
-            request.WorkerCount, request.WorkDirectory, request.KeepWorkDirectory, request.CleanupWorkDirectoryOnFailure,
-            request.Title, request.TitleId, request.ContentId);
-        var task = new QueuedPackageTask("Merge PKG", displayName, request.BasePkgPath, request.OutputPkgPath,
-            async (queued, ct) =>
-            {
-                var progress = new Progress<PkgMergeProgress>(p => queued.Report(new QueueTaskProgress(p.Stage, p.Step, p.TotalSteps, p.CurrentBytes, p.TotalBytes, p.CurrentItem + 1, p.TotalItems, p.CurrentFile)));
-                PkgMergeResult result = await Task.Run(() => new PkgMergeService().Merge(request with { Progress = progress, CancellationToken = ct }), ct).ConfigureAwait(false);
-                return new QueueTaskExecutionResult(true, "Merged PKG created.", result.OutputPkgPath);
-            }, JsonSerializer.Serialize(payload), id);
-        if (saved is not null) task.RestoreState(saved);
-        return task;
-    }
+        => _packageTaskFactory.CreateMerge(request, displayName, id, saved);
 
     private void EnqueueFfpfsc(FfpfscConvertOptions options, string displayName)
     {
@@ -382,17 +370,7 @@ public partial class Main
     }
 
     private QueuedPackageTask CreateFfpfscTask(FfpfscConvertOptions options, string displayName, Guid? id = null, PersistedQueueTask? saved = null)
-    {
-        var task = new QueuedPackageTask("PKG → FFPFSC", displayName, options.PkgPath, options.OutputPath,
-            async (queued, ct) =>
-            {
-                var progress = new Progress<FfpfscConvertProgress>(p => queued.Report(new QueueTaskProgress(p.Stage, p.CurrentStep, p.TotalSteps, p.BytesProcessed, p.TotalBytes, p.ItemsProcessed, p.ItemsTotal, p.CurrentFile)));
-                var result = await new Ps4FfpfscConverterService().ConvertAsync(options, progress, ct).ConfigureAwait(false);
-                return new QueueTaskExecutionResult(result.Succeeded, result.Message, result.Result?.OutputPath ?? options.OutputPath);
-            }, JsonSerializer.Serialize(options with { Passcode = null }), id);
-        if (saved is not null) task.RestoreState(saved);
-        return task;
-    }
+        => _packageTaskFactory.CreateFfpfsc(options, displayName, id, saved);
 
     private void EnqueueFullExtraction(string pkgPath, string outputDirectory)
     {
@@ -400,17 +378,7 @@ public partial class Main
     }
 
     private QueuedPackageTask CreateExtractionTask(string pkgPath, string outputDirectory, string? displayName = null, Guid? id = null, PersistedQueueTask? saved = null)
-    {
-        var task = new QueuedPackageTask("Full Extract", displayName ?? $"Extract: {Path.GetFileName(pkgPath)}", pkgPath, outputDirectory,
-            async (queued, ct) =>
-            {
-                var progress = new Progress<(int Current, int Total, string CurrentFile)>(p => queued.Report(new QueueTaskProgress("Extracting PKG", 1, 1, CurrentItems: p.Current + 1, TotalItems: p.Total, CurrentFile: p.CurrentFile)));
-                var result = await new PkgExtractionService(DefaultOrbisPasscode).ExtractFullAsync(pkgPath, outputDirectory, null, ct, progress).ConfigureAwait(false);
-                return new QueueTaskExecutionResult(result.Succeeded, result.Message, outputDirectory);
-            }, JsonSerializer.Serialize(new ExtractionQueuePayload(outputDirectory)), id);
-        if (saved is not null) task.RestoreState(saved);
-        return task;
-    }
+        => _packageTaskFactory.CreateFullExtraction(pkgPath, outputDirectory, displayName, id, saved);
 
     private void EnqueueShadps4Install(Shadps4Manager.InstallRequest request)
     {
@@ -515,10 +483,7 @@ public partial class Main
     }
 
     private QueuedPackageTask? RestoreExtractionTask(PersistedQueueTask saved)
-    {
-        ExtractionQueuePayload? payload = JsonSerializer.Deserialize<ExtractionQueuePayload>(saved.Payload);
-        return payload is null ? null : CreateExtractionTask(saved.Source, payload.OutputDirectory, saved.DisplayName, saved.Id, saved);
-    }
+        => _packageTaskFactory.Restore(saved);
 
     private QueuedPackageTask? RestoreShadps4InstallTask(PersistedQueueTask saved)
     {
@@ -532,7 +497,6 @@ public partial class Main
         string? BasePasscode, string? UpdatePasscode, bool ValidateAfterBuild, PfscMode PfscMode, int WorkerCount,
         string? WorkDirectory, bool KeepWorkDirectory, bool CleanupWorkDirectoryOnFailure, string? Title, string? TitleId, string? ContentId);
 
-    private sealed record ExtractionQueuePayload(string OutputDirectory);
     private sealed record Shadps4InstallQueuePayload(string PkgPath, string TitleId, string Title, bool IsPatch,
         string Library, bool Replace, string Version, string InstalledVersion);
 

@@ -150,6 +150,8 @@ public sealed class UnrealPak
     {
         if (header.IndexSize > MaxIndexSize)
             throw new UnsupportedAssetException($"PAK index is {header.IndexSize} bytes - over the {MaxIndexSize} safety cap.");
+        if (header.IndexSize < 4)
+            throw new UnsupportedAssetException($"PAK index size {header.IndexSize} is too small to contain an index.");
         if (header.Version is < 1 or > 12)
             throw new UnsupportedAssetException($"PAK version {header.Version} is not supported yet.");
         if (header.Version >= 9)
@@ -241,9 +243,11 @@ public sealed class UnrealPak
             header.SkippedEntries = skipped;
             return entries;
         }
-        catch (IndexOutOfRangeException)
+        catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException)
         {
             // The index did not parse as plain data - most likely AES-encrypted.
+            // BitConverter throws ArgumentOutOfRangeException (an ArgumentException)
+            // on a truncated index, not IndexOutOfRangeException.
             throw new UnsupportedAssetException(
                 "PAK index is encrypted (AES-256-ECB) - an AES key is required to browse this pak.");
         }

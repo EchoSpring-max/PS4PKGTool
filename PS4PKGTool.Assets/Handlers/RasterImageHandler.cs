@@ -16,6 +16,10 @@ public sealed class RasterImageHandler : IAssetHandler, IAssetPreviewProvider
     public const string BmpFormat = "bmp";
     public const string GifFormat = "gif";
 
+    // Upper bound on decoded pixels: a tiny, highly-compressed image can
+    // otherwise declare a colossal canvas and allocate gigabytes on decode.
+    private const long MaxPixels = 64_000_000; // ~64 MP (~256 MB RGBA)
+
     private readonly string _format;
 
     public RasterImageHandler(string format) => _format = format;
@@ -44,8 +48,9 @@ public sealed class RasterImageHandler : IAssetHandler, IAssetPreviewProvider
             case JpegFormat when head.Length >= 4 && head[0] == 0xFF && head[1] == 0xD8:
                 break; // dimensions require scanning markers; skip for metadata
             case BmpFormat when head.Length >= 26 && head[0] == (byte)'B' && head[1] == (byte)'M':
-                width = BitConverter.ToInt32(head, 18);
-                height = Math.Abs(BitConverter.ToInt32(head, 22));
+                // BitConverter.ToInt32 can be int.MinValue, whose Math.Abs throws.
+                width = ToAbsDimension(BitConverter.ToInt32(head, 18));
+                height = ToAbsDimension(BitConverter.ToInt32(head, 22));
                 break;
             case GifFormat when head.Length >= 10 && head[0] == (byte)'G' && head[1] == (byte)'I':
                 width = BitConverter.ToInt16(head, 6);
@@ -70,12 +75,28 @@ public sealed class RasterImageHandler : IAssetHandler, IAssetPreviewProvider
 
     public Task<AssetPreview?> PreviewAsync(IAssetSource source, AssetDetectionResult detection, CancellationToken ct = default)
     {
+        // Probe the dimensions from the header before decoding: a tiny file can
+        // declare a huge canvas, and StbImage would allocate it all at once.
+        try
+        {
+            using var probe = source.OpenRead();
+            var info = ImageInfo.FromStream(probe);
+            if (info is { } meta && (long)meta.Width * meta.Height > MaxPixels)
+                throw new UnsupportedAssetException(
+                    $"Image {meta.Width}x{meta.Height} exceeds the {MaxPixels}-pixel preview limit.");
+        }
+        catch (UnsupportedAssetException) { throw; }
+        catch { /* probe is best-effort; fall through to the normal decode */ }
+
         using var stream = source.OpenRead();
         var image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
         ct.ThrowIfCancellationRequested();
         var texture = TextureData.FromRgba(image.Data, image.Width, image.Height, hasAlpha: true);
         return Task.FromResult<AssetPreview?>(AssetPreview.ForTexture(texture));
     }
+
+    private static int ToAbsDimension(int value)
+        => value == int.MinValue ? 0 : Math.Abs(value);
 
     public Task<IReadOnlyList<IAssetSource>> GetChildrenAsync(IAssetSource source, AssetDetectionResult detection, int depth, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<IAssetSource>>(Array.Empty<IAssetSource>());

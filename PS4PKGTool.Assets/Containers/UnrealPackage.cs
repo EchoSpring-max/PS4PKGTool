@@ -22,6 +22,9 @@ public sealed class UnrealPackage
 {
     public const uint PackageMagic = 0x9E2A83C1;
 
+    private const int MaxNames = 5_000_000;
+    private const int MaxExports = 5_000_000;
+
     public sealed class Summary
     {
         public required int TotalHeaderSize { get; init; }
@@ -71,6 +74,22 @@ public sealed class UnrealPackage
     /// <summary>Parses the summary; the magic is located by scanning the first 256 bytes.</summary>
     public static Summary ParseSummary(IAssetSource source)
     {
+        try
+        {
+            return ParseSummaryCore(source);
+        }
+        catch (CorruptAssetException) { throw; }
+        catch (UnsupportedAssetException) { throw; }
+        catch (Exception ex) when (ex is ArgumentException or IndexOutOfRangeException)
+        {
+            // Raw BitConverter reads on a truncated/short file land here; surface
+            // a structured error instead of an unhandled framework exception.
+            throw new CorruptAssetException("Package summary is malformed or truncated.");
+        }
+    }
+
+    private static Summary ParseSummaryCore(IAssetSource source)
+    {
         byte[] head;
         using (var s = source.OpenRead(0, Math.Min(source.Length, 512)))
         {
@@ -93,12 +112,15 @@ public sealed class UnrealPackage
         _ = ReadI32(head, ref pos);                   // licensee version
 
         int customVersionCount = ReadI32(head, ref pos);
-        if (customVersionCount > 0 && customVersionCount < 128)
+        if (customVersionCount > 0 && customVersionCount < 128
+            && pos + (long)customVersionCount * 20 <= head.Length)
             pos += customVersionCount * 20;           // per version: FGuid(16) + int32
 
         int totalHeaderSize = ReadI32(head, ref pos);
         int pkgNameLen = ReadI32(head, ref pos);
-        if (pkgNameLen > 0 && pkgNameLen < 1024) pos += ((pkgNameLen + 3) & ~3);
+        if (pkgNameLen > 0 && pkgNameLen < 1024
+            && pos + ((pkgNameLen + 3) & ~3) <= head.Length)
+            pos += ((pkgNameLen + 3) & ~3);
         _ = ReadI32(head, ref pos);                   // PackageFlags
         int nameCount = ReadI32(head, ref pos);
         int nameOffset = 0;
@@ -110,11 +132,13 @@ public sealed class UnrealPackage
             pos -= 3;
             nameCount = ReadI32(head, ref pos);
         }
+        if (nameCount is < 0 or > MaxNames) nameCount = 0; // never pre-allocate an absurd count
         nameOffset = ReadI32(head, ref pos);          // 0 on this format - located empirically in ReadNames
         _ = ReadI32(head, ref pos);                   // gatherable text data count
         _ = ReadI32(head, ref pos);                   // gatherable text data offset
         int exportOffset = ReadI32(head, ref pos);
         int exportCount = ReadI32(head, ref pos);
+        if (exportCount is < 0 or > MaxExports) exportCount = 0; // never pre-allocate an absurd count
         int importOffset = ReadI32(head, ref pos);
         _ = ReadI32(head, ref pos);                   // (unknown tail field - not the import count)
 
@@ -158,9 +182,10 @@ public sealed class UnrealPackage
             data = new byte[s.Length];
             s.ReadExactly(data);
         }
-        var names = new List<string>(summary.NameCount);
+        int count = Math.Clamp(summary.NameCount, 0, MaxNames);
+        var names = new List<string>(count);
         int pos = 0;
-        for (int i = 0; i < summary.NameCount && pos + 8 < data.Length; i++)
+        for (int i = 0; i < count && pos + 8 < data.Length; i++)
         {
             int len = BitConverter.ToInt32(data, pos);
             if (len <= 0 || len > 1 << 20 || pos + 4 + len + 4 > data.Length) break;
@@ -204,10 +229,13 @@ public sealed class UnrealPackage
     /// <summary>Reads the export table (40-byte records).</summary>
     public static List<ObjectExport> ReadExports(IAssetSource source, Summary summary)
     {
-        long need = summary.ExportOffset + (long)summary.ExportCount * 40;
+        if (summary.ExportCount <= 0) return new List<ObjectExport>();
+        if (summary.ExportOffset < 0) throw new CorruptAssetException("Export table offset is invalid.");
+        long length = (long)summary.ExportCount * 40;
+        long need = summary.ExportOffset + length;
         if (need > source.Length) throw new CorruptAssetException("Export table exceeds the file.");
         byte[] data;
-        using (var s = source.OpenRead(summary.ExportOffset, summary.ExportCount * 40))
+        using (var s = source.OpenRead(summary.ExportOffset, length))
         {
             data = new byte[s.Length];
             s.ReadExactly(data);

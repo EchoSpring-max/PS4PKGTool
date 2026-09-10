@@ -56,6 +56,13 @@
     <FileVersion>1.8.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Utilities\PkgInspection\PkgExtractionService.cs" />
+    <Compile Remove="Utilities\Ffpfsc\**\*.cs" />
+    <Compile Remove="Utilities\PkgMeta\PkgMetadata.cs" />
+    <Compile Remove="Utilities\PkgMeta\PkgMetadataReader.cs" />
+    <Compile Remove="Utilities\PkgMeta\PkgSystemVersion.cs" />
+    <Compile Remove="Utilities\PkgDirectoryScanner.cs" />
+    <Compile Remove="Utilities\TaskQueue\TaskQueueService.cs" />
     <!-- Keep one-off local validation intermediates out of the SDK compile glob. -->
     <Compile Remove="obj-task-ui-validation/**/*.cs" />
     <Compile Remove="artifacts\**\*.cs" />
@@ -98,6 +105,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PS4PKGTool.Assets\PS4PKGTool.Assets.csproj" />
+    <ProjectReference Include="..\PS4PKGTool.Core\PS4PKGTool.Core.csproj" />
     <ProjectReference Include="..\..\OrbisPkgTool\OrbisPkgTool\OrbisPkgTool.csproj"
                       Condition="'$(PublishSingleFile)' != 'true'" />
     <!-- An executable ProjectReference cannot participate in a framework-dependent

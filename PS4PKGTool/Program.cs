@@ -1,4 +1,5 @@
 ﻿using DarkUI.Config;
+using PS4PKGTool.Core.Diagnostics;
 using PS4PKGTool.Shell;
 using PS4PKGTool.Startup;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
@@ -32,6 +33,10 @@ namespace PS4PKGTool
                 LogCrash(e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString()));
 
             EnsureSettingsFileExists();
+
+            // Bridge UI-free Core diagnostics into the app's Logger.
+            CoreLog.Information = Logger.LogInformation;
+            CoreLog.Warning = Logger.LogWarning;
 
             appSettings_ = LoadSettings(SettingFilePath);
 

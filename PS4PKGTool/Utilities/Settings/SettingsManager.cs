@@ -18,7 +18,27 @@ namespace PS4PKGTool.Utilities.Settings
         // historical %APPDATA%\PS4PKGTool location is migrated back on first
         // run (Program.EnsureSettingsFileExists).
         public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.AppDataDirectory, "Settings.conf");
+
+        // Serializes load/save so concurrent saves cannot race on the
+        // temp-file move and a save cannot interleave with a reload.
+        private static readonly object SyncRoot = new object();
+
         public static void SaveSettings(AppSettings settings, string filePath)
+        {
+            lock (SyncRoot)
+            {
+                SaveSettingsCore(settings, filePath);
+            }
+        }
+
+        // Values are written one per line, so a stray CR/LF inside a string
+        // value would inject arbitrary extra settings keys. No legitimate
+        // setting (path, IP, rename format) contains a newline, so collapse
+        // them to spaces on write; existing values are unaffected.
+        private static string AsSingleLine(string? value)
+            => value is null ? string.Empty : value.Replace('\r', ' ').Replace('\n', ' ');
+
+        private static void SaveSettingsCore(AppSettings settings, string filePath)
         {
             string? temporaryPath = null;
             try
@@ -33,15 +53,15 @@ namespace PS4PKGTool.Utilities.Settings
                     // LoadSettings still accepts the historical comma-delimited key.
                     writer.WriteLine("pkg_directories_format=2");
                     foreach (string pkgDirectory in settings.PkgDirectories.Where(path => !string.IsNullOrWhiteSpace(path)))
-                        writer.WriteLine($"pkg_directory={pkgDirectory}");
+                        writer.WriteLine($"pkg_directory={AsSingleLine(pkgDirectory)}");
                     writer.WriteLine($"scan_recursive={settings.ScanRecursive}");
                     writer.WriteLine($"play_bgm={settings.PlayBgm}");
                     writer.WriteLine($"auto_sort_row={settings.AutoSortRow}");
-                    writer.WriteLine($"local_server_ip={settings.LocalServerIp}");
-                    writer.WriteLine($"ps4_ip={settings.Ps4Ip}");
+                    writer.WriteLine($"local_server_ip={AsSingleLine(settings.LocalServerIp)}");
+                    writer.WriteLine($"ps4_ip={AsSingleLine(settings.Ps4Ip)}");
                     writer.WriteLine($"nodeJs_installed={settings.NodeJsInstalled}");
                     writer.WriteLine($"httpServer_installed={settings.HttpServerInstalled}");
-                    writer.WriteLine($"official_update_download_directory={settings.OfficialUpdateDownloadDirectory}");
+                    writer.WriteLine($"official_update_download_directory={AsSingleLine(settings.OfficialUpdateDownloadDirectory)}");
                     writer.WriteLine($"pkg_color_label={settings.PkgColorLabel}");
                     writer.WriteLine($"game_pkg_forecolor={settings.GamePkgForeColor.ToArgb()}");
                     writer.WriteLine($"patch_pkg_forecolor={settings.PatchPkgForeColor.ToArgb()}");
@@ -51,7 +71,7 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"patch_pkg_backcolor={settings.PatchPkgBackColor.ToArgb()}");
                     writer.WriteLine($"addon_pkg_backcolor={settings.AddonPkgBackColor.ToArgb()}");
                     writer.WriteLine($"app_pkg_backcolor={settings.AppPkgBackColor.ToArgb()}");
-                    writer.WriteLine($"rename_custom_format={settings.RenameCustomName}");
+                    writer.WriteLine($"rename_custom_format={AsSingleLine(settings.RenameCustomName)}");
                     string formattedDate = settings.Ps5BcJsonLastDownloadDate.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
                     writer.WriteLine($"ps5bc_json_download_date={formattedDate}");
                     writer.WriteLine($"psvr_neo_ps5bc_check={settings.psvr_neo_ps5bc_check}");
@@ -68,15 +88,15 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_backport_column={settings.pkgBackportColumn}");
                     writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
                     writer.WriteLine($"theme_index={settings.ThemeIndex}");
-                    writer.WriteLine($"theme_name={settings.ThemeName}");
+                    writer.WriteLine($"theme_name={AsSingleLine(settings.ThemeName)}");
                     writer.WriteLine($"shadps4_check={settings.Shadps4Check}");
-                    writer.WriteLine($"shadps4_os={settings.Shadps4Os}");
-                    writer.WriteLine($"shadps4_executable={settings.Shadps4ExecutablePath}");
-                    writer.WriteLine($"shadps4_active_core={settings.Shadps4ActiveCore}");
-                    writer.WriteLine($"shadps4_active_launcher={settings.Shadps4ActiveLauncher}");
-                    writer.WriteLine($"shadps4_managed_root={settings.Shadps4ManagedRoot}");
-                    writer.WriteLine($"shadps4_install_directory={settings.Shadps4InstallDirectory}");
-                    writer.WriteLine($"orbis_temp_directory={settings.OrbisTempDirectory}");
+                    writer.WriteLine($"shadps4_os={AsSingleLine(settings.Shadps4Os)}");
+                    writer.WriteLine($"shadps4_executable={AsSingleLine(settings.Shadps4ExecutablePath)}");
+                    writer.WriteLine($"shadps4_active_core={AsSingleLine(settings.Shadps4ActiveCore)}");
+                    writer.WriteLine($"shadps4_active_launcher={AsSingleLine(settings.Shadps4ActiveLauncher)}");
+                    writer.WriteLine($"shadps4_managed_root={AsSingleLine(settings.Shadps4ManagedRoot)}");
+                    writer.WriteLine($"shadps4_install_directory={AsSingleLine(settings.Shadps4InstallDirectory)}");
+                    writer.WriteLine($"orbis_temp_directory={AsSingleLine(settings.OrbisTempDirectory)}");
                     writer.WriteLine($"shadps4_config_detection_dismissed={settings.Shadps4ConfigDetectionDismissed}");
                     writer.WriteLine($"shell_integration_installed={settings.ShellIntegrationInstalled}");
                 }
@@ -97,6 +117,14 @@ namespace PS4PKGTool.Utilities.Settings
         }
 
         public static AppSettings LoadSettings(string filePath)
+        {
+            lock (SyncRoot)
+            {
+                return LoadSettingsCore(filePath);
+            }
+        }
+
+        private static AppSettings LoadSettingsCore(string filePath)
         {
             try
             {

@@ -187,9 +187,12 @@ public sealed class UnityBundle
         int r = fileTableStart;
         for (int i = 0; i < fileCount; i++)
         {
+            if (r + 4 > info.Length) throw new CorruptAssetException("Unity bundle file table truncated.");
             int nameLen = BitConverter.ToInt32(info, r); r += 4;
             if (nameLen < 0 || nameLen > 4096 || r + nameLen > info.Length) throw new CorruptAssetException("Unity bundle file name truncated.");
             string name = System.Text.Encoding.UTF8.GetString(info, r, nameLen); r += nameLen;
+            int tail = version >= 7 ? 16 : 12; // off + size (+ flags)
+            if (r + tail > info.Length) throw new CorruptAssetException("Unity bundle file table truncated.");
             uint off = BitConverter.ToUInt32(info, r); r += 4;
             uint size = BitConverter.ToUInt32(info, r); r += 4;
             uint fileFlags = version >= 7 ? BitConverter.ToUInt32(info, r) : 0;
@@ -201,7 +204,7 @@ public sealed class UnityBundle
 
     public IAssetSource OpenEntry(IAssetSource containerSource, Member member)
     {
-        if (member.Offset < 0 || member.Offset + member.Size > containerSource.Length)
+        if ((long)member.Offset + member.Size > containerSource.Length)
             throw new CorruptAssetException($"Unity bundle member '{member.Name}' lies outside the container.");
         if (AnyCompressedBlocks)
             throw new UnsupportedAssetException("This Unity bundle uses compressed blocks (LZMA/LZ4) - compression support is not in yet.");

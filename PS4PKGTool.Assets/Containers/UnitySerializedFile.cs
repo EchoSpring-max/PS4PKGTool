@@ -91,7 +91,11 @@ public sealed class UnitySerializedFile
         if (version >= 8) pos += 4; // target platform
 
         bool enableTypeTree = true;
-        if (version >= 13) enableTypeTree = data[pos++] != 0;
+        if (version >= 13)
+        {
+            if (pos >= data.Length) throw new CorruptAssetException("Serialized file header truncated.");
+            enableTypeTree = data[pos++] != 0;
+        }
 
         int typeCount = ReadI32(data, ref pos, bigEndian);
         if (typeCount < 0 || typeCount > 4096) throw new CorruptAssetException($"Invalid type count {typeCount}.");
@@ -240,9 +244,16 @@ public sealed class UnitySerializedFile
         if (layout.HasMipsStripped)
             _ = ReadI32(data, ref pos, bigEndian); // m_MipsStripped (2020.1+)
         int format = ReadI32(data, ref pos, bigEndian);
-        int mipCount = layout.HasMipCount
-            ? ReadI32(data, ref pos, bigEndian)
-            : data[pos++] != 0 ? 1 : 0;          // m_MipMap (Unity 5.0-5.1)
+        int mipCount;
+        if (layout.HasMipCount)
+        {
+            mipCount = ReadI32(data, ref pos, bigEndian);
+        }
+        else
+        {
+            if (pos >= data.Length) throw new CorruptAssetException("Serialized Texture2D data is truncated.");
+            mipCount = data[pos++] != 0 ? 1 : 0; // m_MipMap (Unity 5.0-5.1)
+        }
         pos += 1;                                 // m_IsReadable (bool)
         if (layout.HasPreProcessed)
             pos += 1;                             // m_IsPreProcessed (2020.1+)
@@ -335,16 +346,24 @@ public sealed class UnitySerializedFile
 
     // ── helpers ───────────────────────────────────────────────────────────
 
+    private const long MaxSerializedFileBytes = 1L << 30; // 1 GiB
+
     private static byte[] ReadAll(IAssetSource source)
     {
         using var s = source.OpenRead();
+        if (s.CanSeek && s.Length > MaxSerializedFileBytes)
+            throw new UnsupportedAssetException($"Serialized file is too large ({s.Length} bytes).");
         using var ms = new MemoryStream();
         s.CopyTo(ms);
+        if (ms.Length > MaxSerializedFileBytes)
+            throw new UnsupportedAssetException("Serialized file is too large.");
         return ms.ToArray();
     }
 
     private static byte[] ReadRange(IAssetSource source, long offset, long length)
     {
+        if (length < 0 || length > int.MaxValue)
+            throw new CorruptAssetException($"Invalid serialized object size {length}.");
         using var s = source.OpenRead(offset, length);
         var b = new byte[s.Length];
         s.ReadExactly(b);

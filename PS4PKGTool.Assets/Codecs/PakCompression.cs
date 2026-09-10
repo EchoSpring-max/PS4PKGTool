@@ -15,6 +15,8 @@ public static class PakCompression
 
     public static byte[] Decompress(string method, ReadOnlySpan<byte> data, long uncompressedSize)
     {
+        if (uncompressedSize < 0)
+            throw new CorruptAssetException($"Entry declares a negative uncompressed size ({uncompressedSize}).");
         if (uncompressedSize > MaxDecompressed)
             throw new UnsupportedAssetException(
                 $"Entry decompresses to {uncompressedSize} bytes - over the {MaxDecompressed} safety cap.");
@@ -65,8 +67,23 @@ public static class PakCompression
 
     private static byte[] ReadAll(Stream s, long expected)
     {
-        using var ms = new MemoryStream(expected > 0 && expected <= int.MaxValue ? (int)expected : 0);
-        s.CopyTo(ms);
+        // Never trust the declared size: stream through a bounded loop and
+        // abort the instant the output exceeds the promised (or safety-capped)
+        // length, so a small declared size cannot be used to inflate a
+        // decompression bomb into memory.
+        long limit = expected > 0 ? expected : MaxDecompressed;
+        using var ms = new MemoryStream(limit <= int.MaxValue ? (int)limit : 0);
+        byte[] buffer = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = s.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            total += read;
+            if (total > limit)
+                throw new CorruptAssetException(
+                    $"Decompressed data exceeds the declared size of {expected} bytes.");
+            ms.Write(buffer, 0, read);
+        }
         if (ms.Length != expected)
             throw new CorruptAssetException($"Decompressed size mismatch: got {ms.Length}, expected {expected}.");
         return ms.ToArray();

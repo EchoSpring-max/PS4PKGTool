@@ -22,12 +22,18 @@ public static class DdsDecoder
     /// </summary>
     public static byte[] DecodeBcPayload(int width, int height, string fourCc, ReadOnlySpan<byte> payload)
     {
+        if (payload.Length > int.MaxValue - 128)
+            throw new UnsupportedAssetException($"Texture payload is too large ({payload.Length} bytes).");
         var dds = new byte[128 + payload.Length];
         System.Text.Encoding.ASCII.GetBytes("DDS ").CopyTo(dds, 0);
         BitConverter.GetBytes(124).CopyTo(dds, 4);                          // dwSize
         BitConverter.GetBytes(height).CopyTo(dds, 12);
         BitConverter.GetBytes(width).CopyTo(dds, 16);
-        BitConverter.GetBytes(width * height / 2).CopyTo(dds, 20);          // pitch
+        // Pitch (bytes per compressed row) computed in 64-bit to avoid an
+        // overflow on attacker-controlled dimensions; the decoder ignores it.
+        long stride = fourCc is "DXT1" or "BC1" ? 8 : 16;
+        long pitch = ((long)(width + 3) / 4) * ((height + 3) / 4) * stride;
+        BitConverter.GetBytes((int)Math.Min(int.MaxValue, pitch)).CopyTo(dds, 20);
         BitConverter.GetBytes(32).CopyTo(dds, 76);                          // DDS_PIXELFORMAT.dwSize
         System.Text.Encoding.ASCII.GetBytes(fourCc).CopyTo(dds, 84);
         payload.CopyTo(dds.AsSpan(128));
@@ -101,19 +107,32 @@ public static class DdsDecoder
         };
     }
 
-    private static byte[] DecodeBc1(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(8, data, width, height, hasAlphaThreshold: true);
-    private static byte[] DecodeBc2(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(16, data, width, height, hasAlphaThreshold: false);
-    private static byte[] DecodeBc3(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(16, data, width, height, hasAlphaThreshold: false);
+    /// <summary>Upper bound on either texture dimension, to bound RGBA allocation.</summary>
+    public const int MaxDimension = 8192;
+
+    private enum BcFormat { Bc1, Bc2, Bc3 }
+
+    private static byte[] DecodeBc1(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(BcFormat.Bc1, data, width, height);
+    private static byte[] DecodeBc2(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(BcFormat.Bc2, data, width, height);
+    private static byte[] DecodeBc3(ReadOnlySpan<byte> data, int width, int height) => DecodeBc(BcFormat.Bc3, data, width, height);
 
     private static byte[] DecodeBc(
-        int stride, ReadOnlySpan<byte> data, int width, int height, bool hasAlphaThreshold)
+        BcFormat format, ReadOnlySpan<byte> data, int width, int height)
     {
+        if (width > MaxDimension || height > MaxDimension)
+            throw new UnsupportedAssetException(
+                $"Texture {width}x{height} exceeds the maximum supported {MaxDimension}px dimension.");
+
+        int stride = format == BcFormat.Bc1 ? 8 : 16;
         int blocksW = (width + 3) / 4;
         int blocksH = (height + 3) / 4;
-        int needed = blocksW * blocksH * stride;
+        // 64-bit math: attacker-controlled dimensions must not wrap the size
+        // check and bypass the truncation guard below.
+        long needed = (long)blocksW * blocksH * stride;
         if (data.Length < 128 + needed)
             throw new CorruptAssetException("DDS data is truncated for the declared dimensions.");
 
+        bool hasAlphaThreshold = format == BcFormat.Bc1;
         var rgba = new byte[width * height * 4];
         ReadOnlySpan<byte> payload = data[128..];
 
@@ -138,14 +157,14 @@ public static class DdsDecoder
                 bool punchThrough = hasAlphaThreshold && c0 <= c1;
 
                 int[]? paletteA = null;
-                if (stride == 16 && !hasAlphaThreshold) // BC2: explicit 4-bit alpha
+                if (format == BcFormat.Bc2) // BC2: explicit 4-bit alpha
                 {
                     ulong alphaBits = 0;
                     for (int i = 0; i < 8; i++) alphaBits |= (ulong)block[i] << (i * 8);
                     paletteA = new int[16];
                     for (int i = 0; i < 16; i++) paletteA[i] = (int)((alphaBits >> (i * 4)) & 0xF) * 17;
                 }
-                else if (stride == 16) // BC3: alpha block (2 refs + 6 bytes indices)
+                else if (format == BcFormat.Bc3) // BC3: alpha block (2 refs + 6 bytes indices)
                 {
                     int a0 = block[0], a1 = block[1];
                     ulong aIdx = 0;

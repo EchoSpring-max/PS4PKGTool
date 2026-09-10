@@ -5867,7 +5867,7 @@ namespace PS4PKGTool
 
                 //read file entry table
                 uint entry_count = IO.In.SeekNReadUInt32(0x10);
-                if (entry_count == 0) { IO.Close(); return; }
+                if (entry_count == 0 || entry_count > 1_000_000) { IO.Close(); return; }
                 uint file_table_offset = IO.In.SeekNReadUInt32(0x18);
                 uint padded_size;
 
@@ -5875,7 +5875,7 @@ namespace PS4PKGTool
                 uint strtab_offset = 0;
                 uint strtab_size = 0;
 
-                if (file_length < (file_table_offset + (0x20 * entry_count)))
+                if (file_length < (long)file_table_offset + (0x20L * entry_count))
                 {
                     IO.Close();
                     return;
@@ -5904,7 +5904,7 @@ namespace PS4PKGTool
                 }
 
                 //read strtab
-                if (file_length < (strtab_offset + strtab_size))
+                if (file_length < (long)strtab_offset + strtab_size)
                 {
                     IO.Close();
                     return;
@@ -5947,7 +5947,7 @@ namespace PS4PKGTool
                     string savename;
                     string extrasavepath;
 
-                    if (file_length < (entry[i].offset + entry[i].size))
+                    if (file_length < (long)entry[i].offset + entry[i].size)
                     {
                         IO.Close();
                         return;

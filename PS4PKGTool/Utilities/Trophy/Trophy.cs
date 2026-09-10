@@ -238,7 +238,7 @@ namespace PS4_Trophy_xdpx
                 fileStream.Seek(0L, SeekOrigin.Begin);
                 TrophyHeader hdr = LoadHeader(fileStream);
                 trphy = hdr;
-                if (Utils.ByteArraysEqual(hdr.magic, new byte[] { 220, 162, 77, 0 }))
+                if (!Utils.ByteArraysEqual(hdr.magic, new byte[] { 220, 162, 77, 0 }))
                 {
                     throw new Exception("This file is not supported!");
                 }
@@ -253,7 +253,7 @@ namespace PS4_Trophy_xdpx
 
         public static long byteArrayToLittleEndianInteger(byte[] bits)
         {
-            return (long)((uint)bits[0] | (uint)(byte)((uint)bits[1] << 0) | (uint)(byte)((uint)bits[2] << 0) | (uint)(byte)((uint)bits[3] << 0));
+            return (long)((uint)bits[0] | ((uint)bits[1] << 8) | ((uint)bits[2] << 16) | ((uint)bits[3] << 24));
         }
 
         public static string byteArrayToUTF8String(byte[] _byte)

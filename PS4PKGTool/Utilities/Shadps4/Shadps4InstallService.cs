@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -153,15 +154,11 @@ namespace PS4PKGTool.Utilities.Shadps4
                 {
                     // Update path: merge the patch over the existing dump.
                     Logger.LogInformation($"Shadps4Install: merging patch into {finalDir}");
-                    MergeOverwrite(staging, finalDir);
+                    ApplyPatchTransactionally(staging, finalDir);
                     return Success($"Updated {titleId} in {finalDir}.", finalDir);
                 }
-                if (Directory.Exists(finalDir))
-                {
-                    Logger.LogInformation($"Shadps4Install: replacing existing install {finalDir}");
-                    Directory.Delete(finalDir, true);
-                }
-                Directory.Move(staging, finalDir);
+                Logger.LogInformation($"Shadps4Install: replacing existing install {finalDir}");
+                ReplaceInstall(staging, finalDir);
 
                 return Success($"Installed {titleId} into {finalDir}.", finalDir);
             }
@@ -332,6 +329,133 @@ namespace PS4PKGTool.Utilities.Shadps4
                 }
             }
             Directory.Delete(source, true);
+        }
+
+        /// <summary>
+        /// Replaces <paramref name="finalDir"/> with <paramref name="staging"/>
+        /// using two cheap directory renames. The previous install is renamed
+        /// aside first and restored if the swap fails, so a locked or partially
+        /// written staging tree can never destroy a working installation.
+        /// </summary>
+        private static void ReplaceInstall(string staging, string finalDir)
+        {
+            string? backup = null;
+            if (Directory.Exists(finalDir))
+            {
+                backup = finalDir + $".previous-{Guid.NewGuid():N}";
+                Logger.LogInformation($"Shadps4Install: moving existing install aside to {backup}");
+                Directory.Move(finalDir, backup);
+            }
+            try
+            {
+                Directory.Move(staging, finalDir);
+            }
+            catch
+            {
+                if (backup != null && !Directory.Exists(finalDir) && Directory.Exists(backup))
+                {
+                    Logger.LogWarning("Shadps4Install: swap failed - restoring previous install");
+                    Directory.Move(backup, finalDir);
+                }
+                throw;
+            }
+            if (backup != null) Cleanup(backup);
+        }
+
+        /// <summary>
+        /// Applies a patch over an existing install. Files the patch overwrites
+        /// are snapshotted first and entries the patch adds are journaled, so a
+        /// failure midway restores the previous install instead of leaving it
+        /// half-updated. Disk cost is proportional to the patch size, not the
+        /// size of the installed game.
+        /// </summary>
+        private static void ApplyPatchTransactionally(string staging, string finalDir)
+        {
+            string backupRoot = finalDir + $".backup-{Guid.NewGuid():N}";
+            var overwritten = new List<(string Backup, string Original)>();
+            var created = new List<string>();
+            try
+            {
+                MergeOverwriteWithRollback(staging, finalDir, finalDir, backupRoot, overwritten, created);
+            }
+            catch
+            {
+                RollbackPatch(overwritten, created);
+                throw;
+            }
+            finally
+            {
+                Cleanup(backupRoot);
+            }
+        }
+
+        private static void MergeOverwriteWithRollback(string source, string dest, string destRoot,
+            string backupRoot, List<(string Backup, string Original)> overwritten, List<string> created)
+        {
+            foreach (string entry in Directory.GetFileSystemEntries(source))
+            {
+                string target = Path.Combine(dest, Path.GetFileName(entry));
+                if (Directory.Exists(entry))
+                {
+                    if (!Directory.Exists(target))
+                    {
+                        Directory.Move(entry, target);
+                        created.Add(target);
+                    }
+                    else
+                    {
+                        MergeOverwriteWithRollback(entry, target, destRoot, backupRoot, overwritten, created);
+                    }
+                }
+                else
+                {
+                    if (File.Exists(target))
+                    {
+                        string relative = Path.GetRelativePath(destRoot, target);
+                        string backupPath = Path.Combine(backupRoot, relative);
+                        Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+                        File.Copy(target, backupPath, overwrite: true);
+                        overwritten.Add((backupPath, target));
+                    }
+                    else
+                    {
+                        created.Add(target);
+                    }
+                    File.Move(entry, target, overwrite: true);
+                }
+            }
+        }
+
+        private static void RollbackPatch(List<(string Backup, string Original)> overwritten, List<string> created)
+        {
+            // Remove what the patch added first, then restore overwritten files.
+            foreach (string path in created)
+            {
+                try
+                {
+                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+                    else if (File.Exists(path)) File.Delete(path);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"Shadps4Install: rollback could not remove {path}: {ex.Message}");
+                }
+            }
+            foreach ((string backup, string original) in overwritten)
+            {
+                try
+                {
+                    if (File.Exists(backup))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(original)!);
+                        File.Copy(backup, original, overwrite: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"Shadps4Install: rollback could not restore {original}: {ex.Message}");
+                }
+            }
         }
 
         private static void MergeDirectory(string source, string dest)

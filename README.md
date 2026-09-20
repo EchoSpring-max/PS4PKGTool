@@ -1,5 +1,7 @@
 # PS4 PKG Tool
 
+<img width="2560" height="1392" alt="image" src="https://github.com/user-attachments/assets/1ab9f5ba-9586-41f7-8b67-8dde2346625c" />
+
 [![Github All Releases](https://img.shields.io/github/downloads/pearlxcore/PS4-PKG-Tool/total.svg)](https://github.com/pearlxcore/PS4-PKG-Tool/releases/latest)
 [![License](https://img.shields.io/github/license/pearlxcore/PS4-PKG-Tool.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/pearlxcore/PS4-PKG-Tool.svg)](https://github.com/pearlxcore/PS4-PKG-Tool)

@@ -22,6 +22,7 @@ using Microsoft.VisualBasic.CompilerServices;
 using PS4PKGTool.Util;
 using System.Reflection;
 using System.Net.Http;
+using System.Text;
 using DarkUI.Controls;
 
 namespace PS4PKGTool.Utilities.PS4PKGToolHelper
@@ -1004,6 +1005,14 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
         public class PKGSENDER
         {
+            private static readonly HttpClient RpiHttpClient = new HttpClient(
+                new SocketsHttpHandler
+                {
+                    // RPI is always a device on the local network. Bypassing the system
+                    // proxy avoids sending private PS4 addresses to a configured proxy.
+                    UseProxy = false
+                });
+
             public class JSON
             {
                 public class STOPTASK
@@ -1338,11 +1347,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         return "Splitted PKG update is not supported at this moment.";
                 }
 
-                //check if curl.exe exists
-                if (!File.Exists(AppDataDirectory + @"curl.exe"))
-                    return "Missing curl.exe in AppData";
-
-
                 //return if server and ps4 is set up
                 if (appSettings_.Ps4Ip == string.Empty || appSettings_.LocalServerIp == string.Empty)
                     return "PS4 IP address or Server IP address has not been set. Set the IP address in Settings.";
@@ -1359,21 +1363,38 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return "OK";
             }
 
-            /// <summary>
-            /// Waits for a curl process with a timeout, draining stdout concurrently so the
-            /// pipe can never deadlock, and killing the process if it stalls. Returns all output.
-            /// </summary>
-            private static string RunCurlProcess(Process proc, int timeoutMs)
+            private static dynamic SendRpiRequest(string endpoint, object payload, int timeoutMs)
             {
-                Task<string> readTask = proc.StandardOutput.ReadToEndAsync();
-                if (!proc.WaitForExit(timeoutMs))
+                string url = $"http://{appSettings_.Ps4Ip}:12800/api/{endpoint}";
+                string json = JsonConvert.SerializeObject(payload);
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
-                    // Kill so a hung curl can never leak an orphan process.
-                    // Kill itself can throw once the process is already gone.
-                    try { proc.Kill(); proc.WaitForExit(); }
-                    catch (Exception ex) { Logger.LogWarning("curl timeout kill failed: " + ex.Message); }
-                }
-                return readTask.Result;
+                    // curl --data used this content type in previous releases. Keep it for
+                    // compatibility with all versions of the PS4 RPI server.
+                    Content = new StringContent(json, Encoding.UTF8, "application/x-www-form-urlencoded")
+                };
+                using var timeout = new CancellationTokenSource(timeoutMs);
+                using HttpResponseMessage response = RpiHttpClient
+                    .Send(request, HttpCompletionOption.ResponseContentRead, timeout.Token);
+                response.EnsureSuccessStatusCode();
+
+                string output = response.Content.ReadAsStringAsync(timeout.Token)
+                    .GetAwaiter()
+                    .GetResult();
+                return JsonConvert.DeserializeObject(output);
+            }
+
+            private static object TaskIdPayload()
+            {
+                // RPI returns task_id as text in some versions, but its API expects the
+                // value to be posted as a JSON number.
+                return new Dictionary<string, object>
+                {
+                    ["task_id"] = long.TryParse(JSON.SENDPKG.task_id, out long taskId)
+                        ? taskId
+                        : JSON.SENDPKG.task_id
+                };
             }
 
             public static dynamic CheckIfPkgInstalled(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
@@ -1382,25 +1403,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 try
                 {
-
-                    Process checkapp = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"} http://" + appSettings_.Ps4Ip + ":12800/api/is_exists",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    checkapp.Start();
-                    string output = RunCurlProcess(checkapp, 10000);
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
-                    }
+                    json = SendRpiRequest("is_exists", new { title_id = pkg.TITLEID }, 10000);
                 }
                 catch (Exception ex) { Logger.LogWarning("CheckIfPkgInstalled failed: " + ex.Message); }
 
@@ -1415,24 +1418,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 try
                 {
                     taskMonitorIsCancelling = true;
-                    Process stopTask = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/stop_task --data {\"\"\"task_id\"\"\":" + JSON.SENDPKG.task_id + "}",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    stopTask.Start();
-                    string output = RunCurlProcess(stopTask, 10000);
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
-                    }
+                    json = SendRpiRequest("stop_task", TaskIdPayload(), 10000);
                 }
                 catch (Exception ex)
                 {
@@ -1450,25 +1436,13 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 try
                 {
-                    Process uninstallappp = new Process();
-                    uninstallappp.StartInfo.FileName = AppDataDirectory + @"curl.exe";
                     if (stackTrace.GetFrame(1).GetMethod().Name == "uninstallAddonPkgFromPs4")
                     {
-                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_ac --data {\"\"\"content_id\"\"\":\"\"\"" + pkg.SfoContentId + "\"\"\"}";
+                        json = SendRpiRequest("uninstall_ac", new { content_id = pkg.SfoContentId }, 30000);
                     }
                     else
                     {
-                        uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_theme --data {\"\"\"content_id\"\"\":\"\"\"" + pkg.SfoContentId + "\"\"\"}";
-                    }
-                    uninstallappp.StartInfo.UseShellExecute = false;
-                    uninstallappp.StartInfo.RedirectStandardOutput = true;
-                    uninstallappp.StartInfo.CreateNoWindow = true;
-
-                    uninstallappp.Start();
-                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
+                        json = SendRpiRequest("uninstall_theme", new { content_id = pkg.SfoContentId }, 30000);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallAddonTheme failed: " + ex.Message); }
@@ -1482,24 +1456,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 try
                 {
-                    Process uninstallappp = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_patch --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"}",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    uninstallappp.Start();
-                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
-                    }
+                    json = SendRpiRequest("uninstall_patch", new { title_id = pkg.TITLEID }, 30000);
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallPatch failed: " + ex.Message); }
 
@@ -1512,24 +1469,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 try
                 {
-                    Process taskProgress = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/get_task_progress --data {\"\"\"task_id\"\"\":" + JSON.SENDPKG.task_id + "}",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    taskProgress.Start();
-                    string output = RunCurlProcess(taskProgress, 10000);
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
-                    }
+                    json = SendRpiRequest("get_task_progress", TaskIdPayload(), 10000);
                 }
                 catch (Exception ex) { Logger.LogWarning("GetTaskProgress failed: " + ex.Message); }
 
@@ -1550,27 +1490,8 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
             public static dynamic SendPKG(string tempFilename)
             {
-                dynamic json = null;
-                Process sendPKG = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = AppDataDirectory + @"curl.exe",
-                        Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/install --data {\"\"\"type\"\"\":\"\"\"direct\"\"\",\"\"\"packages\"\"\":[\"\"\"http://" + appSettings_.LocalServerIp + ":8080/" + tempFilename + "\"\"\"]}",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                sendPKG.Start();
-                string output = RunCurlProcess(sendPKG, 10000);
-                foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    json = JsonConvert.DeserializeObject(line);
-                }
-
-                return json;
+                string packageUrl = $"http://{appSettings_.LocalServerIp}:8080/{tempFilename}";
+                return SendRpiRequest("install", new { type = "direct", packages = new[] { packageUrl } }, 10000);
             }
 
             public static dynamic UninstallGame(PS4PKGTool.Utilities.PkgMeta.PkgMetadata pkg)
@@ -1578,24 +1499,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 dynamic json = null;
                 try
                 {
-                    Process uninstallappp = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = AppDataDirectory + @"curl.exe",
-                            Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_game --data {\"\"\"title_id\"\"\":\"\"\"" + pkg.TITLEID + "\"\"\"}",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    uninstallappp.Start();
-                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
-                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        json = JsonConvert.DeserializeObject(line);
-                    }
+                    json = SendRpiRequest("uninstall_game", new { title_id = pkg.TITLEID }, 30000);
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallGame failed: " + ex.Message); }
 
